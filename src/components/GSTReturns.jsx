@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { FileText, Download, Upload, ExternalLink, CheckCircle, ChevronDown, ChevronRight, AlertTriangle, BookOpen, BarChart3 } from 'lucide-react';
 import { getAllBills, getAllExpenses, getAllPurchases, getProfile } from '../store';
-import { formatCurrency, INVOICE_TYPES, calculateLineItemTax, getStateCode, formatDateGST, getFilingPeriod, getUnitUQC, getFYOptions, belongsToProfile, toCsvLine, isCancelledBill, b2clThreshold, GST_PORTAL_RATES } from '../utils';
+import { formatCurrency, INVOICE_TYPES, calculateLineItemTax, getStateCode, formatDateGST, getFilingPeriod, getUnitUQC, getFYOptions, belongsToProfile, toCsvLine, isCancelledBill, b2clThreshold, GST_PORTAL_RATES, setOffITC } from '../utils';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
 
@@ -833,11 +833,11 @@ export default function GSTReturns() {
     sgst: itcFromExpensesOnly.sgst + itcFromPurchases.sgst,
     igst: itcFromExpensesOnly.igst + itcFromPurchases.igst,
   };
-  const netTax = {
-    cgst: Math.max(0, outputTax.cgst - itcFromExpenses.cgst),
-    sgst: Math.max(0, outputTax.sgst - itcFromExpenses.sgst),
-    igst: Math.max(0, outputTax.igst - itcFromExpenses.igst),
-  };
+  // v1.10.76 (#81) - credit set off across heads in the legal order (see setOffITC).
+  const setOff = setOffITC(outputTax, itcFromExpenses);
+  const netTax = setOff.payable;
+  const itcCarry = setOff.carry;
+  const hasCarry = itcCarry.igst + itcCarry.cgst + itcCarry.sgst > 0;
 
   // ========== Document Summary ==========
   // v1.10.74 - Table 13 counts cancelled documents too: "Total" is every
@@ -1055,7 +1055,9 @@ export default function GSTReturns() {
     downloadCSV('GSTR3B_Summary.csv', ['Description', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'Total'], [
       ['3.1(a) Outward taxable supplies', grandTotals.taxable.toFixed(2), grandTotals.igst.toFixed(2), grandTotals.cgst.toFixed(2), grandTotals.sgst.toFixed(2), (grandTotals.igst + grandTotals.cgst + grandTotals.sgst).toFixed(2)],
       ['4(A) ITC Available', '', itcFromExpenses.igst.toFixed(2), itcFromExpenses.cgst.toFixed(2), itcFromExpenses.sgst.toFixed(2), (itcFromExpenses.igst + itcFromExpenses.cgst + itcFromExpenses.sgst).toFixed(2)],
-      ['6.1 Tax Payable', '', netTax.igst.toFixed(2), netTax.cgst.toFixed(2), netTax.sgst.toFixed(2), (netTax.igst + netTax.cgst + netTax.sgst).toFixed(2)],
+      ['6.1 ITC utilised', '', setOff.used.igst.toFixed(2), setOff.used.cgst.toFixed(2), setOff.used.sgst.toFixed(2), (setOff.used.igst + setOff.used.cgst + setOff.used.sgst).toFixed(2)],
+      ['6.1 Tax Payable in cash', '', netTax.igst.toFixed(2), netTax.cgst.toFixed(2), netTax.sgst.toFixed(2), (netTax.igst + netTax.cgst + netTax.sgst).toFixed(2)],
+      ['ITC carried forward', '', itcCarry.igst.toFixed(2), itcCarry.cgst.toFixed(2), itcCarry.sgst.toFixed(2), (itcCarry.igst + itcCarry.cgst + itcCarry.sgst).toFixed(2)],
     ]);
     toast('GSTR-3B summary CSV downloaded', 'success');
   };
@@ -1881,15 +1883,25 @@ export default function GSTReturns() {
                 <thead><tr><th>Description</th><th style={{ textAlign: 'right' }}>IGST</th><th style={{ textAlign: 'right' }}>CGST</th><th style={{ textAlign: 'right' }}>SGST</th><th style={{ textAlign: 'right' }}>Total</th></tr></thead>
                 <tbody>
                   <tr><td className="font-medium">Output Tax Liability</td><td style={{ textAlign: 'right' }}>{formatCurrency(outputTax.igst)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(outputTax.cgst)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(outputTax.sgst)}</td><td style={{ textAlign: 'right' }} className="font-bold">{formatCurrency(outputTax.igst + outputTax.cgst + outputTax.sgst)}</td></tr>
-                  <tr><td className="font-medium" style={{ color: '#059669' }}>Less: ITC Claimed</td><td style={{ textAlign: 'right', color: '#059669' }}>-{formatCurrency(itcFromExpenses.igst)}</td><td style={{ textAlign: 'right', color: '#059669' }}>-{formatCurrency(itcFromExpenses.cgst)}</td><td style={{ textAlign: 'right', color: '#059669' }}>-{formatCurrency(itcFromExpenses.sgst)}</td><td style={{ textAlign: 'right', color: '#059669' }}>-{formatCurrency(itcFromExpenses.igst + itcFromExpenses.cgst + itcFromExpenses.sgst)}</td></tr>
+                  <tr><td className="font-medium" style={{ color: '#059669' }}>Less: ITC utilised</td><td style={{ textAlign: 'right', color: '#059669' }}>-{formatCurrency(setOff.used.igst)}</td><td style={{ textAlign: 'right', color: '#059669' }}>-{formatCurrency(setOff.used.cgst)}</td><td style={{ textAlign: 'right', color: '#059669' }}>-{formatCurrency(setOff.used.sgst)}</td><td style={{ textAlign: 'right', color: '#059669' }}>-{formatCurrency(setOff.used.igst + setOff.used.cgst + setOff.used.sgst)}</td></tr>
                 </tbody>
                 <tfoot><tr style={{ fontWeight: 'bold', borderTop: '2px solid var(--border)' }}>
                   <td>Net Tax Payable</td>
                   <td style={{ textAlign: 'right' }}>{formatCurrency(netTax.igst)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(netTax.cgst)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(netTax.sgst)}</td>
                   <td style={{ textAlign: 'right', color: 'var(--primary)', fontSize: '1.1rem' }}>{formatCurrency(netTax.igst + netTax.cgst + netTax.sgst)}</td>
-                </tr></tfoot>
+                </tr>
+                {hasCarry && (
+                  <tr style={{ color: 'var(--text-muted)' }}>
+                    <td>ITC carried forward</td>
+                    <td style={{ textAlign: 'right' }}>{formatCurrency(itcCarry.igst)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(itcCarry.cgst)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(itcCarry.sgst)}</td>
+                    <td style={{ textAlign: 'right' }}>{formatCurrency(itcCarry.igst + itcCarry.cgst + itcCarry.sgst)}</td>
+                  </tr>
+                )}</tfoot>
               </table>
             </div>
+            <p className="field-hint" style={{ padding: '0.75rem 1.25rem' }}>
+              Credit is set off in the order the law requires: IGST credit first (against IGST, then CGST, then SGST); CGST credit against CGST, then IGST; SGST credit against SGST, then IGST. CGST credit never pays SGST, and SGST credit never pays CGST.
+            </p>
           </div>
 
           {/* Net Payable */}

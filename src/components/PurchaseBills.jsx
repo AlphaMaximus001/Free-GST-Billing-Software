@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { ShoppingCart, Plus, Edit3, Trash2, Search, X, Save, Download, Wand2, FileText, Eye } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllPurchases, savePurchase, deletePurchase, getAllProducts, saveProduct, getProfile } from '../store';
-import { formatCurrency, calculateRoundOff, getFYOptions, belongsToProfile, isUnassignedToBusiness, toCsvLine } from '../utils';
+import { formatCurrency, calculateRoundOff, getFYOptions, belongsToProfile, isUnassignedToBusiness, toCsvLine, isInterstateSupply } from '../utils';
 import UnassignedBanner from './UnassignedBanner';
 import { getPrintSettings } from '../utils/printSettings';
 import { toast } from './Toast';
@@ -689,6 +689,14 @@ export default function PurchaseBills() {
 
   const updateField = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
+  // v1.10.76 (#82) - a full supplier GSTIN sets "Inter-state" from the two
+  // states, the way sales invoices already work it out. The box stays
+  // editable for the rare exception.
+  const updateSupplierGstin = (value) => setForm(prev => {
+    const interstate = isInterstateSupply(value, ownerProfile);
+    return interstate === null ? { ...prev, supplierGstin: value } : { ...prev, supplierGstin: value, interstate };
+  });
+
   // Typing or picking a known supplier fills in the rest of their details.
   //
   // Deliberately only fills fields the user has left BLANK. Overwriting
@@ -1022,7 +1030,7 @@ export default function PurchaseBills() {
               <div className="form-group">
                 <label className="form-label">Supplier GSTIN</label>
                 <input type="text" className="form-input" value={form.supplierGstin}
-                  onChange={e => updateField('supplierGstin', e.target.value)} placeholder="15-digit GSTIN" maxLength={15} />
+                  onChange={e => updateSupplierGstin(e.target.value)} placeholder="15-digit GSTIN" maxLength={15} />
               </div>
               {/* v1.10.29 — Supplier address for the PDF. Optional; full width row. */}
               <div className="form-group" style={{ gridColumn: 'span 2' }}>

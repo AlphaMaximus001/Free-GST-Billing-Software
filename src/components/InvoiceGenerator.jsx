@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { ArrowLeft, Plus, Trash2, Download, UserPlus, Pencil, Settings, ChevronUp, ChevronDown, MessageCircle, Check, Loader, Truck, Printer, Eye, EyeOff } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { saveBill, getNextInvoiceNumber, getTermsTemplates, getAllClients, saveClient, getProfile, getAllProducts, saveProduct, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllBills } from '../store';
-import { INVOICE_TYPES, COUNTRIES, generateEWayBillJSON, formatCurrency, getCountryConfig, getStatesForCountry, getAllUnits, addCustomUnit, removeCustomUnit, getCountriesForRegion, TDS_SECTIONS, TCS_SECTIONS, REMOVED_TCS_SECTIONS, TERMS_PRESETS, getActiveAccounts, getDefaultAccount, getAccountById, getDefaultUnitForMode, filterUnitsByMode, PAPER_SIZES, getPaperSize, computeInvoiceTotals, clientYearToDate, htmlHasText, ORDER_DETAIL_FIELDS, invoiceOptionOn, DEFAULT_DECLARATION, decodeGstin, safePageBoundaries } from '../utils';
+import { saveBill, applyStockChanges, getNextInvoiceNumber, getTermsTemplates, getAllClients, saveClient, getProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllBills } from '../store';
+import { INVOICE_TYPES, COUNTRIES, printedSubtotal, stockEffect, appliedStock, stockDelta, generateEWayBillJSON, formatCurrency, getCountryConfig, getStatesForCountry, getAllUnits, addCustomUnit, removeCustomUnit, getCountriesForRegion, TDS_SECTIONS, TCS_SECTIONS, REMOVED_TCS_SECTIONS, TERMS_PRESETS, getActiveAccounts, getDefaultAccount, getAccountById, getDefaultUnitForMode, filterUnitsByMode, PAPER_SIZES, getPaperSize, computeInvoiceTotals, clientYearToDate, htmlHasText, ORDER_DETAIL_FIELDS, invoiceOptionOn, DEFAULT_DECLARATION, decodeGstin, safePageBoundaries } from '../utils';
 import { getPrintSettings, savePrintSettings } from '../utils/printSettings';
 import { openWhatsAppShare } from '../utils/share';
 import { confirmAction, promptAction } from './ConfirmModal';
@@ -680,7 +680,16 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
    // duplicating one (P1 #21: `_isDuplicate` marks a new sale that must
    // decrement stock). Same logic applies to convert-to-tax-invoice which
    // sets _convertToType — that's also a new bill in a new type.
-  const stockDeducted = useRef(!!editingBill && !editingBill?._isDuplicate && !editingBill?._convertToType);
+  // v1.10.76 (#80) - what this bill has done to stock before it is first saved
+  // from this editor: an issued bill, its own record; a conversion takes over
+  // the original's record (so a challan's or an old quotation's stock is
+  // counted once, not again); a duplicate or a new bill, nothing. Once the
+  // bill is on the server, every save works from the server's record instead.
+  const stockStart = useRef(editingBill && (!editingBill._isDuplicate || editingBill._convertToType) ? appliedStock(editingBill) : {});
+  const conversionMarked = useRef(false);
+  // v1.10.76 (#83) - has this invoice been downloaded or printed? Then a plain
+  // Save refreshes its PDF in Saved Invoices too.
+  const hasOutput = useRef(!!editingBill && !editingBill._isDuplicate && !editingBill._convertToType && (Number(editingBill.printedCount) || 0) > 0);
   const hasInitialized = useRef(false); // prevent auto-save during initial load
   // Whether we've already atomically reserved a counter number for this form.
   // Peek-on-mount + reserve-on-save (P0 #9) avoids burning counter values on
@@ -1504,7 +1513,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const saveInvoiceToDB = async (skipStockDeduction = false, extraPatch = {}) => {
+  const saveInvoiceToDBNow = async (skipStockDeduction = false, extraPatch = {}) => {
     // Lazy counter reservation: if this is a NEW bill (no editingBill) and
     // the invoice number is still the peeked value, do the atomic increment
     // now. This means a mounted-but-cancelled form doesn't burn a counter
@@ -1596,13 +1605,25 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     // Dashboard while the editor was open (see comment above), that
     // stale status would still say 'unpaid' and this save would
     // downgrade a fully-paid invoice.
+    // v1.10.76 (#80) - the server's copy of this bill once we know the number
+    // is ours: its stock record is what has really been moved, even if this
+    // editor was opened from an older copy (a page refresh, another tab).
+    const isIssued = !!editingBill && !editingBill._isDuplicate;
+    let serverCopy = null;
+    if (isIssued || hasBeenSaved.current) {
+      try { serverCopy = (await getAllBills()).find((b) => b.id === finalInvoiceNumber) || null; } catch { /* treated as not saved yet */ }
+    }
+    const stockFrom = serverCopy ? appliedStock(serverCopy) : stockStart.current;
+    // v1.10.76 - editing a cancelled invoice keeps it cancelled. It used to come
+    // back as Unpaid: into totals and GST returns again, and now stock too.
+    const keepCancelled = isIssued && (serverCopy?.status || editingBill.status) === 'cancelled';
     const billTotalForStatus = Number(totals.total) || 0;
     const computedStatus = seedPaidAmount >= billTotalForStatus - 0.005 && billTotalForStatus > 0
       ? 'paid'
       : (seedPaidAmount > 0.005 ? 'partial' : 'unpaid');
     // Preserve 'overdue' when nothing is paid — otherwise trust the
     // freshly computed status.
-    const seedStatus = (computedStatus === 'unpaid' && editingBill?.status === 'overdue')
+    const seedStatus = keepCancelled ? 'cancelled' : (computedStatus === 'unpaid' && editingBill?.status === 'overdue')
       ? 'overdue'
       : computedStatus;
 
@@ -1623,7 +1644,11 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       // Preserve any pre-existing print history + carry through the patch
       printedCount: extraPatch.printedCount ?? editingBill?.printedCount ?? 0,
       lastPrintedAt: extraPatch.lastPrintedAt ?? editingBill?.lastPrintedAt ?? null,
-      data: { profile, client, details: { ...details, invoiceNumber: finalInvoiceNumber }, items, totals, invoiceType, customTerms, customNotes, internalNote, extraSections, invoiceOptions: invoiceOptionsWithSnapshot, taxInclusive }
+      // Kept from the saved bill: rebuilt from scratch, they used to be lost.
+      ...(keepCancelled ? { cancelledAt: serverCopy?.cancelledAt || editingBill.cancelledAt || null } : {}),
+      ...(isIssued && (serverCopy?.convertedTo || editingBill.convertedTo) ? { convertedTo: serverCopy?.convertedTo || editingBill.convertedTo } : {}),
+      data: { profile, client, details: { ...details, invoiceNumber: finalInvoiceNumber }, items, totals, invoiceType, customTerms, customNotes, internalNote, extraSections, invoiceOptions: invoiceOptionsWithSnapshot, taxInclusive,
+        stockApplied: stockEffect(items, invoiceType, seedStatus) }
     };
     // Editing an existing bill → always overwrite. NEW bill on second-and-
     // later save this session → also overwrite (same invoice number, would
@@ -1814,35 +1839,51 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       }
     }
 
-    // Auto-deduct stock only once for new invoices (not edits, not auto-saves)
-    if (!skipStockDeduction && !stockDeducted.current) {
-      stockDeducted.current = true;
-      const currentProducts = await getAllProducts();
-      const lowStockWarnings = [];
-
-      for (const item of items) {
-        if (!item.productId) continue;
-        const product = currentProducts.find(p => p.id === item.productId);
-        if (!product) continue;
-
-        const updatedStock = (product.stock || 0) - (item.quantity || 0);
-        await saveProduct({ ...product, stock: updatedStock });
-
-        if (updatedStock <= 0) {
-          lowStockWarnings.push(`${product.name} is now out of stock!`);
-        } else if (updatedStock <= 5) {
-          lowStockWarnings.push(`${product.name} has only ${updatedStock} left in stock`);
+    // v1.10.76 (#83) - converting a quotation / proforma / challan: once the new
+    // invoice is saved, mark the original so its Convert button goes away and
+    // it cannot be converted into a second invoice by mistake.
+    // Written to a fresh copy of the original, not the one cloned when Convert
+    // was clicked, so nothing done to it since is undone. Its stock record went
+    // to the new invoice (stockStart), so its own is now empty.
+    if (editingBill?._convertToType && !conversionMarked.current && savedNumber) {
+      conversionMarked.current = true;
+      try {
+        const source = (await getAllBills()).find((b) => b.id === editingBill.id);
+        if (source) {
+          await saveBill({ ...source, convertedTo: savedNumber, ...(source.data ? { data: { ...source.data, stockApplied: {} } } : {}) }, { overwrite: true });
         }
-      }
+      } catch { /* the invoice itself is saved */ }
+    }
 
-      const refreshed = await getAllProducts();
-      setProducts(refreshed);
-
-      for (const warning of lowStockWarnings) {
-        toast(warning, 'warning');
+    // v1.10.76 (#80) - every save, auto-saves included, moves stock by the
+    // difference between what this bill should do now and what it has done
+    // (stockEffect: sales take stock out, credit notes put it back, quotes and
+    // proformas do nothing). Editing 10 -> 15 takes 5 more; saving again moves
+    // nothing. Saves run one at a time (saveInvoiceToDB), so two can never
+    // start from the same record.
+    const changes = stockDelta(stockFrom, bill.data.stockApplied);
+    const moved = await applyStockChanges(changes);
+    if (moved.length) {
+      setProducts(await getAllProducts());
+      if (!skipStockDeduction) {
+        for (const product of moved) {
+          if (!(changes[product.id] < 0)) continue;
+          if (product.stock <= 0) toast(`${product.name} is now out of stock!`, 'warning');
+          else if (product.stock <= 5) toast(`${product.name} has only ${product.stock} left in stock`, 'warning');
+        }
       }
     }
     return savedNumber;
+  };
+
+  // v1.10.76 - one save at a time. An auto-save landing in the middle of a
+  // manual save could otherwise start from the same stock record and move
+  // the stock twice, or leave an older record on the server.
+  const saveQueue = useRef(Promise.resolve());
+  const saveInvoiceToDB = (...args) => {
+    const run = saveQueue.current.then(() => saveInvoiceToDBNow(...args));
+    saveQueue.current = run.catch(() => {});
+    return run;
   };
 
   // Upload PDF to Google Drive if configured
@@ -1873,18 +1914,19 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   // if html2canvas or jsPDF throws mid-render. Prior code only restored
   // on the success path — an exception left the on-screen preview
   // stuck at scale 1.0 until the user navigated away.
-  const buildPDF = async () => {
+  const buildPDF = async ({ archive = false } = {}) => {
     const printSettings = getPrintSettings();
     const scalerEl = printRef.current.closest('.preview-scaler');
     if (scalerEl) scalerEl.style.transform = 'none';
     try {
-      return await __buildPDFInner(printSettings);
+      return await __buildPDFInner(printSettings, archive);
     } finally {
       if (scalerEl) scalerEl.style.transform = '';
     }
   };
 
-  const __buildPDFInner = async (printSettings) => {
+  // archive: the copy kept in Saved Invoices, which carries no REPRINT stamp.
+  const __buildPDFInner = async (printSettings, archive = false) => {
 
     // v1.10.46 — Hoisted from line ~2133 to fix the v1.10.45 regression
     // where `isHeaderOn` / `isFooterOn` (introduced in v1.10.45 for the
@@ -2443,7 +2485,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     //      Only retail/restaurant users who genuinely need POS reprint
     //      tracking will turn it on — the Print Settings toggle is
     //      already gated to those business types.
-    if (!isThermalPdf && ps.reprintLabelEnabled && Number(editingBill?.printedCount) > 0) {
+    if (!archive && !isThermalPdf && ps.reprintLabelEnabled && Number(editingBill?.printedCount) > 0) {
       const label = `REPRINT · Copy #${(Number(editingBill.printedCount) || 0) + 1}`;
       const finalPages = pdf.getNumberOfPages();
       const pageWidthMm = pdf.internal.pageSize.getWidth();
@@ -2551,7 +2593,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       if (e.key === 's' || e.key === 'S') {
         if (!isMeaningfulInvoice()) return; // nothing to save
         e.preventDefault();
-        saveInvoiceToDB().then((no) => { if (no) toast('Invoice saved', 'success'); }).catch(() => toast('Save failed', 'error'));
+        saveInvoiceToDB().then(async (no) => { if (no) { toast('Invoice saved', 'success'); await refreshSavedPdf(no); } }).catch(() => toast('Save failed', 'error'));
       } else if (e.key === 'p' || e.key === 'P') {
         e.preventDefault();
         // Defer to the next tick so the keydown doesn't race the PDF render.
@@ -2787,6 +2829,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       lastPrintedAt: new Date().toISOString(),
     });
     if (!no) return null;
+    hasOutput.current = true;
     clearDraft();
     await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
     return no;
@@ -2845,6 +2888,30 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     await executePrint();
   };
 
+  // The copy kept in the app's "Saved Invoices" folder (Client / Month / file.pdf).
+  const saveToInvoicesFolder = (pdfBlob, fileName) => {
+    const invoiceDate = details.invoiceDate ? new Date(details.invoiceDate) : new Date();
+    const monthName = invoiceDate.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+    const params = new URLSearchParams({ name: fileName, client: client?.name || 'General', month: monthName });
+    return fetch(`/api/save-pdf?${params}`, { method: 'POST', headers: { 'Content-Type': 'application/pdf' }, body: pdfBlob })
+      .then((r) => { if (!r.ok) throw new Error(`save-pdf ${r.status}`); });
+  };
+
+  // v1.10.76 (#83) - reported: editing an invoice and pressing Save updated
+  // the invoice but left the old PDF in Saved Invoices. If this invoice was
+  // ever downloaded or printed, Save now rebuilds that PDF too (no download).
+  const refreshSavedPdf = async (savedNumber) => {
+    if (!hasOutput.current || !printRef.current) return;
+    try {
+      const pdf = await withPreviewOnScreen(() => buildPDF({ archive: true }));
+      await saveToInvoicesFolder(pdf.output('blob'), `${typeConfig.prefix}_${savedNumber.replace(/\//g, '-')}.pdf`);
+      toast('The PDF in Saved Invoices is updated too', 'info');
+    } catch (err) {
+      console.error('Saved Invoices PDF refresh failed:', err);
+      toast('Invoice saved, but its PDF in Saved Invoices could not be updated. Use Save & Download.', 'warning');
+    }
+  };
+
   const generatePDF = async () => {
     if (!printRef.current) return;
     // v1.10.58 (#47) — same gate as Save: printing persists the bill and
@@ -2865,11 +2932,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       const pdfBlob = pdf.output('blob');
 
       // Save to local "Saved Invoices" folder (Client Name / Month / file.pdf)
-      const invoiceDate = details.invoiceDate ? new Date(details.invoiceDate) : new Date();
-      const monthName = invoiceDate.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
       const clientName = client?.name || 'General';
-      const params = new URLSearchParams({ name: fileName, client: clientName, month: monthName });
-      fetch(`/api/save-pdf?${params}`, { method: 'POST', headers: { 'Content-Type': 'application/pdf' }, body: pdfBlob }).catch(() => {});
+      saveToInvoicesFolder(pdfBlob, fileName).catch(() => {});
 
       toast(`Invoice downloaded & saved to Saved Invoices/${clientName}/`, 'success');
       uploadToGoogleDrive(pdfBlob, fileName);
@@ -2899,7 +2963,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     // number that appears on the PDF and gets saved as bill.totalAmount.
     const cur = invoiceOptions.currency || 'INR';
     const total = formatCurrency(Number(totals.total) || 0, cur);
-    const subtotal = formatCurrency(Number(totals.subtotal) || 0, cur);
+    const subtotal = formatCurrency(printedSubtotal(totals), cur);
     const dateStr = details.invoiceDate ? new Date(details.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
     const businessName = profile?.businessName || '';
     const lines = [
@@ -3033,6 +3097,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
               if (!no) return;
               clearDraft();
               toast('Invoice saved', 'success');
+              await refreshSavedPdf(no);
             } catch (err) {
               if (err?.status !== 409) {  // 409 already handled by retry inside saveInvoiceToDB
                 console.error('Save failed', err);

@@ -32,6 +32,12 @@ import {
   docsLink,
   TCS_SECTIONS,
   INVOICE_TYPES,
+  printedSubtotal,
+  setOffITC,
+  isInterstateSupply,
+  stockEffect,
+  appliedStock,
+  stockDelta,
 } from '../src/utils.js';
 import {
   compute44AE,
@@ -678,6 +684,69 @@ console.log('\n[V75] Party outstanding by month');
   eq(rows[0].months, { '2026-04': 1100, '2026-06': 300 }, 'Unpaid balance lands in the invoice month; same party despite case and spaces');
   eq([rows[0].earlier, rows[0].total], [200, 1600], 'Still-unpaid bills from before the period show as Earlier and count in the total');
   eq(partyOutstanding(bills, fy, 'USD')[0].total, 50, 'Each currency is its own report');
+}
+
+console.log('\n[V76] #83 printed Subtotal with prices including tax');
+{
+  const inc = computeInvoiceTotals({
+    items: [{ quantity: 1, rate: 300, discount: 0, taxPercent: 0 }, { quantity: 2, rate: 1050, discount: 0, taxPercent: 18 }],
+    profile: { country: 'India', state: 'Punjab' }, client: { state: 'Punjab' }, details: { placeOfSupply: 'Punjab' },
+    showGST: true, taxInclusive: true,
+  });
+  approx(inc.total, 2400, 'Total stays 2,400 (tax is inside the prices)');
+  approx(printedSubtotal(inc), 2079.66, 'Printed Subtotal is the taxable value, not the tax-inclusive 2,400');
+  approx(printedSubtotal(inc) - inc.totalDiscount + inc.cgst + inc.sgst, inc.total, 'Subtotal + CGST + SGST adds up to the Total on paper');
+  const exc = computeInvoiceTotals({
+    items: [{ quantity: 2, rate: 1000, discount: 0, taxPercent: 18 }],
+    profile: { country: 'India', state: 'Punjab' }, client: { state: 'Punjab' }, details: { placeOfSupply: 'Punjab' }, showGST: true,
+  });
+  approx(printedSubtotal(exc), 2000, 'Without tax-inclusive prices the Subtotal is unchanged');
+}
+
+console.log('\n[V76] #81 GSTR-3B ITC set-off across heads');
+{
+  const a = setOffITC({ igst: 810, cgst: 0, sgst: 0 }, { igst: 0, cgst: 360, sgst: 360 });
+  eq(a.payable, { igst: 90, cgst: 0, sgst: 0 }, 'CGST + SGST credit pays an IGST liability (the #81 example: 810 -> 90)');
+  eq(a.carry, { igst: 0, cgst: 0, sgst: 0 }, 'No credit left over in that example');
+  const b = setOffITC({ igst: 0, cgst: 0, sgst: 500 }, { igst: 0, cgst: 500, sgst: 0 });
+  eq([b.payable.sgst, b.carry.cgst], [500, 500], 'CGST credit never pays SGST');
+  const c = setOffITC({ igst: 100, cgst: 300, sgst: 300 }, { igst: 400, cgst: 0, sgst: 0 });
+  eq(c.payable, { igst: 0, cgst: 0, sgst: 300 }, 'IGST credit pays IGST first, then CGST, then SGST');
+  const d = setOffITC({ igst: 0, cgst: 100, sgst: 100 }, { igst: 0, cgst: 150, sgst: 150 });
+  eq([d.payable, d.carry], [{ igst: 0, cgst: 0, sgst: 0 }, { igst: 0, cgst: 50, sgst: 50 }], 'Intra-state only: same as before, extra credit carried forward');
+  const e = setOffITC({ igst: 0, cgst: 100, sgst: 100 }, { igst: 100, cgst: 100, sgst: 0 });
+  eq([e.payable, e.carry], [{ igst: 0, cgst: 0, sgst: 0 }, { igst: 0, cgst: 0, sgst: 0 }], 'IGST credit goes where it avoids cash: SGST here, as CGST has its own credit');
+}
+
+console.log('\n[V76] #82 purchase inter-state from the supplier GSTIN');
+{
+  eq(isInterstateSupply('27AABCU9603R1ZM', { gstin: '07AAAAA0000A1Z5' }), true, 'Maharashtra supplier, Delhi business: inter-state');
+  eq(isInterstateSupply('07BBBBB1111B1Z2', { gstin: '07AAAAA0000A1Z5' }), false, 'Same state: not inter-state');
+  eq(isInterstateSupply('27AABCU9603R1ZM', { state: 'Maharashtra' }), false, 'Business state used when it has no GSTIN');
+  eq(isInterstateSupply('27AABCU96', { gstin: '07AAAAA0000A1Z5' }), null, 'A half-typed GSTIN changes nothing');
+  eq(isInterstateSupply('27AABCU9603R1ZM', {}), null, 'Unknown business state changes nothing');
+}
+
+console.log('\n[V76] #80 stock follows the invoice');
+{
+  const items = (q) => [{ productId: 'pen', quantity: q }, { name: 'free text line', quantity: 3 }];
+  eq(stockEffect(items(10), 'tax-invoice', 'unpaid'), { pen: -10 }, 'A sale takes stock out (lines without a product are ignored)');
+  eq(stockEffect(items(10), 'quotation', 'unpaid'), {}, 'A quotation moves no stock');
+  eq(stockEffect(items(10), 'proforma', 'unpaid'), {}, 'A proforma moves no stock');
+  eq(stockEffect(items(4), 'credit-note', 'unpaid'), { pen: 4 }, 'A credit note puts returned goods back');
+  eq(stockEffect(items(10), 'tax-invoice', 'cancelled'), {}, 'A cancelled invoice moves nothing');
+  const saved = { status: 'unpaid', data: { items: items(10), invoiceType: 'tax-invoice', stockApplied: { pen: -10 } } };
+  eq(stockDelta(appliedStock(saved), stockEffect(items(15), 'tax-invoice', 'unpaid')), { pen: -5 }, 'Editing 10 -> 15 takes exactly 5 more (the #80 example)');
+  eq(stockDelta(appliedStock(saved), stockEffect(items(10), 'tax-invoice', 'unpaid')), {}, 'Saving again unchanged moves nothing');
+  eq(stockDelta(appliedStock(saved), stockEffect(items(10), 'quotation', 'unpaid')), { pen: 10 }, 'Turning it into a quotation gives the stock back');
+  const legacy = { status: 'unpaid', data: { items: items(10), invoiceType: 'quotation' } };
+  eq(appliedStock(legacy), { pen: -10 }, 'A quotation saved before v1.10.76 is known to have taken stock out');
+  eq(appliedStock({ ...legacy, autoGenerated: true }), {}, 'A recurring bill made by the server never touched stock');
+  eq(appliedStock({ ...legacy, status: 'cancelled' }), {}, 'An old cancelled bill had its stock put back');
+  const oldCancelledInv = { status: 'cancelled', data: { items: items(10), invoiceType: 'tax-invoice' } };
+  eq(stockDelta(appliedStock(oldCancelledInv), stockEffect(items(10), 'tax-invoice', 'unpaid')), { pen: -10 }, 'Un-cancelling an old cancelled invoice takes its stock out again');
+  const challan = { status: 'unpaid', data: { items: items(10), invoiceType: 'delivery-challan', stockApplied: { pen: -10 } } };
+  eq(stockDelta(appliedStock(challan), stockEffect(items(10), 'tax-invoice', 'unpaid')), {}, 'A challan converted to an invoice: the invoice takes over its stock, nothing moves twice');
 }
 
 console.log('\n────────────────────────────────────────');

@@ -66,6 +66,23 @@ export const saveStockAlertSettings = async (settings) => {
   });
 };
 
+// v1.10.76 (#80) - add { productId: change } to product stock (see
+// stockEffect in utils.js). Returns the products as saved.
+export const applyStockChanges = async (changes) => {
+  const ids = Object.keys(changes || {}).filter((id) => changes[id]);
+  if (!ids.length) return [];
+  const products = await getAllProducts();
+  const saved = [];
+  for (const id of ids) {
+    const p = products.find((x) => x.id === id);
+    if (!p) continue;
+    const next = { ...p, stock: Math.round(((Number(p.stock) || 0) + changes[id]) * 1000) / 1000 };
+    await saveProduct(next);
+    saved.push(next);
+  }
+  return saved;
+};
+
 // ---- Invoice Display Options (checkboxes like showGST, showLogo etc.) ----
 export const getInvoiceDisplayOptions = async () => {
   const { value } = await apiFetch(`${API}/meta/invoiceDisplayOptions`);

@@ -20,7 +20,7 @@ export default [
   <li><strong>Notifications</strong>, <strong>Dark Mode</strong> or <strong>Light Mode</strong>, <a href="#support"><strong>Support &amp; About</strong></a>, <strong>Control Panel</strong> and <strong>Settings</strong>.</li>
   <li>At the bottom, <b>App Ready</b> when all is well.</li>
 </ul>
-<p>On the Dashboard, a small floating line at the bottom shows the app's version, a link to DiceCodes and <a href="#support">Support</a>. It is never printed.</p>
+<p>At the end of the Dashboard, below the invoices, a small line shows the app's version, a link to DiceCodes and <a href="#support">Support</a>. It is never printed.</p>
 <p>On a narrow screen, the sidebar folds away behind the ☰ menu button.</p>
 </section>
 

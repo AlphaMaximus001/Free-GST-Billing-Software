@@ -428,19 +428,25 @@ function App() {
     if (picked && !picked.classList.contains('profile-switcher-btn')) setNavOpen(false);
   };
 
+  // v1.10.76 - a fresh editor for every invoice opened, so nothing (such as
+  // the stock record of the last invoice) carries over to the next one.
+  const [editorKey, setEditorKey] = useState(0);
   const handleNewInvoice = () => {
+    setEditorKey((k) => k + 1);
     sessionStorage.removeItem('gst_invoiceDraft');
     setEditingBill(null);
     setCurrentView('new');
   };
 
   const handleEditInvoice = (bill) => {
+    setEditorKey((k) => k + 1);
     sessionStorage.removeItem('gst_invoiceDraft');
     setEditingBill(bill);
     setCurrentView('new');
   };
 
   const handleDuplicateInvoice = (bill) => {
+    setEditorKey((k) => k + 1);
     sessionStorage.removeItem('gst_invoiceDraft');
     const clone = JSON.parse(JSON.stringify(bill));
     clone._isDuplicate = true;
@@ -468,6 +474,7 @@ function App() {
   };
 
   const handleConvertToInvoice = (bill) => {
+    setEditorKey((k) => k + 1);
     sessionStorage.removeItem('gst_invoiceDraft');
     const clone = JSON.parse(JSON.stringify(bill));
     clone._isDuplicate = true;
@@ -950,6 +957,7 @@ function App() {
         )}
         {currentView === 'new' && (
           <InvoiceGenerator
+            key={editorKey}
             onBack={() => { setEditingBill(null); setCurrentView('dashboard'); }}
             profile={profile} editingBill={editingBill}
           />

@@ -1435,6 +1435,65 @@ try {
     await page.fill('input[placeholder="Search client or invoice..."]', '');
   }
 
+  // ---- v1.10.76: stock follows edits (#80), quotations (#83), refresh while editing
+  {
+    const get76 = (url) => page.evaluate(async (url) => (await fetch(url)).json(), url);
+    const post76 = (url, body) => page.evaluate(async ({ url, body }) => (await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).ok, { url, body });
+    const stock76 = async () => (await get76('/api/products')).find((x) => x.id === 'smoketest-pen')?.stock;
+    const prof76 = await get76('/api/profile');
+    const bill76 = (id, type, q, applied) => ({
+      id, invoiceNumber: id, clientName: 'Smoke Test Client', invoiceDate: today, invoiceType: type, status: 'unpaid',
+      totalAmount: q * 11.8, paidAmount: 0, payments: [],
+      data: { profile: prof76, client: { name: 'Smoke Test Client', state: prof76.state, country: 'India' },
+        details: { invoiceNumber: id, invoiceDate: today }, invoiceType: type, invoiceOptions: {}, totals: { total: q * 11.8 },
+        items: [{ id: 'l1', productId: 'smoketest-pen', name: 'Smoke Pen', hsn: '9608', quantity: q, rate: 10, taxPercent: 18, discount: 0, unit: 'Pcs' }],
+        ...(applied ? { stockApplied: applied } : {}) },
+    });
+    // Opening it through the saved session is a page refresh while editing,
+    // which blanked the whole app before v1.10.76.
+    const openForEdit76 = async (bill) => {
+      await page.evaluate((bill) => { sessionStorage.setItem('gst_editingBill', JSON.stringify(bill)); sessionStorage.setItem('gst_currentView', 'new'); sessionStorage.removeItem('gst_invoiceDraft'); }, bill);
+      await page.reload({ waitUntil: 'networkidle' });
+      await sleep(2500);
+      await dismissFirstRun(page);
+      return page.waitForSelector('#invoice-preview', { timeout: 30000 }).then(() => true).catch(() => false);
+    };
+    const save76 = async () => { await page.getByRole('button', { name: /^Save$/ }).first().click(); await sleep(3500); };
+    const toDashboard76 = async () => {
+      await page.evaluate(() => { sessionStorage.removeItem('gst_editingBill'); sessionStorage.setItem('gst_currentView', 'dashboard'); });
+      await page.reload({ waitUntil: 'networkidle' });
+      await sleep(3000);
+      await dismissFirstRun(page);
+    };
+
+    await post76('/api/products', { id: 'smoketest-pen', name: 'Smoke Pen', hsn: '9608', rate: 10, taxPercent: 18, unit: 'Pcs', stock: 40 });
+    const inv76 = bill76('smoketest-inv76', 'tax-invoice', 10, { 'smoketest-pen': -10 });
+    await post76('/api/bills', inv76);
+    check('v76 refreshing the page while editing an invoice keeps the app on screen', await openForEdit76(inv76));
+    await page.locator('.line-item-field', { has: page.locator('label', { hasText: /^Qty$/ }) }).locator('input').first().fill('15');
+    await sleep(500);
+    await save76();
+    check('v76 #80 editing a quantity 10 -> 15 takes exactly 5 more from stock', (await stock76()) === 35, `stock=${await stock76()}`);
+    await save76();
+    check('v76 #80 saving again unchanged moves no stock', (await stock76()) === 35, `stock=${await stock76()}`);
+
+    await post76('/api/bills', bill76('smoketest-quo76', 'quotation', 5, {}));
+    await toDashboard76();
+    const quoRow = () => page.locator('tr', { hasText: 'smoketest-quo76' }).first();
+    check('v76 #83 a quotation has no Paid/Unpaid menu', (await quoRow().locator('select.status-select').count()) === 0);
+    check('v76 #80 a quotation takes no stock', (await stock76()) === 35, `stock=${await stock76()}`);
+    await quoRow().locator('button[title="Convert to Tax Invoice"]').click();
+    await sleep(3000);
+    await page.waitForSelector('#invoice-preview', { timeout: 30000 });
+    await save76();
+    const quo76 = (await get76('/api/bills')).find((x) => x.id === 'smoketest-quo76');
+    check('v76 #83 a converted quotation is marked and the invoice takes the stock once',
+      !!quo76?.convertedTo && (await stock76()) === 30, `convertedTo=${quo76?.convertedTo} stock=${await stock76()}`);
+    await toDashboard76();
+    check('v76 #83 its Convert button is gone', (await quoRow().locator('button[title="Convert to Tax Invoice"]').count()) === 0);
+  }
+
   // Put the real business details back.
   await page.evaluate(async (prof) => {
     await fetch('/api/profile', {

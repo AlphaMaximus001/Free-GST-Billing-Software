@@ -108,8 +108,9 @@ export default [
   <tr><td>3.1 Outward supplies</td><td>(a) taxable sales, (b) zero-rated exports with their IGST, (c) nil</td></tr>
   <tr><td>3.2 Inter-state to unregistered</td><td>Your inter-state sales to unregistered buyers, by state</td></tr>
   <tr><td>4 Eligible ITC</td><td>Credit from purchases and expenses, by IGST, CGST and SGST</td></tr>
-  <tr><td>6 Tax payment</td><td>Output tax, less credit, and the <b>Net Tax Payable</b> for each tax</td></tr>
+  <tr><td>6 Tax payment</td><td>Output tax, the credit used against it, and the <b>Net Tax Payable</b> for each tax, plus any credit carried forward</td></tr>
 </table>
+<p>Credit is used in the order the law sets: IGST credit first (against IGST, then CGST, then SGST), then CGST credit (against CGST, then IGST) and SGST credit (against SGST, then IGST). CGST credit never pays SGST, nor SGST credit CGST. So credit you hold in CGST and SGST can pay a tax that is all IGST.</p>
 <p>The <b>Net GST Payable</b> box shows the amount to pay through the Electronic Cash Ledger, or "ITC covers your liability".</p>
 <p>${ui('3B CSV')} and ${ui('3B JSON')} download it. The portal now fills most of GSTR-3B from your GSTR-1, so use the app's figures to check what it shows before you pay and file.</p>
 <div class="note warn"><strong>Check the credit against GSTR-2B</strong>

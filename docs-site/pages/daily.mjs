@@ -72,6 +72,7 @@ export default [
 <h2>Status</h2>
 <p>Each invoice is <b>Unpaid</b>, <b>Partial</b>, <b>Paid</b>, <b>Overdue</b> or <b>Cancelled</b>. Recording payments sets it for you. Each time the Dashboard opens, unpaid and part-paid invoices past their due date become Overdue, and the row shows how many days late they are.</p>
 <p>You can also change it from the dropdown on the row. Choosing <b>Paid</b> records a payment for the rest of the balance, so your payment history stays complete.</p>
+<p>Only sales get paid, so only Tax Invoices, Bills of Supply and Composition bills have this dropdown. Quotations, proformas and delivery challans show <b>Open</b>, or <b>Converted</b> once turned into an invoice; credit notes show <b>Issued</b>. A cancelled one shows <b>Cancelled</b> with ${ui('Undo')}.</p>
 </section>
 
 <section id="payments">
@@ -97,7 +98,7 @@ export default [
 <table>
   <tr><td>Edit</td><td>Opens it on the invoice screen.</td></tr>
   <tr><td>Duplicate</td><td>A new invoice with the same client and items, a new number and today's date.</td></tr>
-  <tr><td>Convert to Tax Invoice</td><td>Quotations, proformas and delivery challans only. See <a href="invoices.html#proforma-to-invoice">Turning a quote into an invoice</a>.</td></tr>
+  <tr><td>Convert to Tax Invoice</td><td>Quotations, proformas and delivery challans only, until they have been converted. See <a href="invoices.html#proforma-to-invoice">Turning a quote into an invoice</a>.</td></tr>
   <tr><td>₹ Payment</td><td>Record a payment, as above.</td></tr>
   <tr><td>WhatsApp</td><td>On a phone, attaches the PDF through your phone's share menu. On a computer, WhatsApp does not let websites attach files, so it sends the details as text; download the PDF and drop it into the chat.</td></tr>
   <tr><td>Send reminder</td><td>Shown for unpaid, part-paid and overdue invoices. Opens WhatsApp with a reminder suited to the situation.</td></tr>
@@ -234,7 +235,9 @@ Sharma Traders,12 MG Road,Punjab,03AAAAA0000A1Z5,accounts@sharma.example,9876543
 <section id="stock">
 <h2>How stock is counted</h2>
 <ul>
-  <li><strong>Selling</strong>: saving an invoice takes the quantity out, for rows picked from your products.</li>
+  <li><strong>Selling</strong>: saving a Tax Invoice, Bill of Supply, Composition bill or Delivery Challan takes the quantity out, for rows picked from your products. Change the quantity later and save, and only the difference moves.</li>
+  <li><strong>Returns</strong>: a Credit Note puts the quantity back.</li>
+  <li><strong>Quotations and proformas</strong> move no stock. The invoice you convert them into does.</li>
   <li><strong>Buying</strong>: saving a <a href="purchases.html#stock">purchase bill</a> adds the quantity in, and adds any new item to your products.</li>
   <li><strong>Cancelling</strong> an invoice puts its stock back; un-cancelling takes it out again.</li>
 </ul>
@@ -310,7 +313,7 @@ Website Maintenance,998314,5000,18,Month,0</code></pre>
 
 <section id="interstate">
 <h2>Suppliers in another state</h2>
-<p>If the supplier charged IGST because they are in a different state, tick <b>Inter-state purchase</b>. The credit then goes to IGST in GSTR-3B rather than CGST and SGST. The first two digits of the supplier's GSTIN are their state code.</p>
+<p>If the supplier charged IGST because they are in a different state, the bill is <b>Inter-state purchase</b>, and the credit goes to IGST in GSTR-3B rather than CGST and SGST. The box ticks itself when you type the supplier's full GSTIN: its first two digits are their state code, compared with your business's. You can still change it for the rare exception.</p>
 </section>
 
 <section id="payment-status">

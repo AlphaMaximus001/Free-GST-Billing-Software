@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import DOMPurify from 'dompurify';
-import { numberToWords, formatCurrency, INVOICE_TYPES, getCountryConfig, CURRENCY_NAMES, formatExchangeRateLine, getAccountById, getPaperSize, resolveLineDiscount, htmlHasText, splitNumberedTerms, invoiceOptionOn, DEFAULT_DECLARATION, filledOrderDetails, formatShortDate } from '../utils';
+import { numberToWords, printedSubtotal, formatCurrency, INVOICE_TYPES, getCountryConfig, CURRENCY_NAMES, formatExchangeRateLine, getAccountById, getPaperSize, resolveLineDiscount, htmlHasText, splitNumberedTerms, invoiceOptionOn, DEFAULT_DECLARATION, filledOrderDetails, formatShortDate } from '../utils';
 import { getPrintSettings, getLabel } from '../utils/printSettings';
 import InvoiceGridLayout, { HsnSummaryTable } from './InvoiceGridLayout';
 
@@ -12,7 +12,11 @@ import InvoiceGridLayout, { HsnSummaryTable } from './InvoiceGridLayout';
 // instance renders with previewOnly=true so it doesn't create a
 // duplicate id on the page — HTML-invalid + could confuse getElementById
 // lookups.
-const InvoicePreview = React.forwardRef(({ profile, client, details, items, totals, invoiceType = 'tax-invoice', customTerms, customNotes, extraSections = [], options = {}, previewOnly = false, cancelled = false }, ref) => {
+const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details, items, totals, invoiceType = 'tax-invoice', customTerms, customNotes, extraSections = [], options = {}, previewOnly = false, cancelled = false }, ref) => {
+  // v1.10.76 - the business profile can still be loading on the first render
+  // (a page refresh while editing an invoice), and reading a bank field from
+  // null blanked the whole app. Empty until it arrives.
+  const profile = profileProp || {};
   // Interstate detection must match InvoiceGenerator.jsx — it honours
   // details.placeOfSupply (POS override) and client.isSEZ (SEZ supplies
   // are always interstate regardless of physical state). Without this
@@ -671,7 +675,7 @@ const InvoicePreview = React.forwardRef(({ profile, client, details, items, tota
             <div style={{ padding: secPad, fontSize: '1em', fontWeight: baseWeight, ...dashLine }}>
               <div style={rowStyle}>
                 <span>{cap('Subtotal')}</span>
-                <span style={{ textAlign: 'right' }}>{amt(totals?.subtotal)}</span>
+                <span style={{ textAlign: 'right' }}>{amt(printedSubtotal(totals))}</span>
               </div>
               {Number(totals?.totalDiscount) > 0 && (
                 <div style={rowStyle}>
@@ -1219,7 +1223,7 @@ const InvoicePreview = React.forwardRef(({ profile, client, details, items, tota
             <div className="inv-total-row">
               {/* v1.10.74 - Subtotal / Total Due / Authorized Signatory now follow the label language. */}
               <span>{getLabel(_ps_labels, 'subtotal')}</span>
-              <span>{fmt(totals.subtotal)}</span>
+              <span>{fmt(printedSubtotal(totals))}</span>
             </div>
           )}
           {totals.totalDiscount > 0 && (

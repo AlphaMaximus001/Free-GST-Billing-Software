@@ -14,7 +14,7 @@
 // Every block and every table row here carries data-pdf-page-boundary, so a
 // page can end between rows or blocks but never cuts through one.
 import React from 'react';
-import { filledOrderDetails, getStateCode } from '../utils';
+import { filledOrderDetails, getStateCode, printedSubtotal } from '../utils';
 
 const LINE = '#1f2937';
 const B = `1px solid ${LINE}`;
@@ -311,7 +311,7 @@ function TallyLayout({ ctx }) {
           {/* Subtotal, then taxes and round-off inside the table, as Tally prints them. */}
           <tr>
             <td style={vc} /><td style={vc} />{blank(colCount - 3)}
-            <td style={{ ...vc, ...right, borderTop: B }}>{num(totals.subtotal - (totals.totalDiscount || 0))}</td>
+            <td style={{ ...vc, ...right, borderTop: B }}>{num(printedSubtotal(totals) - (totals.totalDiscount || 0))}</td>
           </tr>
           {rows.map(([k, v]) => (
             <tr key={k}>
@@ -492,7 +492,7 @@ function BoxedLayout({ ctx }) {
           </div>
           <table style={{ borderCollapse: 'collapse', minWidth: 230, alignSelf: 'start' }}>
             <tbody>
-              <tr><td style={{ ...cell, borderTop: 'none', ...right }}>Total</td><td style={{ ...cell, borderTop: 'none', borderRight: 'none', ...right }}>{num(totals.subtotal - (totals.totalDiscount || 0))}</td></tr>
+              <tr><td style={{ ...cell, borderTop: 'none', ...right }}>Total</td><td style={{ ...cell, borderTop: 'none', borderRight: 'none', ...right }}>{num(printedSubtotal(totals) - (totals.totalDiscount || 0))}</td></tr>
               {rows.map(([k, v]) => (
                 <tr key={k}><td style={{ ...cell, ...right }}>{k}</td><td style={{ ...cell, borderRight: 'none', ...right }}>{v < 0 ? `-${num(-v)}` : num(v)}</td></tr>
               ))}

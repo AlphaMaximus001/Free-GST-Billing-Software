@@ -88,18 +88,16 @@ Write for the person who reported it, not for the compiler.
 # 3. Build
 npm run release:zip
 
-# 4. Publish (see ERR-003 in KNOWN_ERRORS.md — one tagged release per
-#    version; do not re-upload an asset onto a previous tag)
-gh release create v<NEW> "release-build/Free-GST-Billing-v<NEW>.zip" \
+# 4. Publish ONE ZIP, under the fixed name (from v1.10.76: two identical
+#    ZIPs on a release confused people). The README's Download button links
+#    to releases/latest/download/Free-GST-Billing.zip, which only resolves if
+#    the latest release has a file of exactly that name. The in-app and
+#    launcher updaters take the first *.zip, so the name does not matter to
+#    them. See ERR-003: one tagged release per version.
+cp "release-build/Free-GST-Billing-v<NEW>.zip" "release-build/Free-GST-Billing.zip"
+gh release create v<NEW> "release-build/Free-GST-Billing.zip" \
   --target main --title "v<NEW> — <short user-facing summary>" \
   --notes-file <notes>
-
-# 4b. Attach the SAME ZIP again under a fixed name. The README's Download
-#     button links to releases/latest/download/Free-GST-Billing.zip, which
-#     only resolves if the latest release has a file of exactly that name.
-#     Skip this and the button on the GitHub page 404s.
-cp "release-build/Free-GST-Billing-v<NEW>.zip" "release-build/Free-GST-Billing.zip"
-gh release upload v<NEW> "release-build/Free-GST-Billing.zip"
 curl -sIL -o /dev/null -w "%{http_code}\n" \
   https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip
 
@@ -134,5 +132,5 @@ the wrong version number.
       `npm run test:update-unix` passes. It runs the Linux / NAS updater in
       real Alpine and Debian containers (needs Docker, ERR-014).
 - [ ] `releases/latest` verified to return the new tag **and** new asset
-- [ ] `Free-GST-Billing.zip` (fixed name) attached too, and the README Download button returns 200
+- [ ] Exactly ONE asset, `Free-GST-Billing.zip`, and the README Download button returns 200
 - [ ] Reply posted to whoever reported it

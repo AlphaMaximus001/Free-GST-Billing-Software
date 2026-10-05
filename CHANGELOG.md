@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.76] - 2026-10-05
+
+**Stock follows every edit, GSTR-3B uses your credit the way the law does,
+purchases detect inter-state suppliers, and fixes from issues #80-#83.**
+
+### How to update
+
+**Current version:** 1.10.75  →  **New version:** 1.10.76
+
+#### If the in-app Update button works for you (1.10.73 and later)
+1. Open the app and click **Update to v1.10.76** in the sidebar, or
+   **Settings → App Updates → Update Now**.
+2. Wait about a minute, then reload the page.
+
+#### On 1.10.72 or older
+Use the launcher: **More options → Update to the latest version**, then
+**Open App**.
+
+#### If that does not work (or you are unsure)
+1. Download `Free-GST-Billing.zip` from the
+   [Releases page](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest).
+2. Close the app (click **Stop the app** in the launcher if it is running).
+3. **Right-click the ZIP → Extract All.** Do not open anything while still inside the ZIP.
+4. Extract over your existing Free GST Billing folder, replacing files when asked.
+   (Extracted it somewhere else? Its launcher offers **Update the installed
+   copy**, which works without internet.)
+5. Double-click **Free GST Billing - WINDOWS**.
+
+#### Linux / NAS
+Run `update-unix.sh` from the `_system` folder, or extract the new ZIP over
+the old folder. Restart the app afterwards.
+
+#### Is my data safe?
+Yes. Invoices, clients, products and settings live in `_system/data/`, which
+an update never touches. The updater also takes an automatic backup to
+`Documents\FreeGSTBill Backups\` before it changes anything.
+
+#### Something went wrong?
+Open an issue with a screenshot of the error:
+https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues
+
+### Fixed
+- **Stock follows the invoice** (#80, thanks @raviagrawal01). Changing a
+  saved invoice's quantity now moves stock by the difference (10 → 15 takes
+  5 more); saving again unchanged moves nothing. Quotations and proformas no
+  longer take stock out; a credit note puts returned goods back; converting a
+  quotation takes the stock once, and a delivery challan's stock moves to the
+  invoice made from it instead of being taken twice. Edits kept by auto-save
+  count too (ERR-039).
+- **GSTR-3B Table 6** (#81, thanks @raviagrawal01): credit is set off in the
+  order the law sets, so CGST/SGST credit pays an IGST liability (₹810 with
+  ₹720 of CGST+SGST credit is now ₹90, not ₹810). Shows the credit used per
+  tax and any credit carried forward (ERR-040).
+- **Purchases** (#82, thanks @raviagrawal01): typing a supplier GSTIN from
+  another state ticks **Inter-state purchase** for you (ERR-041).
+- **Prices include tax** (#83, thanks @sangwanmail-eng): the printed Subtotal
+  is now the value before tax, so Subtotal + tax = Total. The tax and totals
+  were already right (ERR-042).
+- **Refreshing the page while editing an invoice** no longer blanks the app
+  (ERR-043).
+- **Editing a cancelled invoice** kept it cancelled only until you saved: it
+  came back as Unpaid, into totals and GST returns. It now stays cancelled.
+- Choosing **Cancelled** from an invoice's status menu now puts its stock back,
+  like the Cancel button.
+
+### Changed (#83, thanks @sangwanmail-eng)
+- The Paid / Unpaid / Partial menu is only on real sales (Tax Invoice, Bill of
+  Supply, Composition). Quotations, proformas and challans show **Open** or
+  **Converted**; credit notes **Issued**.
+- A quotation, proforma or challan that has been converted shows
+  **Converted**, and its Convert button goes away.
+- Editing an invoice you already downloaded or printed and pressing **Save**
+  also updates its PDF in the Saved Invoices folder.
+- The Dashboard's Actions column header is centred, and the version line sits
+  below the invoice list instead of floating over it.
+- Dependencies: dompurify 3.4.16, sharp 0.35.5, brace-expansion (Dependabot
+  #77-#79).
+- Releases now carry one file, `Free-GST-Billing.zip`.
+
 ## [1.10.75] - 2026-10-03
 
 **One copy of the app per PC, old files tidied away, a Tally-style party

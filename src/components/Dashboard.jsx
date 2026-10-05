@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban } from 'lucide-react';
 import HelpButton from './HelpButton';
-import { getAllBills, saveBill, getAllProducts, saveProduct, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts } from '../store';
-import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch } from '../utils';
+import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts } from '../store';
+import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES } from '../utils';
 import { openWhatsAppShare } from '../utils/share';
 import PageHeader from './PageHeader';
 import SupportNudge from './SupportNudge';
@@ -420,20 +420,29 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
   // Put an invoice's stock back (+1, on cancel) or take it out again (-1, on
   // un-cancel). One place for the single-row and bulk paths: bulk cancel used
   // to skip this, so stock went missing for invoices cancelled in bulk.
-  const adjustStockForBills = async (billList, sign) => {
-    const delta = new Map();
-    for (const b of billList) {
-      for (const item of b.data?.items || []) {
-        if (!item.productId) continue;
-        delta.set(item.productId, (delta.get(item.productId) || 0) + sign * (Number(item.quantity) || 0));
-      }
-    }
-    if (!delta.size) return;
-    const products = await getAllProducts();
-    for (const [pid, d] of delta) {
-      const product = products.find(p => p.id === pid);
-      if (product) await saveProduct({ ...product, stock: (Number(product.stock) || 0) + d });
-    }
+  // v1.10.76 (#80) - moves stock from what each bill has done to what it
+  // should do in its new status (stockEffect), and returns the bills with
+  // their new stock record, ready to save. Cancelling a quotation used to put
+  // back stock it never took; now it moves nothing.
+  // Plans it from each bill AS SAVED (its current status), so an old bill
+  // cancelled before v1.10.76 is known to have had its stock put back. The bill
+  // is saved first and the stock moved only for bills whose save succeeded,
+  // so a failed save never leaves stock moved with the old record.
+  const planStock = (b, newStatus) => {
+    if (!b.data) return { bill: b, changes: {} };
+    const next = stockEffect(b.data.items, b.invoiceType || b.data.invoiceType, newStatus);
+    return { bill: { ...b, data: { ...b.data, stockApplied: next } }, changes: stockDelta(appliedStock(b), next) };
+  };
+  const moveStock = (plans) => {
+    const total = {};
+    for (const p of plans) for (const [id, d] of Object.entries(p.changes)) total[id] = (total[id] || 0) + d;
+    return applyStockChanges(total);
+  };
+  // Saves each planned bill with its new status; moves the stock of those that saved.
+  const saveWithStock = async (plans, patchFor) => {
+    const results = await Promise.allSettled(plans.map((p) => saveBill(patchFor(p.bill), { overwrite: true })));
+    await moveStock(plans.filter((_, i) => results[i].status === 'fulfilled'));
+    return results;
   };
 
   const handleCancelInvoice = async (bill) => {
@@ -446,8 +455,8 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
     });
     if (ok) {
       try {
-        await adjustStockForBills([bill], +1);
-        await saveBill({ ...bill, status: 'cancelled', cancelledAt: new Date().toISOString() }, { overwrite: true });
+        const [res] = await saveWithStock([planStock(bill, 'cancelled')], (b) => ({ ...b, status: 'cancelled', cancelledAt: new Date().toISOString() }));
+        if (res.status === 'rejected') throw res.reason;
         toast('Invoice cancelled & stock restored', 'success');
         loadBills();
       } catch { toast('Failed to cancel', 'error'); }
@@ -460,20 +469,19 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
   };
 
   const changeStatus = async (bill, newStatus) => {
-    const updated = { ...bill, status: newStatus };
-    // v1.10.67 (#66 item 12) — cancelling restores the stock on the invoice, so
-    // bringing the invoice back has to take it out again. Without this the
-    // stock count climbs by one invoice every cancel/un-cancel round trip.
-    if (isCancelledBill(bill) && newStatus !== 'cancelled' && bill.data?.items?.length) {
-      try { await adjustStockForBills([bill], -1); } catch { /* non-fatal: the status change still applies */ }
-      delete updated.cancelledAt;
-    }
+    // v1.10.67 (#66 item 12) / v1.10.76 - moving into or out of Cancelled moves
+    // the stock (into it from the dropdown too, which used to skip that).
+    const plan = isCancelledBill(bill) !== (newStatus === 'cancelled') ? planStock(bill, newStatus) : { bill, changes: {} };
+    const updated = { ...plan.bill, status: newStatus };
+    if (newStatus === 'cancelled') updated.cancelledAt = new Date().toISOString();
+    else delete updated.cancelledAt;
     if (newStatus === 'paid') {
       // Also records a payment for the balance, so payment history and
       // reports agree with the status (see markPaidPatch).
       Object.assign(updated, markPaidPatch(bill));
     }
     await saveBill(updated, { overwrite: true });
+    try { await moveStock([plan]); } catch { /* the status change is saved */ }
     toast(`Marked as ${STATUS_CONFIG[newStatus].label}`, 'info');
     loadBills();
   };
@@ -689,8 +697,10 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
   const getSelectedBills = () => bills.filter(b => selectedIds.has(b.id));
 
   const bulkMarkStatus = async (newStatus) => {
-    const sel = getSelectedBills();
-    if (sel.length === 0) return;
+    // v1.10.76 (#83) - payment statuses only apply to real sales; a ticked
+    // quotation or challan is left alone unless it is being un-cancelled.
+    const sel = getSelectedBills().filter((b) => isCancelledBill(b) || SALES_INVOICE_TYPES.includes(b.invoiceType || 'tax-invoice'));
+    if (sel.length === 0) { toast('Payment status only applies to tax invoices and bills of supply', 'info'); return; }
     if (!await confirmAction({
       title: `Mark ${sel.length} invoice${sel.length !== 1 ? 's' : ''} as ${STATUS_CONFIG[newStatus]?.label || newStatus}?`,
       message: newStatus === 'paid'
@@ -705,14 +715,13 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
        // the same fix on the single-row path (P1 #18).
       // Invoices being brought back from Cancelled take their stock out
       // again, as on the single-row dropdown.
-      await adjustStockForBills(sel.filter(isCancelledBill), -1);
-      const updates = sel.map(b => {
+      const plans = sel.map((b) => (isCancelledBill(b) ? planStock(b, newStatus) : { bill: b, changes: {} }));
+      const results = await saveWithStock(plans, (b) => {
         const patch = { ...b, status: newStatus };
         delete patch.cancelledAt;
         if (newStatus === 'paid') Object.assign(patch, markPaidPatch(b, 'Marked paid (bulk)'));
-        return saveBill(patch, { overwrite: true });
+        return patch;
       });
-      const results = await Promise.allSettled(updates);
       const failed = results.filter(r => r.status === 'rejected').length;
       if (failed > 0) toast(`${sel.length - failed} updated, ${failed} failed`, 'warning');
       else toast(`Marked ${sel.length} as ${newStatus}`, 'success');
@@ -734,8 +743,7 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
     setBulkBusy(true);
     try {
       const at = new Date().toISOString();
-      await adjustStockForBills(sel, +1);
-      const results = await Promise.allSettled(sel.map(b => saveBill({ ...b, status: 'cancelled', cancelledAt: at }, { overwrite: true })));
+      const results = await saveWithStock(sel.map((b) => planStock(b, 'cancelled')), (b) => ({ ...b, status: 'cancelled', cancelledAt: at }));
       const failed = results.filter(r => r.status === 'rejected').length;
       if (failed > 0) toast(`${sel.length - failed} cancelled, ${failed} failed`, 'warning');
       else toast(`Cancelled ${sel.length} invoice${sel.length !== 1 ? 's' : ''}`, 'success');
@@ -1490,14 +1498,17 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
                   {visibleColumns.printed && <th>Printed</th>}
                   <th className="col-center">Paid</th>
                   {visibleColumns.status && <th className="col-center">Status</th>}
-                  {visibleColumns.actions && <th>Actions</th>}
+                  {visibleColumns.actions && <th className="col-center">Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(bill => {
                   const status = bill.status || 'unpaid';
                   const sc = STATUS_CONFIG[status] || STATUS_CONFIG.unpaid;
-                  const isOverdue = status !== 'paid' && status !== 'cancelled' && bill.data?.details?.dueDate && new Date(bill.data.details.dueDate) < new Date();
+                  // v1.10.76 (#83) - only real sales get paid, so only they get the
+                  // Paid / Unpaid / Partial menu (and can be overdue).
+                  const tracksPayment = SALES_INVOICE_TYPES.includes(bill.invoiceType || 'tax-invoice');
+                  const isOverdue = tracksPayment && status !== 'paid' && status !== 'cancelled' && bill.data?.details?.dueDate && new Date(bill.data.details.dueDate) < new Date();
                   const daysOverdue = isOverdue ? Math.floor((new Date() - new Date(bill.data.details.dueDate)) / 86400000) : 0;
                   const billCurrency = bill.currency || bill.data?.invoiceOptions?.currency || 'INR';
                   return (
@@ -1527,6 +1538,19 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
                       {visibleColumns.printed && <td className="text-muted" style={{ textAlign: 'center' }}>{Number(bill.printedCount) || 0}×</td>}
                       <td className="text-muted col-center">{(bill.paidAmount || 0) > 0 ? formatCurrency(bill.paidAmount, billCurrency) : <span className="cell-empty">—</span>}</td>
                       {visibleColumns.status && <td className="col-center">
+                        {!tracksPayment ? (
+                          status === 'cancelled' ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <span className="type-badge" style={{ background: sc.bg, color: sc.color }}>Cancelled</span>
+                              <button type="button" className="btn-link" onClick={() => changeStatus(bill, 'unpaid')} title="Bring this document back"
+                                style={{ background: 'none', border: 0, padding: 0, color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline' }}>Undo</button>
+                            </span>
+                          ) : (
+                            <span className="type-badge" title={bill.convertedTo ? `Converted to ${bill.convertedTo}` : ''}>
+                              {bill.convertedTo ? 'Converted' : bill.invoiceType === 'credit-note' ? 'Issued' : 'Open'}
+                            </span>
+                          )
+                        ) : <>
                         <select className="status-select" value={isOverdue && status !== 'overdue' ? 'overdue' : status}
                           style={{ background: sc.bg, color: sc.color, borderColor: sc.color + '44' }}
                           onChange={e => changeStatus(bill, e.target.value)}>
@@ -1535,12 +1559,14 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
                           ))}
                         </select>
                         {daysOverdue > 0 && <span style={{ fontSize: '0.7rem', color: '#dc2626', display: 'block', marginTop: 2 }}>{daysOverdue}d overdue</span>}
+                        </>}
                       </td>}
                       {visibleColumns.actions && <td>
-                        <div className="table-actions">
+                        <div className="table-actions" style={{ justifyContent: 'center' }}>
                           <button className="icon-btn icon-btn-blue" onClick={() => handleView(bill)} title="Edit"><Edit3 size={15} /></button>
                           <button className="icon-btn icon-btn-blue" onClick={() => onDuplicate(bill)} title="Duplicate"><Copy size={15} /></button>
-                          {['quotation', 'proforma', 'delivery-challan'].includes(bill.invoiceType) && (
+                          {/* v1.10.76 (#83) - gone once it has been converted (bill.convertedTo) */}
+                          {['quotation', 'proforma', 'delivery-challan'].includes(bill.invoiceType) && !bill.convertedTo && (
                             <button className="icon-btn icon-btn-green" onClick={() => onConvert(bill)} title="Convert to Tax Invoice"><FileText size={15} /></button>
                           )}
                           {/* v1.10.74 - kept for cancelled invoices so past payments stay viewable; saving is blocked in recordPayment */}
