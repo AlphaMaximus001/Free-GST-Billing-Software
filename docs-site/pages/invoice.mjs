@@ -142,6 +142,7 @@ export default [
 <ul>
   <li>${ui('+ Add description')} under a row adds a longer note that prints under the item name.</li>
   <li>${ui('Add Item')} adds a row. So does pressing <kbd>Enter</kbd> in the last row once it has something in it.</li>
+  <li>${ui('Delivery charges')} adds the charge as its own line, SAC 996812, taxed at the highest GST rate among the goods on the invoice (delivery that comes with goods is taxed like them). Type the amount in its Rate. It is in the total and GST returns and never touches stock. Change its GST % if your delivery is a separate service.</li>
   <li>The bin removes a row. The last remaining row cannot be removed.</li>
   <li>Hiding a column under Customize, such as HSN or Discount, also hides it here.</li>
 </ul>

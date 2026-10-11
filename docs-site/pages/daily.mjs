@@ -47,7 +47,7 @@ export default [
 
 <section id="low-stock">
 <h2>Low stock</h2>
-<p>If alerts are on in <a href="settings.html#stock">Settings</a>, products at or below your threshold are listed, with <b>Out of Stock</b> in red or the number left in amber. Click one to open Products.</p>
+<p>If alerts are on in <a href="settings.html#stock">Settings</a>, products at or below your threshold scroll past under <b>Low stock</b>, like a news ticker, with <b>Out of Stock</b> in red or the number left in amber. Point at it to stop it; click one to open Products.</p>
 </section>
 
 <section id="invoice-list">
@@ -72,6 +72,7 @@ export default [
 <h2>Status</h2>
 <p>Each invoice is <b>Unpaid</b>, <b>Partial</b>, <b>Paid</b>, <b>Overdue</b> or <b>Cancelled</b>. Recording payments sets it for you. Each time the Dashboard opens, unpaid and part-paid invoices past their due date become Overdue, and the row shows how many days late they are.</p>
 <p>You can also change it from the dropdown on the row. Choosing <b>Paid</b> records a payment for the rest of the balance, so your payment history stays complete.</p>
+<p>Choosing <b>Unpaid</b> on a paid invoice takes back the payment that marking it Paid recorded, so the Paid column clears and ${ui('Send reminder')} comes back. Payments you recorded yourself stay; delete them under Payment History if they were wrong.</p>
 <p>Only sales get paid, so only Tax Invoices, Bills of Supply and Composition bills have this dropdown. Quotations, proformas and delivery challans show <b>Open</b>, or <b>Converted</b> once turned into an invoice; credit notes show <b>Issued</b>. A cancelled one shows <b>Cancelled</b> with ${ui('Undo')}.</p>
 </section>
 
@@ -97,7 +98,8 @@ export default [
 <h2>What you can do with an invoice</h2>
 <table>
   <tr><td>Edit</td><td>Opens it on the invoice screen.</td></tr>
-  <tr><td>Duplicate</td><td>A new invoice with the same client and items, a new number and today's date.</td></tr>
+  <tr><td>Duplicate</td><td>A new invoice with the same client and items, a new number and today's date. It starts Unpaid, with no payments.</td></tr>
+  <tr><td>Print</td><td>Prints the invoice straight away, without opening it, then returns to the Dashboard.</td></tr>
   <tr><td>Convert to Tax Invoice</td><td>Quotations, proformas and delivery challans only, until they have been converted. See <a href="invoices.html#proforma-to-invoice">Turning a quote into an invoice</a>.</td></tr>
   <tr><td>₹ Payment</td><td>Record a payment, as above.</td></tr>
   <tr><td>WhatsApp</td><td>On a phone, attaches the PDF through your phone's share menu. On a computer, WhatsApp does not let websites attach files, so it sends the details as text; download the PDF and drop it into the chat.</td></tr>
@@ -105,12 +107,13 @@ export default [
   <tr><td>Email</td><td>Opens your email program with the subject and a short message. Add the address and attach the PDF yourself.</td></tr>
   <tr><td>Cancel</td><td>See <a href="#cancel">Cancelling an invoice</a>.</td></tr>
 </table>
+<p>A cancelled invoice keeps only View, Duplicate and ${ui('Undo')}. A quotation, proforma or challan already converted keeps only View and Duplicate, so it cannot be changed or converted twice. Opened, either one is read-only: you can download or print it, not change it. Payments they already have stay viewable from the ${ui('₹')} button.</p>
 </section>
 
 <section id="cancel">
 <h2>Cancelling an invoice</h2>
 <p>${ui('Cancel')} asks first, then marks the invoice cancelled. It keeps its number, which GST requires, but no longer counts in totals, reports or GST returns, and any stock it used goes back.</p>
-<p>To undo it, change the status on the row back to Unpaid, Paid or another status. The stock is taken out again. A cancelled invoice is never shown as overdue.</p>
+<p>To undo it, click ${ui('Undo')} on the row. It goes back to Unpaid, Partial or Paid, from its payments, and the stock is taken out again. A cancelled invoice is never shown as overdue.</p>
 </section>
 
 <section id="quick-print">
@@ -232,6 +235,13 @@ Sharma Traders,12 MG Road,Punjab,03AAAAA0000A1Z5,accounts@sharma.example,9876543
 <p>Deleting a product does not change invoices that used it.</p>
 </section>
 
+<section id="bulk-edit">
+<h2>Changing many products at once</h2>
+<p>${ui('Bulk edit')} turns the list into a grid you can type in: name, HSN/SAC, purchase price, selling price, GST %, unit and stock. Changed rows are highlighted. ${ui('Save changes')} saves them all in one go; ${ui('Cancel')} drops them. Search first to edit only some products.</p>
+<p>A product needs a name, and GST % must be 0 to 100; if a row breaks a rule, nothing is saved and you are told which product to fix.</p>
+<p>${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} above the list save the products shown, with prices, GST and stock.</p>
+</section>
+
 <section id="stock">
 <h2>How stock is counted</h2>
 <ul>
@@ -347,7 +357,7 @@ Website Maintenance,998314,5000,18,Month,0</code></pre>
 
 <section id="export">
 <h2>For your accountant</h2>
-<p>${ui('Export CSV')} saves <code>purchases.csv</code> with the bills in the current search and year: date, supplier, GSTIN, invoice number, taxable amount, tax, round-off, total, status and note.</p>
+<p>${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} above the list give the purchase register for the current search and year, oldest first, with a total row: date, supplier, GSTIN, invoice number, taxable amount, tax, cess, inter-state, round-off, total, status and note.</p>
 </section>
 
 <section id="unassigned">
@@ -398,7 +408,7 @@ Website Maintenance,998314,5000,18,Month,0</code></pre>
 
 <section id="export">
 <h2>For your accountant</h2>
-<p>${ui('Export CSV')} saves <code>expenses.csv</code> with the rows shown: date, description, category, amount, GST amount, GST %, vendor, vendor GSTIN, invoice number, payment mode and note.</p>
+<p>The expense statement: ${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} above the list save the rows shown, oldest first, with a total: date, description, category, amount, GST amount, GST %, vendor, vendor GSTIN, invoice number, payment mode, inter-state and note. Choose the year and a category, or search, first: for example, all Rent for the year.</p>
 </section>
 `,
 },

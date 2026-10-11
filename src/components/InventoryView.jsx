@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Package, Search, Plus, Edit3, Trash2, X, Save, Upload } from 'lucide-react';
+import { Package, Search, Plus, Edit3, Trash2, X, Save, Upload, Table2 } from 'lucide-react';
 import { getAllProducts, saveProduct, deleteProduct, getProfile, getStockAlertSettings } from '../store';
 import { getAllUnits, getCountryConfig, formatCurrency } from '../utils';
 import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
 import HelpButton from './HelpButton';
+import ProductBulkEdit from './ProductBulkEdit';
+import TableExport from './TableExport';
 
 // v1.10.29 — reported: "here purchase price and selling price need".
 // Product now carries BOTH: `purchasePrice` (what we paid the supplier) and
@@ -19,6 +21,8 @@ const emptyForm = {
 export default function InventoryView() {
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
+  // v1.10.77 (#85) - edit many products at once (see ProductBulkEdit).
+  const [bulkEdit, setBulkEdit] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ ...emptyForm });
@@ -222,6 +226,10 @@ export default function InventoryView() {
           <button className="btn btn-secondary" onClick={() => csvInputRef.current?.click()}>
             <Upload size={16} /> Import CSV
           </button>
+          <button className="btn btn-secondary" onClick={() => setBulkEdit(true)} disabled={!products.length || bulkEdit}
+            title="Edit name, HSN, prices, GST %, unit and stock of many products at once">
+            <Table2 size={16} /> Bulk edit
+          </button>
           <button className="btn btn-primary" onClick={openAdd}>
             <Plus size={18} /> Add Product
           </button>
@@ -233,7 +241,8 @@ export default function InventoryView() {
         <div className="search-box" style={{ maxWidth: '400px' }}>
           <Search size={16} className="search-icon" />
           <input type="text" placeholder="Search by name or HSN..." value={search}
-            onChange={e => setSearch(e.target.value)} className="search-input" />
+            onChange={e => setSearch(e.target.value)} className="search-input" disabled={bulkEdit}
+            title={bulkEdit ? 'Save or cancel the bulk edit first' : undefined} />
           {search && <button className="icon-btn" onClick={() => setSearch('')} title="Clear search" aria-label="Clear search"><X size={14} /></button>}
         </div>
       </div>
@@ -310,8 +319,17 @@ export default function InventoryView() {
 
       {/* Product Table */}
       <div className="glass-panel">
-        <div className="table-header"><h3>Products & Services</h3></div>
-        {filtered.length === 0 ? (
+        <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+          <h3>Products & Services</h3>
+          {!bulkEdit && (
+            <TableExport title="Products" filename="Products"
+              headers={['Name', 'HSN/SAC', 'Purchase price', 'Selling price', 'GST %', 'Unit', 'Stock']}
+              rows={filtered.map((p) => [p.name, p.hsn || '', Number(p.purchasePrice) || 0, Number(p.sellingPrice ?? p.rate) || 0, Number(p.taxPercent) || 0, p.unit || 'Nos', Number(p.stock) || 0])} />
+          )}
+        </div>
+        {bulkEdit && filtered.length > 0 ? (
+          <ProductBulkEdit products={filtered} units={units} onDone={(saved) => { setBulkEdit(false); if (saved) loadProducts(); }} />
+        ) : filtered.length === 0 ? (
           <div className="empty-state">
             <Package size={48} />
             <p>{products.length === 0 ? 'No products yet. Add your first product.' : 'No products match your search.'}</p>

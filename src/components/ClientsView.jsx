@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Users, Search, FileText, ChevronDown, ChevronUp, Trash2, X, MessageCircle, Mail, Plus, Edit3, Copy, Upload, Download } from 'lucide-react';
 import HelpButton from './HelpButton';
-import { getAllClients, getAllBills, deleteClient, saveClient, deleteBill, saveBill, getProfile } from '../store';
-import { formatCurrency, INVOICE_TYPES, markPaidPatch, salesSign, countsAsSales, isCancelledBill } from '../utils';
+import { getAllClients, getAllBills, deleteClient, saveClient, deleteBill, saveBill, getProfile, deleteReceipt } from '../store';
+import { formatCurrency, INVOICE_TYPES, markPaidPatch, markUnpaidPatch, salesSign, countsAsSales, isCancelledBill } from '../utils';
 import { getPrintSettings } from '../utils/printSettings';
 import { openWhatsAppShare } from '../utils/share';
 import { confirmAction } from './ConfirmModal';
@@ -613,8 +613,13 @@ export default function ClientsView({ onEdit, onDuplicate, onNew }) {
   const changeStatus = async (bill, newStatus) => {
     const updated = { ...bill, status: newStatus };
     if (newStatus === 'paid') Object.assign(updated, markPaidPatch(bill));
+    // v1.10.77 (#86) - Unpaid takes back the "Marked paid" payment, as on the Dashboard.
+    if (newStatus === 'unpaid') Object.assign(updated, markUnpaidPatch(bill));
     await saveBill(updated, { overwrite: true });
-    toast(`Marked as ${STATUS_COLORS[newStatus]?.label || newStatus}`, 'info');
+    for (const p of (bill.payments || []).filter((x) => !(updated.payments || []).includes(x))) {
+      if (p.id) deleteReceipt(p.id).catch(() => {});
+    }
+    toast(`Marked as ${STATUS_COLORS[updated.status]?.label || updated.status}`, 'info');
     loadData();
   };
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getInvoiceNumberSettings, saveInvoiceNumberSettings, getRegionMode, setRegionMode, getEnabledModules, setEnabledModules, getStockAlertSettings, saveStockAlertSettings, getInvoiceDisplayOptions, saveInvoiceDisplayOptions } from '../store';
 import { ensureToken, findOrCreateFolder, uploadJSON } from '../services/googleDrive';
-import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, FEATURE_GROUPS, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, getFinancialYearLabel } from '../utils';
+import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, FEATURE_GROUPS, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, getFinancialYearLabel, findSameBusiness } from '../utils';
 // v1.10.36 — lucide's `Image` icon was imported as `Image`, which
 // SHADOWED the browser's `HTMLImageElement` constructor. Reported:
 // "Uncaught TypeError: et is not a constructor at onChange" on logo
@@ -15,6 +15,7 @@ import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
 import PrintSettings from './PrintSettings';
 import HelpButton from './HelpButton';
+import AppLockSettings from './AppLockSettings';
 import { getBackupsList, restoreBackup, triggerBackup, deleteBackup, getTrashedBills, restoreTrashedBill, purgeTrashedBill, runUpdateNow } from '../store';
 
 // v1.10.36 — Section order for the jump-nav pill bar. Keeping this at
@@ -28,6 +29,7 @@ const JUMP_NAV_SECTIONS = [
   ['section-modules',  'Features'],
   ['section-stock',    'Stock'],
   ['section-region',   'Region'],
+  ['section-lock',     'App lock'],
   ['section-backups',  'Backups'],
   ['section-cloud',    'Google Drive'],
   ['section-data',     'Import/Export'],
@@ -681,10 +683,15 @@ export default function SettingsView({ onSaved }) {
   };
 
   // Multi-business profiles
+  // The saved profile the form was last loaded from (see findSameBusiness).
+  const loadedProfileId = useRef(null);
+  const sameSavedBusiness = () => findSameBusiness(businessProfiles, profile,
+    businessProfiles.find((bp) => bp.id === loadedProfileId.current));
+
   const handleSaveAsProfile = async () => {
     if (!profile.businessName.trim()) { toast('Business name required', 'warning'); return; }
-    // Update existing profile with same name, or create new
-    const existing = businessProfiles.find(bp => bp.businessName.trim().toLowerCase() === profile.businessName.trim().toLowerCase());
+    // Update the saved profile of this same business, or create a new one
+    const existing = sameSavedBusiness();
     await saveBusinessProfile({ ...profile, id: existing?.id || undefined });
     toast(existing ? 'Profile updated!' : 'Profile saved!', 'success');
     loadBusinessProfiles();
@@ -693,9 +700,10 @@ export default function SettingsView({ onSaved }) {
   const handleLoadProfile = async (bp) => {
     // Auto-save current profile before switching (so it's not lost)
     if (profile.businessName?.trim()) {
-      const existing = businessProfiles.find(p => p.businessName.trim().toLowerCase() === profile.businessName.trim().toLowerCase());
+      const existing = sameSavedBusiness();
       await saveBusinessProfile({ ...profile, id: existing?.id || undefined });
     }
+    loadedProfileId.current = bp.id;
     const loaded = { ...bp };
     delete loaded.id;
     setProfile(loaded);
@@ -729,9 +737,10 @@ export default function SettingsView({ onSaved }) {
   const handleAddNewProfile = async () => {
     const current = profile.businessName?.trim();
     if (current) {
-      const existing = businessProfiles.find(bp => bp.businessName.trim().toLowerCase() === current.toLowerCase());
+      const existing = sameSavedBusiness();
       try {
         await saveBusinessProfile({ ...profile, id: existing?.id || undefined });
+        loadedProfileId.current = null; // the form is about to be a new company
         await loadBusinessProfiles();
       } catch {
         toast('Could not save the current company, so nothing was cleared. Try Save Profile first.', 'error');
@@ -1095,6 +1104,11 @@ export default function SettingsView({ onSaved }) {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* v1.10.77 (#84) - optional PIN lock. Same order as Region, so it sits right after it. */}
+      <div id="section-lock" className="glass-panel p-6 mb-6" style={{ order: 7 }}>
+        <AppLockSettings />
       </div>
 
       {/* ---- Business Profile ---- */}

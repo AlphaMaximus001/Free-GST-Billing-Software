@@ -5,7 +5,7 @@ export default [
 {
   slug: 'settings',
   title: 'Settings',
-  lead: 'Every section of Settings, in the order it appears: your business, bank accounts, invoice numbers, logo and stamp, more than one business, terms, features, stock alerts, region, backups, Google Drive, import and export, and updates.',
+  lead: 'Every section of Settings, in the order it appears: your business, bank accounts, invoice numbers, logo and stamp, more than one business, terms, features, stock alerts, region, app lock, backups, Google Drive, import and export, and updates.',
   body: `
 <section id="save-bar">
 <h2>Saving your changes</h2>
@@ -13,7 +13,7 @@ export default [
 <p>Not everything waits for a Save. Save all changes covers every section in the last two columns:</p>
 <table>
   <tr><th>Saves by itself as you change it</th><th>Has its own Save button</th><th>Needs Save Profile</th></tr>
-  <tr><td>Payment accounts, Modules, Region</td><td>Invoice number format, Low-stock alerts, Terms templates</td><td>Company details, PAN, logo, signature, stamp, GSTR filing details, Google Drive fields</td></tr>
+  <tr><td>Payment accounts, Modules, Region, App lock</td><td>Invoice number format, Low-stock alerts, Terms templates</td><td>Company details, PAN, logo, signature, stamp, GSTR filing details, Google Drive fields</td></tr>
 </table>
 <p>The row of buttons under the title jumps to each section.</p>
 </section>
@@ -143,6 +143,19 @@ export default [
   <tr><td>🌐 Both / Auto</td><td>All countries, chosen per invoice. The default.</td></tr>
 </table>
 <p>It saves as soon as you click, and changes the country lists and which features you see. Your data is not touched.</p>
+<p>Region, Print settings and your other display choices are also kept in the app's data folder, so they come back even if the browser clears its saved data.</p>
+</section>
+
+<section id="lock">
+<h2>App lock (PIN)</h2>
+<p>For a computer other people also use. ${ui('Turn on PIN lock')}, choose 6 or 8 digits, type the PIN twice and click ${ui('Save PIN')}. From then on the app asks for it each time it is opened. It is off to start.</p>
+<ul>
+  <li>${ui('Lock now')} locks the app straight away, when you step away.</li>
+  <li>${ui('Change PIN')} and ${ui('Turn off')} need the current PIN.</li>
+  <li>After five wrong tries in a row, wait 30 seconds before the next.</li>
+</ul>
+<p>It locks the screen only; it does not encrypt your files. Keep your backups safe as before. Backup files never contain the PIN, and restoring a backup keeps the PIN you have now.</p>
+<p><b>Forgot the PIN?</b> Open the Free-GST-Billing folder (where you start the app), make a new text file there named <code>RESET-PIN</code>, and reload the app. The PIN is removed and the file deleted. Your invoices are not touched.</p>
 </section>
 
 <section id="backups">

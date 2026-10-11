@@ -12,8 +12,19 @@
 //   meta        optional short string rendered as a pill next to the
 //               subtitle (e.g. "231 invoices", "11 sections", "FY 2025-26")
 //   children    right-hand slot for action buttons, HelpButton, etc.
+//   compact     v1.10.77 (#84): a slim title row, no card, icon or subtitle,
+//               for screens where the table needs the room (the Dashboard).
 
-export default function PageHeader({ icon, title, subtitle, meta, children }) {
+export default function PageHeader({ icon, title, subtitle, meta, children, compact = false }) {
+  if (compact) {
+    return (
+      <div className="page-header page-header-compact" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
+        <h1 className="page-title" style={{ margin: 0, fontSize: '1.3rem' }}>{title}</h1>
+        {meta && <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>{meta}</span>}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>{children}</div>
+      </div>
+    );
+  }
   return (
     <div className="page-header" style={{
       padding: '1.1rem 1.35rem',

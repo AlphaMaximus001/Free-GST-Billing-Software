@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package, Boxes } from 'lucide-react';
 import { getAllBills, getAllExpenses, getProfile } from '../store';
 import { formatCurrency, getFYOptions, belongsToProfile, isCancelledBill, salesSign, countsAsSales, calculateLineItemTax } from '../utils';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
 import PartyOutstandingReport from './PartyOutstandingReport';
+import StockReport from './StockReport';
+import TableExport from './TableExport';
 import { billCurrency } from '../utils/partyOutstanding';
 
 const MONTHS = [
@@ -90,6 +92,13 @@ export default function ReportsView() {
       setCurrencyFilter(allCurrencies[0]);
     }
   }, [allCurrencies.join(',')]);
+
+  // v1.10.77 (#85) - the period in words, for exported reports.
+  const periodLabel = filterMode === 'fy'
+    ? (fyOptions.find(f => f.value === fyFilter)?.label || '')
+    : `${MONTHS[parseInt(monthFilter)] || ''} ${yearFilter}`;
+  const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+  const exportSubtitle = (extra = '') => [businessName, periodLabel, currencyFilter !== 'INR' ? currencyFilter : '', extra].filter(Boolean).join(', ');
 
   // Bills for P&L — only selected currency
   const plBills = allFilteredBills.filter(b => getBillCurrency(b) === currencyFilter);
@@ -211,11 +220,15 @@ export default function ReportsView() {
           onClick={() => setActiveTab('products')}>
           <Package size={16} /> Product Performance
         </button>
+        <button className={`btn ${activeTab === 'stock' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('stock')}>
+          <Boxes size={16} /> Stock
+        </button>
       </div>
 
       {/* v1.10.74 - Period + Currency Selector, shared by P&L, Client Analytics
           and Product Performance (they all read the same period/currency). */}
-      {activeTab !== 'aging' && activeTab !== 'party' && (
+      {activeTab !== 'aging' && activeTab !== 'party' && activeTab !== 'stock' && (
           <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div className="form-group" style={{ margin: 0 }}>
@@ -341,7 +354,19 @@ export default function ReportsView() {
           {/* Monthly Breakdown */}
           {monthlyKeys.length > 0 && (
             <div className="glass-panel">
-              <div className="table-header"><h3>Monthly Breakdown</h3></div>
+              <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h3>Monthly Breakdown</h3>
+                <TableExport title="Profit and loss by month" filename={`Profit-and-loss-${periodLabel}`} subtitle={exportSubtitle('before tax, GST left out')}
+                  headers={['Month', 'Revenue', 'Expenses', 'Profit/Loss']}
+                  rows={[
+                    ...monthlyKeys.map(key => {
+                      const m = monthlyPL[key];
+                      const [y, mo] = key.split('-');
+                      return [`${MONTHS[parseInt(mo) - 1]} ${y}`, r2(m.revenue - m.tax), r2(m.expense - m.expGst), r2((m.revenue - m.tax) - (m.expense - m.expGst))];
+                    }),
+                    ['Total', r2(revenueExTax), r2(expenseExGST), r2(netProfit)],
+                  ]} />
+              </div>
               <div className="table-scroll">
                 <table className="data-table" style={{ minWidth: '600px' }}>
                   <thead><tr>
@@ -377,6 +402,8 @@ export default function ReportsView() {
       )}
 
       {activeTab === 'party' && <PartyOutstandingReport bills={bills} businessName={businessName} />}
+
+      {activeTab === 'stock' && <StockReport businessName={businessName} />}
 
       {activeTab === 'aging' && (
         <>
@@ -428,7 +455,13 @@ export default function ReportsView() {
 
           {/* Aging Table */}
           <div className="glass-panel">
-            <div className="table-header"><h3>Outstanding Receivables</h3></div>
+            <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+              <h3>Outstanding Receivables</h3>
+              <TableExport title="Outstanding receivables" filename="Outstanding-receivables" landscape
+                subtitle={[businessName, `unpaid as on ${today.toLocaleDateString('en-IN')}`].filter(Boolean).join(', ')}
+                headers={['Client', 'Invoice No', 'Date', 'Due date', 'Currency', 'Amount', 'Paid', 'Outstanding', 'Days overdue']}
+                rows={agingSorted.map(a => [a.clientName, a.invoiceNumber || '', a.invoiceDate || '', a.dueDate || '', a.currency, r2(a.totalAmount), r2(a.paidAmount), r2(a.outstanding), a.daysOverdue])} />
+            </div>
             {agingSorted.length === 0 ? (
               <div className="empty-state">
                 <Wallet size={48} />
@@ -541,7 +574,12 @@ export default function ReportsView() {
             </div>
 
             <div className="glass-panel" style={{ padding: '1.25rem', gridColumn: '1 / -1' }}>
-              <h3 style={{ marginTop: 0, fontSize: '1rem' }}>📊 All clients breakdown ({clientArr.length})</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem' }}>📊 All clients breakdown ({clientArr.length})</h3>
+                <TableExport title="Client analytics" filename={`Clients-${periodLabel}`} subtitle={exportSubtitle()}
+                  headers={['Client', 'Invoices', 'Revenue', 'Paid', 'Outstanding', 'Last invoice']}
+                  rows={[...clientArr].sort((a, b) => b.revenue - a.revenue).map(c => [c.name, c.count, r2(c.revenue), r2(c.paid), r2(c.outstanding), c.lastInvoiceDate || ''])} />
+              </div>
               <div style={{ overflowX: 'auto' }}>
                 <table className="data-table" style={{ marginBottom: 0 }}>
                   <thead><tr>
@@ -582,6 +620,7 @@ export default function ReportsView() {
         const byProduct = {};
         filteredBills.forEach(b => {
           (b.data?.items || []).forEach(item => {
+            if (item.isCharge) return; // v1.10.77 (#87) - delivery charges are not a product
             const name = (item.name || item.description || 'Unnamed').trim();
             if (!name || name === 'Unnamed') return;
             if (!byProduct[name]) byProduct[name] = { name, hsn: item.hsn || '', qty: 0, revenue: 0, txns: 0, lastSold: '' };
@@ -639,7 +678,12 @@ export default function ReportsView() {
             </div>
 
             <div className="glass-panel" style={{ padding: '1.25rem', gridColumn: '1 / -1' }}>
-              <h3 style={{ marginTop: 0, fontSize: '1rem' }}>📋 All products ({productArr.length})</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem' }}>📋 All products ({productArr.length})</h3>
+                <TableExport title="Product performance" filename={`Products-sold-${periodLabel}`} subtitle={exportSubtitle('revenue before tax')}
+                  headers={['Product', 'HSN', 'Qty sold', 'Revenue', 'Avg rate', 'Txns', 'Last sold']}
+                  rows={[...productArr].sort((a, b) => b.revenue - a.revenue).map(p => [p.name, p.hsn || '', p.qty, r2(p.revenue), p.qty > 0 ? r2(p.revenue / p.qty) : 0, p.txns, p.lastSold || ''])} />
+              </div>
               <div style={{ overflowX: 'auto' }}>
                 <table className="data-table" style={{ marginBottom: 0 }}>
                   <thead><tr>

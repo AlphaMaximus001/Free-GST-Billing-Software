@@ -167,11 +167,22 @@ export default [
 {
   slug: 'reports',
   title: 'Reports',
-  lead: 'Profit and loss, who owes you and for how long, party outstanding by month, your best clients, and your best-selling products.',
+  lead: 'Profit and loss, who owes you and for how long, party outstanding by month, your best clients, your best-selling products, and closing stock with its value. Every report prints and downloads as Excel or CSV.',
   body: `
 <section id="included">
 <h2>What the reports include</h2>
-<p>All four tabs cover the business selected in the sidebar and count only real sales, as the Dashboard does: tax invoices, bills of supply and composition bills count; credit notes are subtracted; proforma estimates, delivery challans and cancelled invoices are left out. Purchase bills are not part of these reports; they are in <a href="income-tax.html#itr-summary">Income Tax, ITR Summary</a>.</p>
+<p>The sales tabs cover the business selected in the sidebar and count only real sales, as the Dashboard does: tax invoices, bills of supply and composition bills count; credit notes are subtracted; proforma estimates, delivery challans and cancelled invoices are left out. Purchase bills are not part of these reports; they are in <a href="income-tax.html#itr-summary">Income Tax, ITR Summary</a>.</p>
+</section>
+
+<section id="export">
+<h2>Printing and downloading a report</h2>
+<p>Every report table has three buttons:</p>
+<table>
+  <tr><td>${ui('Print / PDF')}</td><td>Opens the table alone on its own page. Choose your printer, or <b>Save as PDF</b>.</td></tr>
+  <tr><td>${ui('Excel')}</td><td>Downloads an <code>.xlsx</code> file. Amounts are numbers, so Excel can total and sort them.</td></tr>
+  <tr><td>${ui('CSV')}</td><td>The same table as CSV, for any spreadsheet or your CA's software.</td></tr>
+</table>
+<p>They export what the screen shows: the period, currency and filters you chose. The Expense statement and Purchase register have the same buttons on their own screens.</p>
 </section>
 
 <section id="profit-loss">
@@ -200,7 +211,7 @@ export default [
 <ul>
   <li>Choose <b>Financial year (Apr-Mar)</b>, the default, or <b>Calendar year (Jan-Dec)</b>, and the year.</li>
   <li>Bills from before that year that are still unpaid appear in an <b>Earlier</b> column, so nothing owed drops out of the total.</li>
-  <li>${ui('Print / PDF')} opens the table on its own page, landscape; choose your printer or Save as PDF. ${ui('CSV')} downloads it for Excel.</li>
+  <li>${ui('Print / PDF')} opens the table on its own page, landscape; choose your printer or Save as PDF. ${ui('Excel')} and ${ui('CSV')} download it.</li>
 </ul>
 <p>Only sales count; estimates, challans and cancelled invoices are left out. With invoices in more than one currency, pick the currency.</p>
 </section>
@@ -222,7 +233,19 @@ export default [
   <li><strong>Most units sold</strong>: the ten sold in the largest quantity.</li>
   <li><strong>All products</strong>: HSN, quantity sold, revenue, average rate, number of sales and when last sold.</li>
 </ul>
-<p>Revenue here is after line discounts and without tax. Credit notes are subtracted.</p>
+<p>Revenue here is after line discounts and without tax. Credit notes are subtracted. Delivery charges are not a product and are left out.</p>
+</section>
+
+<section id="stock">
+<h2>Stock</h2>
+<p>Closing stock of every product at the end of a month, and what it is worth. Choose the month; the current month shows today's stock.</p>
+<ul>
+  <li><b>Closing qty</b> is worked back from today's stock, using the dates of your invoices and purchase bills.</li>
+  <li><b>Rate</b> is the purchase price. A product with no purchase price is valued at its selling price, marked with *.</li>
+  <li><b>Value</b> is quantity × rate, with the <b>Total stock value</b> at the bottom. Negative stock shows in red and is not added in.</li>
+</ul>
+<p>Stock you typed in by hand on the Products screen has no date, so it counts as if it changed today. Products are shared by all your businesses, so this report covers every business.</p>
+<figure><img src="assets/img/app-stock-report.png" alt="Reports, Stock: closing quantity, rate and value of each product, with the total stock value." loading="lazy"><figcaption>Closing stock and its value at the end of a month.</figcaption></figure>
 </section>
 `,
 },

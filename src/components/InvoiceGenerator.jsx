@@ -3,7 +3,7 @@ import { ArrowLeft, Plus, Trash2, Download, UserPlus, Pencil, Settings, ChevronU
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { saveBill, applyStockChanges, getNextInvoiceNumber, getTermsTemplates, getAllClients, saveClient, getProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllBills } from '../store';
-import { INVOICE_TYPES, COUNTRIES, printedSubtotal, stockEffect, appliedStock, stockDelta, generateEWayBillJSON, formatCurrency, getCountryConfig, getStatesForCountry, getAllUnits, addCustomUnit, removeCustomUnit, getCountriesForRegion, TDS_SECTIONS, TCS_SECTIONS, REMOVED_TCS_SECTIONS, TERMS_PRESETS, getActiveAccounts, getDefaultAccount, getAccountById, getDefaultUnitForMode, filterUnitsByMode, PAPER_SIZES, getPaperSize, computeInvoiceTotals, clientYearToDate, htmlHasText, ORDER_DETAIL_FIELDS, invoiceOptionOn, DEFAULT_DECLARATION, decodeGstin, safePageBoundaries } from '../utils';
+import { INVOICE_TYPES, COUNTRIES, printedSubtotal, deliveryChargeLine, stockEffect, appliedStock, stockDelta, generateEWayBillJSON, formatCurrency, getCountryConfig, getStatesForCountry, getAllUnits, addCustomUnit, removeCustomUnit, getCountriesForRegion, TDS_SECTIONS, TCS_SECTIONS, REMOVED_TCS_SECTIONS, TERMS_PRESETS, getActiveAccounts, getDefaultAccount, getAccountById, getDefaultUnitForMode, filterUnitsByMode, PAPER_SIZES, getPaperSize, computeInvoiceTotals, clientYearToDate, htmlHasText, ORDER_DETAIL_FIELDS, invoiceOptionOn, DEFAULT_DECLARATION, decodeGstin, safePageBoundaries } from '../utils';
 import { getPrintSettings, savePrintSettings } from '../utils/printSettings';
 import { openWhatsAppShare } from '../utils/share';
 import { confirmAction, promptAction } from './ConfirmModal';
@@ -498,6 +498,42 @@ const LineItem = memo(function LineItem({
   );
 });
 
+// v1.10.77 (#88) - the Tally and Boxed designs pad the item table so a short
+// bill still looks like a full page. When that padding alone pushes the
+// invoice past one PDF page, trim it (from the bottom) just enough, so the
+// terms, bank details and signature stay on page 1. Returns a function that
+// puts everything back. Elements: [data-pdf-spacer="stretch"] rows have their
+// cells shortened; [data-pdf-spacer="row"] rows are hidden whole.
+function fitSpacersToOnePage(container, pageWmm, pageHmm, ps) {
+  const m = (k) => Math.max(0, Number(ps?.[k]) || 0);
+  const availW = Math.max(20, pageWmm - m('marginLeft') - m('marginRight'));
+  const availH = Math.max(20, pageHmm - m('marginTop') - m('marginBottom'));
+  const onePagePx = availH * container.getBoundingClientRect().width / availW;
+  let over = container.scrollHeight - onePagePx + 3;
+  const spacers = [...container.querySelectorAll('[data-pdf-spacer]')];
+  const room = spacers.reduce((s, el) => s + el.getBoundingClientRect().height, 0);
+  if (over <= 3 || over > room) return () => {};
+  const undo = [];
+  for (const el of spacers.reverse()) {
+    if (over <= 0) break;
+    const h = el.getBoundingClientRect().height;
+    if (el.dataset.pdfSpacer === 'row') {
+      const prev = el.style.display;
+      el.style.display = 'none';
+      undo.push(() => { el.style.display = prev; });
+      over -= h;
+    } else {
+      const cells = [...el.children];
+      const prev = cells.map((c) => c.style.height);
+      const next = Math.max(0, h - over);
+      cells.forEach((c) => { c.style.height = `${next}px`; });
+      undo.push(() => cells.forEach((c, i) => { c.style.height = prev[i]; }));
+      over -= h - next;
+    }
+  }
+  return () => undo.reverse().forEach((f) => f());
+}
+
 export default function InvoiceGenerator({ onBack, profile: profileProp, editingBill }) {
   const draft = loadDraft();
   const [allProfiles, setAllProfiles] = useState([]);
@@ -666,6 +702,17 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     return () => ro.disconnect();
   }, [previewCollapsed]);
   const draftInitialized = useRef(!!draft);
+  // v1.10.77 - only a brand-new blank invoice gets the first saved Terms
+  // template filled in. It used to happen to every form once the templates
+  // loaded, so opening a SAVED invoice replaced its terms (and auto-save then
+  // stored the wrong terms on it), and a restored draft lost its terms too.
+  const blankNewInvoice = useRef(!editingBill && !draft);
+  const draftOptions = useRef(draft?.invoiceOptions || {});
+  // v1.10.77 (#86) - a cancelled document, or one already converted into an
+  // invoice, opens read-only: nothing is saved (no auto-save, Save explains
+  // why); Download and Print still work. Duplicate it to make a new one.
+  const [readOnlyDoc] = useState(() => !!editingBill && !editingBill._isDuplicate && !editingBill._convertToType
+    && (editingBill.status === 'cancelled' || !!editingBill.convertedTo));
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
   const autoSaveTimer = useRef(null);
   // v1.10.22 — reported: "if user click back without even changing anything
@@ -781,7 +828,10 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         // from any stale server-persisted options (pre-v1.10.20 clients would
         // have posted it). Preserves the current bill's snapshot in `prev`.
         delete serverOpts.paymentAccountSnapshot;
-        const merged = { ...DEFAULT_OPTIONS, ...serverOpts };
+        // v1.10.77 - a restored draft keeps its own choices (design, columns
+        // ...); the saved defaults only fill what it does not set. They used
+        // to replace the draft's options a moment after a page refresh.
+        const merged = { ...DEFAULT_OPTIONS, ...serverOpts, ...draftOptions.current };
         setInvoiceOptions(prev => {
           // Only update if different to avoid unnecessary re-renders
           const changed = Object.keys(merged).some(k => merged[k] !== prev[k]);
@@ -874,7 +924,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   // For EDITING existing bills (or after the first manual save), auto-save
   // still writes through to the server so mid-session edits are safe.
   useEffect(() => {
-    if (!hasInitialized.current) return;
+    if (!hasInitialized.current || readOnlyDoc) return;
     // v1.10.22 — any real post-init change flips the dirty flag so Back
     // can distinguish "loaded and untouched" from "actually edited".
     isDirty.current = true;
@@ -990,7 +1040,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     getAllProfiles().then(p => { setAllProfiles(p); if (!activeProfile && p.length > 0) setActiveProfile(profileProp); }).catch(() => {});
     getTermsTemplates().then(templates => {
       setTermsTemplates(templates);
-      if (templates.length > 0 && !selectedTermsId && !draftInitialized.current) {
+      if (templates.length > 0 && blankNewInvoice.current && !selectedTermsId) {
         setSelectedTermsId(templates[0].id);
         setCustomTerms(templates[0].content);
       }
@@ -1301,6 +1351,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       unit: product.unit || item.unit || 'Nos',
       taxPercent: product.taxPercent ?? defaultTaxRate,
       productId: product.id,
+      isCharge: false, // a product picked on the delivery line makes it a product line
     } : item));
     setProductSearch({ itemId: null, query: '' });
   }, [countryTaxRates]);
@@ -1312,6 +1363,13 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       p.name?.toLowerCase().includes(q) || p.hsn?.toLowerCase().includes(q)
     ).slice(0, 5);
   }, [productSearch.itemId, productSearch.query, products]);
+
+  // v1.10.77 (#87) - one delivery-charges line per invoice (see deliveryChargeLine).
+  const hasDeliveryCharge = items.some((i) => i.isCharge);
+  const addDeliveryCharge = () => {
+    if (hasDeliveryCharge) return;
+    setItems((prev) => [...prev, deliveryChargeLine(prev)]);
+  };
 
   const addItem = () => {
     // Default unit depends on whether this invoice is for goods or services —
@@ -1514,6 +1572,12 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   }, []);
 
   const saveInvoiceToDBNow = async (skipStockDeduction = false, extraPatch = {}) => {
+    if (readOnlyDoc) {
+      toast(editingBill.convertedTo
+        ? `Already converted to ${editingBill.convertedTo}, so it is not changed. Use Duplicate to make a new one.`
+        : 'A cancelled invoice is not changed. Undo the cancel on the Dashboard, or use Duplicate.', 'warning');
+      return null;
+    }
     // Lazy counter reservation: if this is a NEW bill (no editingBill) and
     // the invoice number is still the peeked value, do the atomic increment
     // now. This means a mounted-but-cancelled form doesn't burn a counter
@@ -1580,8 +1644,13 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     // aren't already in editingBill's copy. Non-fatal on network
     // error — worst case reverts to old behaviour, and the
     // Dashboard reconciliation pass catches it on next load.
-    const seedPayments = editingBill?.payments ? [...editingBill.payments] : [];
-    if (editingBill?.id) {
+    // v1.10.77 (#86) - a duplicate or a conversion is a NEW invoice: it starts
+    // unpaid. It used to copy the original's payments (and, through the fetch
+    // below, any paid on the original later), so a converted quotation could
+    // come out as Paid.
+    const ownBill = !!editingBill && !editingBill._isDuplicate;
+    const seedPayments = ownBill && editingBill.payments ? [...editingBill.payments] : [];
+    if (ownBill && editingBill.id) {
       try {
         const serverBills = await getAllBills();
         const fresh = serverBills.find(b => b.id === editingBill.id);
@@ -1623,7 +1692,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       : (seedPaidAmount > 0.005 ? 'partial' : 'unpaid');
     // Preserve 'overdue' when nothing is paid — otherwise trust the
     // freshly computed status.
-    const seedStatus = keepCancelled ? 'cancelled' : (computedStatus === 'unpaid' && editingBill?.status === 'overdue')
+    const seedStatus = keepCancelled ? 'cancelled' : (computedStatus === 'unpaid' && ownBill && editingBill.status === 'overdue')
       ? 'overdue'
       : computedStatus;
 
@@ -1642,13 +1711,15 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       paidAmount: seedPaidAmount,
       payments: seedPayments,
       // Preserve any pre-existing print history + carry through the patch
-      printedCount: extraPatch.printedCount ?? editingBill?.printedCount ?? 0,
-      lastPrintedAt: extraPatch.lastPrintedAt ?? editingBill?.lastPrintedAt ?? null,
+      printedCount: extraPatch.printedCount ?? (ownBill ? editingBill.printedCount : 0) ?? 0,
+      lastPrintedAt: extraPatch.lastPrintedAt ?? (ownBill ? editingBill.lastPrintedAt : null) ?? null,
       // Kept from the saved bill: rebuilt from scratch, they used to be lost.
       ...(keepCancelled ? { cancelledAt: serverCopy?.cancelledAt || editingBill.cancelledAt || null } : {}),
       ...(isIssued && (serverCopy?.convertedTo || editingBill.convertedTo) ? { convertedTo: serverCopy?.convertedTo || editingBill.convertedTo } : {}),
       data: { profile, client, details: { ...details, invoiceNumber: finalInvoiceNumber }, items, totals, invoiceType, customTerms, customNotes, internalNote, extraSections, invoiceOptions: invoiceOptionsWithSnapshot, taxInclusive,
-        stockApplied: stockEffect(items, invoiceType, seedStatus) }
+        // A converted quotation/proforma/challan's stock moved to its invoice:
+        // its own record stays empty, or a save would take the stock twice.
+        stockApplied: isIssued && (serverCopy?.convertedTo || editingBill.convertedTo) ? {} : stockEffect(items, invoiceType, seedStatus) }
     };
     // Editing an existing bill → always overwrite. NEW bill on second-and-
     // later save this session → also overwrite (same invoice number, would
@@ -1914,19 +1985,21 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   // if html2canvas or jsPDF throws mid-render. Prior code only restored
   // on the success path — an exception left the on-screen preview
   // stuck at scale 1.0 until the user navigated away.
-  const buildPDF = async ({ archive = false } = {}) => {
+  const buildPDF = async ({ archive = false, forPrint = false } = {}) => {
     const printSettings = getPrintSettings();
     const scalerEl = printRef.current.closest('.preview-scaler');
+    const spacerFit = {};
     if (scalerEl) scalerEl.style.transform = 'none';
     try {
-      return await __buildPDFInner(printSettings, archive);
+      return await __buildPDFInner(printSettings, archive, spacerFit, forPrint);
     } finally {
+      spacerFit.restore?.();
       if (scalerEl) scalerEl.style.transform = '';
     }
   };
 
   // archive: the copy kept in Saved Invoices, which carries no REPRINT stamp.
-  const __buildPDFInner = async (printSettings, archive = false) => {
+  const __buildPDFInner = async (printSettings, archive = false, spacerFit = {}, forPrint = false) => {
 
     // v1.10.46 — Hoisted from line ~2133 to fix the v1.10.45 regression
     // where `isHeaderOn` / `isFooterOn` (introduced in v1.10.45 for the
@@ -1984,7 +2057,10 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       standard: { scale: capScale(Math.max(3, (window.devicePixelRatio || 1) * 2)), imgFormat: 'JPEG', quality: 0.95 },
       hd:       { scale: capScale(Math.max(4, (window.devicePixelRatio || 1) * 2.5)), imgFormat: 'PNG', quality: 1.0 },
     };
-    const q = qualityCfg[printSettings.pdfQuality] || qualityCfg.standard;
+    // v1.10.77 (#86) - printing always uses HD: a print is not emailed, so file
+    // size does not matter, and the JPEG of "standard" (what most business
+    // presets set) printed visibly softer than the downloaded PDF looked.
+    const q = forPrint ? qualityCfg.hd : (qualityCfg[printSettings.pdfQuality] || qualityCfg.standard);
     const renderScale = q.scale;
     const jpegQuality = q.quality;
     const imgFormat = q.imgFormat;   // 'JPEG' or 'PNG'
@@ -2098,6 +2174,9 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     // separate-terms page sits inside the footer row, so measuring with it
     // still visible laid the footer out differently from the capture.
     extraPages.forEach(el => el.style.display = 'none');
+    // v1.10.77 (#88) - trim the Tally / Boxed padding if it alone pushes the
+    // invoice onto a second page; put back right after the capture.
+    if (paperCfg.kind !== 'thermal') spacerFit.restore = fitSpacersToOnePage(printRef.current, pdfWidth, pdfPageHeight, printSettings);
     const domBoundariesPx = collectRowBoundaries(printRef.current);
     const domContainerWidth = printRef.current.getBoundingClientRect().width;
 
@@ -2138,6 +2217,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       }
     });
     extraPages.forEach(el => el.style.display = '');
+    spacerFit.restore?.();
+    spacerFit.restore = null;
 
     // v1.10.3 — Record each original page as a "recipe" so multi-copy
     // (GST Rule 48) can duplicate multi-page invoices correctly.
@@ -2226,11 +2307,20 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       };
     } catch { /* test hook only */ }
 
-    if (scaledImgHeight <= contentHeightFull + 2) {
+    // v1.10.77 (#88) - a page that is only slightly too tall (up to 6%) is
+    // shrunk to fit, instead of sending the footer to a page of its own: a
+    // 4px overflow used to move the terms, bank details and signature to page 2.
+    const fitsOnePage = scaledImgHeight <= contentHeightFull + 2
+      || (paperCfg.kind !== 'thermal' && scaledImgHeight <= contentHeightFull * 1.06);
+    if (window.__lastPdfLayout) window.__lastPdfLayout.onePage = fitsOnePage;
+    if (fitsOnePage) {
       // Single-page fits — no cropping needed. Page 1 has no header/footer
       // bands so we can use the full page height (no v1.10.45 reserve).
       const mainImg = mainCanvas.toDataURL(imgFormat === 'PNG' ? 'image/png' : 'image/jpeg', jpegQuality);
-      const finalH = Math.min(scaledImgHeight, contentHeightFull);
+      const fit = paperCfg.kind === 'thermal' ? 1 : Math.min(1, contentHeightFull / scaledImgHeight);
+      const finalH = paperCfg.kind === 'thermal' ? Math.min(scaledImgHeight, contentHeightFull) : scaledImgHeight * fit;
+      const finalW = contentWidth * fit;
+      const finalX = contentXOffset + (contentWidth - finalW) / 2;
       // v1.10.33 — Thermal receipts: replace the padded 72×297mm page
       // with one exactly tall enough for the actual receipt content.
       // Prior behaviour: a 40-line receipt on thermal80 produced a PDF
@@ -2252,8 +2342,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           compress: true,
         });
       }
-      pdf.addImage(mainImg, imgFormat, contentXOffset, contentYOffset, contentWidth, finalH, undefined, 'MEDIUM');
-      pageRecipes.push({ img: mainImg, y: contentYOffset, h: finalH, x: contentXOffset, w: contentWidth });
+      pdf.addImage(mainImg, imgFormat, finalX, contentYOffset, finalW, finalH, undefined, 'MEDIUM');
+      pageRecipes.push({ img: mainImg, y: contentYOffset, h: finalH, x: finalX, w: finalW });
     } else {
       // v1.10.8 multi-page path — snap page breaks to safe DOM row boundaries.
       //
@@ -2823,7 +2913,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   // the first save), so the PDF must be built AFTER this, once the preview has
   // re-rendered with that number. Returns the saved number, or null.
   const saveForOutput = async () => {
-    const prevPrinted = Number(editingBill?.printedCount) || 0;
+    if (readOnlyDoc) return details.invoiceNumber; // printed or downloaded as it is
+    const prevPrinted = editingBill && !editingBill._isDuplicate ? Number(editingBill.printedCount) || 0 : 0;
     const no = await saveInvoiceToDB(false, {
       printedCount: prevPrinted + 1,
       lastPrintedAt: new Date().toISOString(),
@@ -2835,6 +2926,27 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     return no;
   };
 
+  // Prints what the preview shows. Returns true when it was sent to print.
+  const printPreview = () => withPreviewOnScreen(async () => {
+    try {
+      // v1.10.42 — Thermal + user hasn't opted out of direct print?
+      // Try the vector-HTML path first. If the browser blocks it
+      // (returned false), silently fall through to the PDF path so
+      // the user still gets a print — no surfaced error required.
+      if (isThermalPaper() && (getPrintSettings().thermalPrintMode || 'direct') === 'direct') {
+        const ok = await printThermalViaHtml();
+        if (ok) return true;
+      }
+      const pdf = await buildPDF({ forPrint: true });
+      printViaIframe(pdf.output('blob'));
+      return true;
+    } catch (err) {
+      console.error('Print failed', err);
+      toast('Print failed — try Download PDF instead', 'error');
+      return false;
+    }
+  });
+
   const executePrint = async () => {
     if (!printRef.current) return;
     setSaving(true);
@@ -2843,30 +2955,53 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       // like Save & Download (it used to print without saving at all).
       const saved = await saveForOutput();
       if (!saved) return;
-      await withPreviewOnScreen(async () => {
-        try {
-          // v1.10.42 — Thermal + user hasn't opted out of direct print?
-          // Try the vector-HTML path first. If the browser blocks it
-          // (returned false), silently fall through to the PDF path so
-          // the user still gets a print — no surfaced error required.
-          if (isThermalPaper() && (getPrintSettings().thermalPrintMode || 'direct') === 'direct') {
-            const ok = await printThermalViaHtml();
-            if (ok) return;
-          }
-          const pdf = await buildPDF();
-          const blob = pdf.output('blob');
-          printViaIframe(blob);
-        } catch (err) {
-          console.error('Print failed', err);
-          toast('Print failed — try Download PDF instead', 'error');
-        }
-      });
-    } catch {
+      await printPreview();
+    } catch (err) {
+      console.error('Print failed', err);
       toast('Print failed — try Download PDF instead', 'error');
     } finally {
       setSaving(false);
     }
   };
+
+  // v1.10.77 (#86) - opened by the Dashboard's Print button: print once the
+  // preview has drawn, then go back to the Dashboard.
+  // The timer only raises a flag: the print itself runs on the next render,
+  // with the invoice loaded. (Calling the print from the timer used the first
+  // render's empty form: 'Bill must have an id'.)
+  const [printOnOpen, setPrintOnOpen] = useState(false);
+  const printOnOpenDone = useRef(false);
+  useEffect(() => {
+    if (!editingBill?._printOnOpen) return undefined;
+    const t = setTimeout(() => setPrintOnOpen(true), 1500);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!printOnOpen || printOnOpenDone.current) return;
+    printOnOpenDone.current = true;
+    // A saved invoice printed as it is: nothing in it is saved again (a full
+    // save would refresh its business details and options from today's
+    // settings); only the print count goes up on the stored copy.
+    (async () => {
+      setSaving(true);
+      try {
+        if (printRef.current && await printPreview()) {
+          const stored = (await getAllBills()).find((b) => b.id === editingBill.id);
+          if (stored) {
+            await saveBill({ ...stored, printedCount: (Number(stored.printedCount) || 0) + 1, lastPrintedAt: new Date().toISOString() }, { overwrite: true });
+          }
+        }
+      } catch (err) {
+        console.error('Print failed', err);
+      } finally {
+        setSaving(false);
+      }
+      clearDraft();
+      onBack();
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [printOnOpen]);
 
   const directPrint = async () => {
     if (!printRef.current) return;
@@ -2999,6 +3134,13 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
 
   return (
     <div className="generator-container">
+      {readOnlyDoc && (
+        <div className="notice notice-info" role="status" style={{ marginBottom: '0.75rem' }}>
+          {editingBill.convertedTo
+            ? `Converted to ${editingBill.convertedTo}. This copy is read-only; you can still download or print it.`
+            : 'This invoice is cancelled and read-only; you can still download or print it. Undo the cancel on the Dashboard to change it.'}
+        </div>
+      )}
       <div className="generator-toolbar">
         <div className="flex gap-2 items-center">
           <button className="btn btn-secondary" onClick={handleBack}><ArrowLeft size={18} /> Back</button>
@@ -4086,7 +4228,20 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 onAddRow={addItem}
               />
             ))}
-            <button className="btn btn-secondary mt-2" onClick={addItem}><Plus size={18} /> Add Item</button>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button className="btn btn-secondary mt-2" onClick={addItem}><Plus size={18} /> Add Item</button>
+              {!hasDeliveryCharge && (
+                <button type="button" className="btn btn-secondary mt-2" onClick={addDeliveryCharge}
+                  title="Adds a 'Delivery charges' line, taxed at the goods' GST rate (composite supply)">
+                  <Truck size={16} /> Delivery charges
+                </button>
+              )}
+              {hasDeliveryCharge && showGST && (
+                <span className="mt-2" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Delivery is taxed like the goods it ships with (composite supply), so it starts at the highest GST rate on this invoice. Change it if needed.
+                </span>
+              )}
+            </div>
 
             {/* v1.10.22 — invoice-level (whole-bill) discount. Sits below
                 the line items so it reads as "…and then take X off the

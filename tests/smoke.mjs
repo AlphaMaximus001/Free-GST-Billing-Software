@@ -63,6 +63,9 @@ async function cleanup(page) {
       await del('expenses');
       await del('receipts');
       await del('recurring');
+      await del('templates');
+      // v1.10.77 - a PIN this suite set must never stay on the user's app.
+      await fetch('/api/lock/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: null, currentPin: '13572468' }) });
       // The expense added through the form gets a generated id.
       const expenses = await (await fetch('/api/expenses')).json();
       await Promise.all((expenses || [])
@@ -992,14 +995,16 @@ try {
   const cancelledRow = await page.evaluate(() => {
     const row = [...document.querySelectorAll('tr')].find((r) => r.innerText.includes('SMOKE-CANCEL/9'));
     if (!row) return null;
+    // v1.10.77 (#86) - a cancelled row is read-only: a Cancelled badge with
+    // Undo instead of the status menu.
     const status = row.querySelector('select.status-select');
-    return { listed: true, status: status ? status.value : null };
+    return { listed: true, status: status ? status.value : (/Cancelled/i.test(row.innerText) ? 'cancelled' : null), menu: !!status };
   });
   check('#66 a cancelled invoice drops out of the sales totals',
     close(afterCancel.total, beforeCancel.total - 5000) && afterCancel.count === beforeCancel.count - 1,
     `total ${beforeCancel.total} -> ${afterCancel.total}`);
-  check('#66 the cancelled invoice is still listed, marked Cancelled',
-    cancelledRow?.listed === true && cancelledRow.status === 'cancelled', JSON.stringify(cancelledRow));
+  check('#66 the cancelled invoice is still listed, marked Cancelled, its status menu locked (#86)',
+    cancelledRow?.listed === true && cancelledRow.status === 'cancelled' && !cancelledRow.menu, JSON.stringify(cancelledRow));
   const cancelledStatus = await page.evaluate(async () =>
     (await (await fetch('/api/bills')).json()).find((b) => b.id === 'smoketest-cancel')?.status ?? null);
   check('#66 the invoice itself is kept, not deleted', cancelledStatus === 'cancelled', `status=${cancelledStatus}`);
@@ -1294,9 +1299,14 @@ try {
   // The danger window: a real multi-page PDF (the invoice is taller than one
   // page), with the page-1 seam below the bank-details block but above the
   // bottom of the signature block beside it.
-  const inWindow = (L) => !!(L && L.signature && L.blocks?.length
-    && L.total > L.fullHeight + 2
+  // v1.10.77 (#88): an invoice up to 6% over one page is scaled onto ONE page
+  // (onePage), so in some layouts every invoice of this shape fits one page and
+  // the break can no longer happen. A real multi-page case is preferred; the
+  // one-page outcome is accepted (nothing can be cut) and said so. Multi-page
+  // breaks are also checked by the 45-item Tally test below.
+  const atSeam = (L) => !!(L && L.signature && L.blocks?.length
     && L.blocks[0][1] < L.pageHeight && L.pageHeight < L.signature[1]);
+  const inWindow = (L) => atSeam(L) && !L.onePage && L.total > L.fullHeight + 2;
 
   const probe = await pdfLayout(1);
   let seam = null;
@@ -1304,20 +1314,26 @@ try {
     // Aim the seam just under the bank-details block: that leaves the most of
     // the invoice below it, which is what makes the PDF spill onto page 2.
     const k0 = Math.max(0, Math.floor((probe.pageHeight - 12 - probe.blocks[0][1]) / probe.rowHeight));
-    for (const k of [k0, k0 - 1, k0 + 1, k0 - 2]) {
+    // Wider than before: up to 6% over one page is now scaled onto one page,
+    // so the multi-page case needs a few more rows.
+    let squeezed = null;
+    for (const k of [k0, k0 + 1, k0 + 2, k0 + 3, k0 - 1, k0 - 2]) {
       if (k < 0) continue;
       const L = await pdfLayout(1 + k);
       if (inWindow(L)) { seam = { ...L, items: 1 + k }; break; }
+      if (!squeezed && atSeam(L) && L.onePage) squeezed = { ...L, items: 1 + k };
     }
+    if (!seam && squeezed) seam = squeezed;
   }
   check('ERR-024 test setup: the page seam lands inside the signature block (the case that broke)',
-    !!seam, seam ? `${seam.items} items, seam at ${Math.round(seam.pageHeight)}px, signature ${seam.signature.map(Math.round).join('-')}px`
+    !!seam, seam ? `${seam.items} items, seam at ${Math.round(seam.pageHeight)}px, signature ${seam.signature.map(Math.round).join('-')}px${seam.onePage ? ' (fits one page since v1.10.77)' : ''}`
       : `could not place it - probe ${JSON.stringify(probe && { H: probe.pageHeight, full: probe.fullHeight, total: probe.total, row: probe.rowHeight, sig: probe.signature, first: probe.blocks?.[0] })}`);
   if (seam) {
     const cutInto = seam.ends.filter((e) => seam.atoms.some(([a, b]) => e > a + 1 && e < b - 1));
     check('ERR-024 no PDF page ends inside the signature, stamp or any image',
-      seam.ends.length > 0 && cutInto.length === 0,
-      `page ends at ${seam.ends.map(Math.round).join(', ')}px${cutInto.length ? ` - CUTS THROUGH at ${cutInto.map(Math.round).join(', ')}` : ''}`);
+      (seam.onePage ? seam.ends.length === 0 : seam.ends.length > 0) && cutInto.length === 0,
+      seam.onePage ? 'one page, no page break at all'
+        : `page ends at ${seam.ends.map(Math.round).join(', ')}px${cutInto.length ? ` - CUTS THROUGH at ${cutInto.map(Math.round).join(', ')}` : ''}`);
   }
 
   // ---- v1.10.73: Boxed grid and Tally style designs ----------------------
@@ -1492,6 +1508,101 @@ try {
       !!quo76?.convertedTo && (await stock76()) === 30, `convertedTo=${quo76?.convertedTo} stock=${await stock76()}`);
     await toDashboard76();
     check('v76 #83 its Convert button is gone', (await quoRow().locator('button[title="Convert to Tax Invoice"]').count()) === 0);
+  }
+
+  // ---- v1.10.77: issues #84-#89 --------------------------------------------
+  {
+    const get77 = (url) => page.evaluate(async (url) => { const r = await fetch(url); return { status: r.status, json: await r.json().catch(() => null) }; }, url);
+    const post77 = (url, body) => page.evaluate(async ({ url, body }) => { const r = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); return { status: r.status, json: await r.json().catch(() => null) }; }, { url, body });
+    const toView77 = async (view) => {
+      await page.evaluate((v) => { sessionStorage.removeItem('gst_editingBill'); sessionStorage.removeItem('gst_invoiceDraft'); sessionStorage.setItem('gst_currentView', v); }, view);
+      await page.reload({ waitUntil: 'networkidle' });
+      await sleep(2500);
+      await dismissFirstRun(page);
+    };
+
+    // #84 optional PIN lock
+    await post77('/api/lock/set', { pin: '13572468' });
+    await page.evaluate(() => sessionStorage.removeItem('gst_unlocked'));
+    await page.reload({ waitUntil: 'networkidle' });
+    await sleep(2000);
+    const locked = await page.getByText('Enter your PIN').isVisible().catch(() => false);
+    const metaRefused = (await get77('/api/meta/appLock')).status === 403;
+    await page.getByLabel('8 digit PIN').fill('13572468').catch(() => {});
+    await sleep(2500);
+    const unlocked = !(await page.getByText('Enter your PIN').count()) && (await page.locator('.sidebar').count()) > 0;
+    const off = (await post77('/api/lock/set', { pin: null, currentPin: '13572468' })).status === 200;
+    check('v77 #84 PIN lock: asked on open, opens with the right PIN, hash not readable, turns off', locked && unlocked && metaRefused && off,
+      JSON.stringify({ locked, unlocked, metaRefused, off }));
+    await dismissFirstRun(page);
+
+    // #84 settings are kept in the data folder too, so a browser that loses
+    // its storage gets them back (no welcome wizard, same Region and Print).
+    const prefs = (await get77('/api/local-prefs')).json?.value || {};
+    check('v77 #84 settings are mirrored to the data folder', typeof prefs === 'object' && 'gst_printSettings' in prefs, Object.keys(prefs).join(','));
+
+    // Critical: opening a saved invoice must keep its own terms, even when a
+    // terms template exists (it used to be replaced by the first template).
+    await post77('/api/templates', { id: 'smoketest-tpl77', name: 'Smoke template', content: '<p>SMOKE-TEMPLATE-TERMS</p>' });
+    const prof77 = (await get77('/api/profile')).json;
+    const today77 = new Date().toISOString().slice(0, 10);
+    const bill77 = {
+      id: 'smoketest-terms77', invoiceNumber: 'smoketest-terms77', clientName: 'Smoke Test Client', invoiceDate: today77, invoiceType: 'tax-invoice',
+      status: 'unpaid', totalAmount: 1180, paidAmount: 0, payments: [],
+      data: { profile: prof77, client: { name: 'Smoke Test Client', state: prof77.state, country: 'India' }, details: { invoiceNumber: 'smoketest-terms77', invoiceDate: today77 },
+        invoiceType: 'tax-invoice', invoiceOptions: {}, totals: { total: 1180 }, customTerms: '<p>SMOKE-SAVED-TERMS</p>', stockApplied: {},
+        items: [{ id: 'l1', name: 'Smoke item', hsn: '9983', quantity: 1, rate: 1000, taxPercent: 18, discount: 0, unit: 'Nos' }] },
+    };
+    await post77('/api/bills', bill77);
+    await page.evaluate((b) => { sessionStorage.setItem('gst_editingBill', JSON.stringify(b)); sessionStorage.setItem('gst_currentView', 'new'); sessionStorage.removeItem('gst_invoiceDraft'); }, bill77);
+    await page.reload({ waitUntil: 'networkidle' });
+    await sleep(3500);
+    await dismissFirstRun(page);
+    const termsText = await page.locator('#invoice-preview').innerText().catch(() => '');
+    check('v77 opening a saved invoice keeps its own terms (not the first template)',
+      termsText.includes('SMOKE-SAVED-TERMS') && !termsText.includes('SMOKE-TEMPLATE-TERMS'));
+
+    // #87 delivery charges
+    await toView77('new');
+    await page.getByRole('button', { name: /Delivery charges/ }).first().click();
+    await sleep(800);
+    check('v77 #87 Delivery charges adds a line with SAC 996812',
+      (await page.locator('input[value="Delivery charges"]').count()) > 0 && (await page.locator('input[value="996812"]').count()) > 0);
+
+    // #88 a short invoice is one page in every design
+    await openDraft(seamDraft(1));
+    await pickStyle('Tally style');
+    const T77 = await pdfLayout(1);
+    await pickStyle('Boxed grid');
+    const B77 = await pdfLayout(1);
+    await pickStyle('Classic');
+    check('v77 #88 a one-item invoice is one PDF page in Tally style and Boxed grid',
+      !!T77?.onePage && !!B77?.onePage, JSON.stringify({ tally: T77?.onePage, boxed: B77?.onePage }));
+
+    // #85 stock report with Excel export
+    await toView77('reports');
+    await page.getByRole('button', { name: 'Stock', exact: true }).click();
+    await sleep(2000);
+    let xlsxOk = false;
+    try {
+      const [d] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }), page.getByRole('button', { name: 'Excel' }).first().click()]);
+      xlsxOk = /\.xlsx$/.test(d.suggestedFilename());
+    } catch { /* judged below */ }
+    check('v77 #85 Reports > Stock shows the closing stock value and downloads Excel',
+      (await page.getByText('Total stock value').count()) > 0 && xlsxOk);
+
+    // #85 bulk product edit
+    await post77('/api/products', { id: 'smoketest-bulk77', name: 'Smoke Bulk Item', hsn: '9608', sellingPrice: 10, rate: 10, taxPercent: 18, unit: 'Nos', stock: 7 });
+    await toView77('inventory');
+    await page.getByRole('button', { name: 'Bulk edit' }).click();
+    await sleep(800);
+    await page.getByLabel('Selling price of Smoke Bulk Item').fill('12.5');
+    await page.getByRole('button', { name: /Save changes \(1\)/ }).click();
+    await sleep(2500);
+    const bulk77 = (await get77('/api/products')).json.find((x) => x.id === 'smoketest-bulk77');
+    check('v77 #85 Bulk edit saves the changed price (and rate) and leaves stock alone',
+      bulk77?.sellingPrice === 12.5 && bulk77?.rate === 12.5 && bulk77?.stock === 7, JSON.stringify(bulk77 && { s: bulk77.sellingPrice, r: bulk77.rate, st: bulk77.stock }));
   }
 
   // Put the real business details back.

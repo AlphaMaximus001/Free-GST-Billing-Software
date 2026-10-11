@@ -38,7 +38,15 @@ import {
   stockEffect,
   appliedStock,
   stockDelta,
+  splitLineTax,
+  markUnpaidPatch,
+  findSameBusiness,
+  splitNumberedTerms,
+  deliveryChargeLine,
 } from '../src/utils.js';
+import { buildXlsx, colName } from '../src/utils/xlsx.js';
+import { bulkRowToProduct, closingStock, stockValueOf } from '../src/utils/products.js';
+import { unzipSync, strFromU8 } from 'fflate';
 import {
   compute44AE,
   computeSurcharge,
@@ -747,6 +755,102 @@ console.log('\n[V76] #80 stock follows the invoice');
   eq(stockDelta(appliedStock(oldCancelledInv), stockEffect(items(10), 'tax-invoice', 'unpaid')), { pen: -10 }, 'Un-cancelling an old cancelled invoice takes its stock out again');
   const challan = { status: 'unpaid', data: { items: items(10), invoiceType: 'delivery-challan', stockApplied: { pen: -10 } } };
   eq(stockDelta(appliedStock(challan), stockEffect(items(10), 'tax-invoice', 'unpaid')), {}, 'A challan converted to an invoice: the invoice takes over its stock, nothing moves twice');
+}
+
+console.log('\n[V77] #89 CGST and SGST are equal halves in the GST returns');
+{
+  // 25 lines at 5% whose tax lands on an odd paisa (the reporter's HSN summary drifted by ₹0.25).
+  const lines = Array.from({ length: 25 }, (_, i) => ({ quantity: 1, rate: 20.3 + i * 0.2, taxPercent: 5, discount: 0 }));
+  const sum = lines.map((l) => splitLineTax(l, false)).reduce((a, x) => ({ c: a.c + x.cgst, s: a.s + x.sgst }), { c: 0, s: 0 });
+  eq(Math.round(sum.c * 100), Math.round(sum.s * 100), 'Over 25 odd-paisa lines CGST and SGST stay exactly equal');
+  // And they add up to what one invoice with those 25 lines prints (no paisa drift per line).
+  const many = computeInvoiceTotals({ items: lines, profile: { country: 'India', state: 'Punjab' }, client: { state: 'Punjab' }, details: { placeOfSupply: 'Punjab' }, showGST: true });
+  eq([Math.round(sum.c * 100) / 100, Math.round(sum.s * 100) / 100], [many.cgst, many.sgst], '25 lines: GST return CGST and SGST equal the invoice CGST and SGST');
+  const one = { quantity: 9, rate: 232.804, taxPercent: 5, discount: 0 };
+  const inv = computeInvoiceTotals({ items: [one], profile: { country: 'India', state: 'Punjab' }, client: { state: 'Punjab' }, details: { placeOfSupply: 'Punjab' }, showGST: true });
+  const ln = splitLineTax(one, false);
+  eq([Math.round(ln.cgst * 100) / 100, Math.round(ln.sgst * 100) / 100], [inv.cgst, inv.sgst], 'A line splits the same way the invoice prints it');
+  const ut = splitLineTax(one, false, false, true);
+  eq([ut.sgst, ut.utgst === ln.cgst], [0, true], 'UT without a legislature: CGST + UTGST, no SGST');
+  approx(splitLineTax(one, true).igst, 104.76, 'Inter-state: all IGST');
+  // 300 lines (fixed pseudo-random): the half paisa always rounds up, and
+  // round() and toFixed(2) agree, so screen, CSV and JSON show the same CGST.
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const big = Array.from({ length: 300 }, () => ({ quantity: 1 + Math.floor(rnd() * 9), rate: Math.round(rnd() * 50000) / 100, taxPercent: [5, 12, 18, 28][Math.floor(rnd() * 4)], discount: 0 }));
+  const raw = big.reduce((a, l) => a + splitLineTax(l, false).cgst, 0);
+  const paise = big.reduce((a, l) => a + Math.round(splitLineTax(l, true).igst * 100), 0);
+  eq([Math.round(raw * 100) / 100, Number(raw.toFixed(2))], [Math.ceil(paise / 2) / 100, Math.ceil(paise / 2) / 100], '300 lines: CGST is half the tax with the half paisa rounded up, same by round() and toFixed(2)');
+}
+
+console.log('\n[V77] #86 choosing Unpaid takes back the "Paid" payment');
+{
+  const bill = { totalAmount: 2778, payments: [] };
+  const paid = { ...bill, ...markPaidPatch(bill) };
+  eq(paid.payments.length === 1 && paid.payments[0].auto === true, true, 'Choosing Paid records one payment, marked as automatic');
+  eq(markUnpaidPatch(paid), { payments: [], paidAmount: 0, status: 'unpaid' }, 'Choosing Unpaid removes it: nothing paid, reminder shows again');
+  const legacy = { totalAmount: 2778, payments: [{ amount: 2778, note: 'Marked paid (bulk)', mode: 'other' }] };
+  eq(markUnpaidPatch(legacy).paidAmount, 0, 'Also for a "Marked paid" payment saved before v1.10.77');
+  const withReceipt = { totalAmount: 1000, payments: [{ amount: 400, receiptNo: 'RCT/1', mode: 'upi' }, { amount: 600, note: 'Marked paid', auto: true }] };
+  eq(markUnpaidPatch(withReceipt).paidAmount === 400 && markUnpaidPatch(withReceipt).status, 'partial', 'A payment with a receipt is kept, so it becomes Partial');
+  const edited = { totalAmount: 500, payments: [{ amount: 500, note: 'Marked paid', mode: 'other', auto: false }] };
+  eq(markUnpaidPatch(edited).paidAmount, 500, 'A Marked paid payment you edited is yours now: kept');
+  const typed = { totalAmount: 500, payments: [{ amount: 500, note: 'Marked paid by cheque', mode: 'cheque' }] };
+  eq(markUnpaidPatch(typed).paidAmount, 500, 'A payment you noted "Marked paid" yourself (not mode other) is kept');
+}
+
+console.log('\n[V77] #84 duplicate business profiles, terms line breaks');
+{
+  const saved = [{ id: 'a', businessName: 'Anant Exports', gstin: '09AABCU9355J1ZS' }, { id: 'b', businessName: 'Kaveri Stationers', gstin: '' }];
+  eq(findSameBusiness(saved, { businessName: 'ANANT EXPORTS PVT', gstin: '09aabcu9355j1zs' })?.id, 'a', 'Same GSTIN under another spelling is the same business');
+  eq(findSameBusiness(saved, { businessName: '  kaveri   stationers ', gstin: '' })?.id, 'b', 'No GSTIN: the same name (case and spaces ignored)');
+  eq(findSameBusiness(saved, { businessName: 'Anant Exports', gstin: '27AAAAA0000A1Z5' }), null, 'Same name but a different GSTIN is a different business');
+  eq(findSameBusiness(saved, { businessName: 'Anant Exports', gstin: '' }), null, 'No GSTIN never overwrites a saved profile that has one');
+  eq(findSameBusiness(saved, { businessName: 'Anant Exports', gstin: '09AABCU9355J1ZT' }, saved[0])?.id, 'a', 'Loaded profile with a corrected GSTIN typo: that profile is updated');
+  eq(splitNumberedTerms('* Warranty by the maker.\n* Subject to Delhi only.'), '* Warranty by the maker.<br />* Subject to Delhi only.', 'Plain-text terms keep their line breaks');
+  eq(splitNumberedTerms('<p>a</p>\n<p>b</p>'), '<p>a</p>\n<p>b</p>', 'Formatted terms are left as they are');
+}
+
+console.log('\n[V77] #87 delivery charges, #85 Excel export');
+{
+  const line = deliveryChargeLine([{ taxPercent: 5 }, { taxPercent: 18 }, { taxPercent: 12, isCharge: true }], 150);
+  eq([line.name, line.hsn, line.rate, line.taxPercent, line.isCharge, line.productId], ['Delivery charges', '996812', 150, 18, true, undefined], 'Delivery charges: SAC 996812, taxed at the highest goods rate, never stock');
+  eq(deliveryChargeLine([]).taxPercent, 18, 'With no goods yet it starts at 18%');
+  const t = computeInvoiceTotals({ items: [{ quantity: 2, rate: 500, taxPercent: 12 }, deliveryChargeLine([{ taxPercent: 12 }], 100)],
+    profile: { country: 'India', state: 'Punjab' }, client: { state: 'Punjab' }, details: { placeOfSupply: 'Punjab' }, showGST: true });
+  approx(t.total, 1232, 'It is in the invoice total with its GST (1,000 + 100 + 12%)');
+
+  eq([colName(0), colName(25), colName(26), colName(701)], ['A', 'Z', 'AA', 'ZZ'], 'Excel column letters');
+  const files = unzipSync(buildXlsx([['Party', 'Total'], ['A & B <Traders>', 1234.5], ['=SUM(1)', 0]], 'Party Outstanding'));
+  const sheet = strFromU8(files['xl/worksheets/sheet1.xml']);
+  eq(['[Content_Types].xml', '_rels/.rels', 'xl/workbook.xml', 'xl/_rels/workbook.xml.rels', 'xl/styles.xml', 'xl/worksheets/sheet1.xml'].every((f) => files[f]), true, 'The .xlsx has every part Excel needs');
+  eq(sheet.includes('<c r="B2"><v>1234.5</v></c>'), true, 'Numbers are stored as numbers (Excel can total them)');
+  eq(sheet.includes('A &amp; B &lt;Traders&gt;'), true, 'Text is escaped');
+  eq(sheet.includes('<t xml:space="preserve">=SUM(1)</t>'), true, 'Text that looks like a formula stays text, never a formula');
+  eq(sheet.includes('<c r="A1" t="inlineStr" s="1">'), true, 'Header row is bold');
+}
+
+console.log('\n[V77] #85 bulk product edit, closing stock');
+{
+  const pen = { id: 'p1', name: 'Pen', hsn: '9608', purchasePrice: 5, sellingPrice: 10, rate: 10, taxPercent: 18, unit: 'Nos', stock: 50 };
+  const ok = bulkRowToProduct(pen, { sellingPrice: '12', stock: '40' });
+  eq([ok.product.sellingPrice, ok.product.rate, ok.product.stock, ok.product.id, ok.product.hsn], [12, 12, 40, 'p1', '9608'], 'Bulk edit: typed numbers saved as numbers, selling price mirrored to rate, id kept');
+  eq(!!bulkRowToProduct(pen, { name: '  ' }).error, true, 'Bulk edit: a blank name is refused');
+  eq(!!bulkRowToProduct(pen, { taxPercent: '150' }).error, true, 'Bulk edit: GST % over 100 is refused');
+  eq(!!bulkRowToProduct(pen, { stock: 'abc' }).error, true, 'Bulk edit: stock that is not a number is refused');
+  eq(bulkRowToProduct({ id: 'x', name: 'Old', rate: 7 }, { hsn: '1' }).product.sellingPrice, 7, 'Bulk edit: an old product with only rate keeps its price');
+
+  const products = [{ id: 'p1', name: 'Pen', stock: 50 }, { id: 'p2', name: 'Ink', stock: 3 }];
+  const bills = [
+    { invoiceDate: '2026-09-20', status: 'paid', data: { stockApplied: { p1: -10 } } },
+    { invoiceDate: '2026-10-05', status: 'paid', data: { stockApplied: { p1: -5, p2: -1 } } },
+    { invoiceDate: '2026-10-06', status: 'cancelled', data: { stockApplied: {} } },
+  ];
+  const purchases = [{ date: '2026-10-02', items: [{ name: ' pen ', quantity: 20 }] }, { date: '2026-09-01', items: [{ name: 'Ink', quantity: 4 }] }];
+  const sep = closingStock(products, bills, purchases, '2026-09-30');
+  eq([sep.get('p1'), sep.get('p2')], [35, 4], 'Closing stock 30 Sep: later purchases taken off, later sales added back (50 - 20 + 5; 3 + 1)');
+  eq(closingStock(products, bills, purchases, '2026-10-31').get('p1'), 50, 'Closing stock today equals current stock');
+  eq(stockValueOf({ purchasePrice: 5, sellingPrice: 10 }, 35), { price: 5, value: 175, atCost: true }, 'Stock is valued at purchase price');
+  eq(stockValueOf({ sellingPrice: 10 }, 3), { price: 10, value: 30, atCost: false }, 'No purchase price: valued at selling price, marked');
 }
 
 console.log('\n────────────────────────────────────────');

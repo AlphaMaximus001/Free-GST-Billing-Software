@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { ShoppingCart, Plus, Edit3, Trash2, Search, X, Save, Download, Wand2, FileText, Eye } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllPurchases, savePurchase, deletePurchase, getAllProducts, saveProduct, getProfile } from '../store';
-import { formatCurrency, calculateRoundOff, getFYOptions, belongsToProfile, isUnassignedToBusiness, toCsvLine, isInterstateSupply } from '../utils';
+import { formatCurrency, calculateRoundOff, getFYOptions, belongsToProfile, isUnassignedToBusiness, isInterstateSupply, localToday } from '../utils';
+import TableExport from './TableExport';
 import UnassignedBanner from './UnassignedBanner';
 import { getPrintSettings } from '../utils/printSettings';
 import { toast } from './Toast';
@@ -43,12 +44,6 @@ const PAYMENT_STATUS_COLORS = {
 // we couldn't reclaim ITC on the cess in GSTR-3B Table 4(A).
 const emptyItem = { name: '', hsn: '', quantity: 1, rate: 0, taxPercent: 18, cessPercent: 0 };
 
-// v1.10.74 - today's LOCAL date (toISOString is UTC, so before 05:30 IST it
-// gave yesterday). Called when the form opens, not once at load.
-const localToday = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
 
 const emptyForm = {
   date: '', // v1.10.74 - set to localToday() when the form opens
@@ -803,24 +798,21 @@ export default function PurchaseBills() {
     setForm(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
   };
 
-  const exportCSV = () => {
-    if (filtered.length === 0) { toast('No purchases to export', 'warning'); return; }
-    // v1.10.74 - Cess and Inter-state columns; Tax never included cess.
-    const headers = ['Date', 'Supplier', 'GSTIN', 'Invoice No', 'Taxable Amount', 'Tax (excl. cess)', 'Cess', 'Inter-state', 'Round-off', 'Total', 'Status', 'Note'];
-    // v1.10.66 (#63) — toCsvLine neutralises formula-like text and quotes
-    // line breaks, which the old local escape let split a row in two.
-    const lines = [toCsvLine(headers)];
-    filtered.forEach(p => {
+  // v1.10.77 (#85) - the purchase register as CSV, Excel or Print / PDF, with
+  // a total row. v1.10.74 columns kept: Cess and Inter-state; Tax never
+  // included cess.
+  const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+  const registerRows = (() => {
+    if (!filtered.length) return [];
+    const sum = { taxable: 0, tax: 0, cess: 0, roundOff: 0, finalTotal: 0 };
+    const rows = [...filtered].sort((x, y) => String(x.date || '').localeCompare(String(y.date || ''))).map(p => {
       const t = calcPurchaseTotal(p.items, !!p.applyRoundOff);
-      lines.push(toCsvLine([p.date, p.supplierName, p.supplierGstin, p.invoiceNumber, t.taxable.toFixed(2), t.tax.toFixed(2), t.cess.toFixed(2), p.interstate ? 'Y' : 'N', t.roundOff.toFixed(2), t.finalTotal.toFixed(2), p.paymentStatus, p.note]));
+      for (const k of Object.keys(sum)) sum[k] += Number(t[k]) || 0;
+      return [p.date || '', p.supplierName || '', p.supplierGstin || '', p.invoiceNumber || '', r2(t.taxable), r2(t.tax), r2(t.cess),
+        p.interstate ? 'Y' : 'N', r2(t.roundOff), r2(t.finalTotal), p.paymentStatus || '', p.note || ''];
     });
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'purchases.csv'; a.click();
-    URL.revokeObjectURL(url);
-    toast('Purchases CSV downloaded', 'success');
-  };
+    return [...rows, ['Total', '', '', '', r2(sum.taxable), r2(sum.tax), r2(sum.cess), '', r2(sum.roundOff), r2(sum.finalTotal), '', '']];
+  })();
 
   const formTotals = calcPurchaseTotal(form.items, form.applyRoundOff);
 
@@ -838,12 +830,11 @@ export default function PurchaseBills() {
               <li><strong>Import from image (OCR)</strong> — snap the supplier's invoice with your phone. The app reads the supplier, GSTIN, invoice number, date, total and the item lines it can find, all on your computer. Check every field before saving.</li>
               <li><strong>Interstate toggle</strong> — flip ON when the supplier is in a different state (they charged IGST) so ITC routes correctly.</li>
               <li><strong>Payment status</strong> — Unpaid / Partial / Paid drives the "amount payable to suppliers" report.</li>
-              <li><strong>Export CSV</strong> — hand to your CA at return time.</li>
+              <li><strong>Print / PDF</strong>, <strong>Excel</strong> and <strong>CSV</strong> above the list: the purchase register with totals, for your CA at return time.</li>
             </ul>
           </HelpButton>
         </div>
         <div className="flex gap-2">
-          <button className="btn btn-secondary" onClick={exportCSV}><Download size={16} /> Export CSV</button>
           <button className="btn btn-secondary" onClick={() => setShowOCR(true)} title="Extract fields from a bill photo/scan">
             <Wand2 size={16} /> Import from image (OCR)
           </button>
@@ -1194,7 +1185,13 @@ export default function PurchaseBills() {
 
       {/* Purchase Table */}
       <div className="glass-panel">
-        <div className="table-header"><h3>Purchase Records</h3></div>
+        <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+          <h3>Purchase Records</h3>
+          <TableExport title="Purchase register" filename="Purchases" landscape
+            subtitle={ownerProfile?.businessName || ''}
+            headers={['Date', 'Supplier', 'GSTIN', 'Invoice No', 'Taxable Amount', 'Tax (excl. cess)', 'Cess', 'Inter-state', 'Round-off', 'Total', 'Status', 'Note']}
+            rows={registerRows} />
+        </div>
         {filtered.length === 0 ? (
           <div className="empty-state">
             <ShoppingCart size={48} />

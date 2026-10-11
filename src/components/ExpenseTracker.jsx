@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Wallet, Plus, Edit3, Trash2, Search, X, Save, Download, Calendar } from 'lucide-react';
+import { Wallet, Plus, Edit3, Trash2, Search, X, Save, Calendar } from 'lucide-react';
 import { getAllExpenses, saveExpense, deleteExpense, getProfile } from '../store';
-import { formatCurrency, getFYOptions, belongsToProfile, isUnassignedToBusiness, toCsvLine } from '../utils';
+import { formatCurrency, getFYOptions, belongsToProfile, isUnassignedToBusiness } from '../utils';
 import UnassignedBanner from './UnassignedBanner';
 import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
 import HelpButton from './HelpButton';
+import TableExport from './TableExport';
 
 // Each category is tagged with its ITR (Income Tax Return) head so the
 // v1.7.0+ ITR Filing Summary can auto-aggregate expenses under the correct
@@ -232,22 +233,21 @@ export default function ExpenseTracker() {
     return { ...next, gstAmount: Math.round(gst * 100) / 100 };
   });
 
-  const exportCSV = () => {
-    if (filtered.length === 0) { toast('No expenses to export', 'warning'); return; }
-    const headers = ['Date', 'Description', 'Category', 'Amount', 'GST Amount', 'GST %', 'Vendor', 'Vendor GSTIN', 'Invoice No', 'Payment Mode', 'Inter-state', 'Note']; // v1.10.74 - Inter-state (Y/N) added
-    // v1.10.66 (#63) — toCsvLine neutralises formula-like text and quotes
-    // line breaks, which the old local escape let split a row in two.
-    const lines = [toCsvLine(headers)];
-    filtered.forEach(e => {
-      lines.push(toCsvLine([e.date, e.description, e.category, e.amount, e.gstAmount || 0, e.gstPercent || 0, e.vendorName, e.vendorGstin, e.invoiceNo, e.paymentMode, e.interstate ? 'Y' : 'N', e.note]));
-    });
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'expenses.csv'; a.click();
-    URL.revokeObjectURL(url);
-    toast('Expenses CSV downloaded', 'success');
-  };
+  // v1.10.77 (#85) - the expense statement: the list as filtered, oldest
+  // first, with a total row; as CSV, Excel or Print / PDF. Same columns as the
+  // old CSV, so a CA's sheet keeps working.
+  const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+  const statementRows = filtered.length ? [
+    ...[...filtered].sort((x, y) => String(x.date || '').localeCompare(String(y.date || ''))).map(x => [
+      x.date || '', x.description || '', x.category || '', r2(x.amount), r2(x.gstAmount), Number(x.gstPercent) || 0,
+      x.vendorName || '', x.vendorGstin || '', x.invoiceNo || '', x.paymentMode || '', x.interstate ? 'Y' : 'N', x.note || '']),
+    ['Total', '', '', r2(totalAmount), r2(totalGST), '', '', '', '', '', '', ''],
+  ] : [];
+  const statementPeriod = [
+    fyOptions.find(f => f.value === fyFilter)?.label || 'all years',
+    categoryFilter !== 'all' ? categoryFilter : '',
+    search.trim() ? `matching "${search.trim()}"` : '',
+  ].filter(Boolean).join(', ');
 
   return (
     <div className="dashboard-container">
@@ -262,12 +262,11 @@ export default function ExpenseTracker() {
               <li>For costs that are not stock: rent, electricity, internet, software, travel, fees.</li>
               <li><strong>Amount</strong> is what you paid, including GST. Enter the <strong>GST %</strong> and the GST inside it is worked out and counted as input tax credit.</li>
               <li>Tick <strong>Inter-state expense</strong> when the vendor charged IGST.</li>
-              <li><strong>Export CSV</strong> gives your CA the list for the year shown.</li>
+              <li><strong>Print / PDF</strong>, <strong>Excel</strong> and <strong>CSV</strong> above the list give your CA the expense statement for the year, category and search shown, with a total.</li>
             </ul>
           </HelpButton>
         </div>
         <div className="flex gap-2">
-          <button className="btn btn-secondary" onClick={exportCSV}><Download size={16} /> Export CSV</button>
           <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> Add Expense</button>
         </div>
       </div>
@@ -402,7 +401,13 @@ export default function ExpenseTracker() {
 
       {/* Expense Table */}
       <div className="glass-panel">
-        <div className="table-header"><h3>Expense Records</h3></div>
+        <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+          <h3>Expense Records</h3>
+          <TableExport title="Expense statement" filename={`Expenses-${statementPeriod}`} landscape
+            subtitle={[ownerProfile?.businessName, statementPeriod].filter(Boolean).join(', ')}
+            headers={['Date', 'Description', 'Category', 'Amount', 'GST Amount', 'GST %', 'Vendor', 'Vendor GSTIN', 'Invoice No', 'Payment Mode', 'Inter-state', 'Note']}
+            rows={statementRows} />
+        </div>
         {filtered.length === 0 ? (
           <div className="empty-state">
             <Wallet size={48} />

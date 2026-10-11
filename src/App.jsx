@@ -374,7 +374,9 @@ function App() {
 
   useEffect(() => {
     if (editingBill) {
-      sessionStorage.setItem('gst_editingBill', JSON.stringify(editingBill));
+      // _printOnOpen is a one-shot request; a refresh must not print again.
+      const { _printOnOpen, ...toKeep } = editingBill;
+      sessionStorage.setItem('gst_editingBill', JSON.stringify(toKeep));
     } else {
       sessionStorage.removeItem('gst_editingBill');
     }
@@ -431,6 +433,15 @@ function App() {
   // v1.10.76 - a fresh editor for every invoice opened, so nothing (such as
   // the stock record of the last invoice) carries over to the next one.
   const [editorKey, setEditorKey] = useState(0);
+  // v1.10.77 (#84) - sidebar auto-hide (desktop): a slim strip of icons that
+  // opens over the page when pointed at, for more room on small screens.
+  const [sidebarAutoHide, setSidebarAutoHide] = useState(() => {
+    try { return localStorage.getItem('freegstbill_sidebarAutoHide') === '1'; } catch { return false; }
+  });
+  const toggleSidebarAutoHide = (on) => {
+    setSidebarAutoHide(on);
+    try { localStorage.setItem('freegstbill_sidebarAutoHide', on ? '1' : '0'); } catch { /* private mode */ }
+  };
   const handleNewInvoice = () => {
     setEditorKey((k) => k + 1);
     sessionStorage.removeItem('gst_invoiceDraft');
@@ -442,6 +453,16 @@ function App() {
     setEditorKey((k) => k + 1);
     sessionStorage.removeItem('gst_invoiceDraft');
     setEditingBill(bill);
+    setCurrentView('new');
+  };
+
+  // v1.10.77 (#86) - Print from the Dashboard row: opens the invoice just long
+  // enough to build the same PDF the invoice screen prints (same pages, HD),
+  // prints it, and comes back.
+  const handlePrintInvoice = (bill) => {
+    setEditorKey((k) => k + 1);
+    sessionStorage.removeItem('gst_invoiceDraft');
+    setEditingBill({ ...bill, _printOnOpen: true });
     setCurrentView('new');
   };
 
@@ -756,7 +777,7 @@ function App() {
   })();
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout${sidebarAutoHide ? ' sidebar-autohide' : ''}`}>
       {showWizard && <SetupWizard onClose={() => setShowWizard(false)} />}
       {showResumeSetupPill && (
         <button type="button"
@@ -795,6 +816,10 @@ function App() {
             <p className="sidebar-subtitle">by DiceCodes</p>
           </div>
         </div>
+        <label className="sidebar-autohide-toggle" title="Shrink this menu to icons; it opens when you point at it">
+          <input type="checkbox" checked={sidebarAutoHide} onChange={(e) => toggleSidebarAutoHide(e.target.checked)} />
+          Auto-hide menu
+        </label>
 
         <div className="profile-switcher" ref={profileMenuRef} style={{ position: 'relative' }}>
           <div className="profile-switcher-row">
@@ -953,7 +978,7 @@ function App() {
       <div className="main-content">
         {currentView !== 'new' && <StarBanner />}
         {currentView === 'dashboard' && (
-          <Dashboard onNew={handleNewInvoice} onEdit={handleEditInvoice} onDuplicate={handleDuplicateInvoice} onConvert={handleConvertToInvoice} onOpenProducts={() => setCurrentView('inventory')} onOpenSettings={() => setCurrentView('settings')} onOpenGuide={openDocs} onOpenSupport={() => setCurrentView('support')} activeProfile={profile} />
+          <Dashboard onNew={handleNewInvoice} onEdit={handleEditInvoice} onPrint={handlePrintInvoice} onDuplicate={handleDuplicateInvoice} onConvert={handleConvertToInvoice} onOpenProducts={() => setCurrentView('inventory')} onOpenSettings={() => setCurrentView('settings')} onOpenGuide={openDocs} onOpenSupport={() => setCurrentView('support')} activeProfile={profile} />
         )}
         {currentView === 'new' && (
           <InvoiceGenerator

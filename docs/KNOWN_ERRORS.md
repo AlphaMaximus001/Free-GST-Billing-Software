@@ -720,6 +720,119 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-048 - Welcome wizard and Region came back after a restart
+
+**Version:** since the wizard was added · fixed in v1.10.77
+**Reported by:** @sangwanmail-eng (#84 items 1 and 4)
+
+**Symptom** - the "Welcome to Free GST Billing" wizard appeared again and
+again, and Region set to India came back as Both / Auto after restarting.
+
+**Cause** - these settings lived only in the browser's localStorage. Some
+browsers, cleaners and "clear data on exit" settings wipe it, and every
+wiped setting fell back to its first-run default.
+
+**Rule** - a setting the user chose must also live in the data folder.
+Browser storage is a cache, never the only copy.
+
+**Guard** - `src/utils/prefsMirror.js` mirrors the listed keys to
+`data/local-prefs.json` (only after a successful restore, merging only the
+keys it changed) and restores missing ones before the first render;
+smoke check "v77 #84 settings are mirrored to the data folder".
+
+---
+
+## ERR-047 - A converted invoice showed Paid; Paid → Unpaid kept the payment
+
+**Version:** since conversion was added · fixed in v1.10.77
+**Reported by:** @sangwanmail-eng (#86)
+
+**Symptom** - converting a quotation or proforma gave a tax invoice already
+marked Paid. Changing a Paid invoice to Unpaid left the amount in the Paid
+column and no Send reminder button.
+
+**Cause** - conversion and Duplicate copied the source's payments and print
+count into the new invoice. "Unpaid" changed only the status label; the
+payment that "Mark paid" had added stayed.
+
+**Rule** - a new document (duplicate or conversion) starts with no payments
+and no print history. A status change must change the money behind it:
+`markUnpaidPatch` removes the payments "Mark paid" added and recomputes the
+status from what is left.
+
+**Guard** - unit tests "[V77] #86" in `scripts/tax-test.mjs`.
+
+---
+
+## ERR-046 - Opening a saved invoice replaced its terms with the first template
+
+**Version:** since terms templates were added · fixed in v1.10.77
+**Reported by:** found while testing #88
+
+**Symptom** - open a saved invoice that had its own Terms & Conditions: the
+preview showed the first terms template instead, and auto-save wrote that
+over the invoice's real terms. A restored draft lost its terms too.
+
+**Cause** - the template loader filled the terms whenever none was
+*selected*, and an opened invoice never has one selected (its terms are free
+text). It ran for every invoice, not only new ones.
+
+**Rule** - defaults fill only a NEW, BLANK document. Anything opened from a
+saved invoice or a draft keeps what it has. Same for display options: a
+restored draft's options win over the saved defaults.
+
+**Guard** - `blankNewInvoice` in InvoiceGenerator.jsx; smoke check "v77
+opening a saved invoice keeps its own terms (not the first template)".
+
+---
+
+## ERR-045 - Tally style PDF went onto 2 pages although the preview fitted one
+
+**Version:** since v1.10.73 · fixed in v1.10.77
+**Reported by:** @Mindfulbrain17 (#88)
+
+**Symptom** - the preview showed the whole invoice on one A4 page; the
+downloaded PDF put the terms, bank details and signature on page 2.
+Smaller font did not help.
+
+**Cause** - Tally style and Boxed grid stretch the item table with empty
+filler space to look like a printed form. The capture is a few millimetres
+taller than the page, so the PDF builder broke it into two.
+
+**Rule** - filler space is optional: before capture, shrink spacer rows
+(`data-pdf-spacer`) until the invoice fits, and put them back afterwards.
+Only real content may push an invoice onto a second page.
+
+**Guard** - `fitSpacersToOnePage`; smoke check "v77 #88 a one-item invoice
+is one PDF page in Tally style and Boxed grid". Up to 6% over a page is also
+scaled onto one page, so the ERR-024 smoke check accepts a one-page result
+when no two-page case of that shape exists (nothing can be cut then).
+
+---
+
+## ERR-044 - CGST and SGST differed by a paisa in GST Returns
+
+**Version:** since v1.10.31 · fixed in v1.10.77
+**Reported by:** @jeyadreams (#89)
+
+**Symptom** - on a 5% item, GST Returns showed CGST and SGST one paisa apart,
+and neither matched the invoice.
+
+**Cause** - GST Returns split each line's tax with its own rule (CGST rounded
+down, SGST rounded up). The invoice uses equal halves, so the two screens
+disagreed.
+
+**Rule** - one function splits tax for every screen and file. Each line's
+tax is rounded to the paisa as on the invoice; CGST and SGST/UTGST are its
+exact halves, added up and rounded ONCE per row. Rounding each half per line
+(the first v1.10.77 attempt) drifted from the invoice by a paisa per line.
+
+**Guard** - `splitLineTax` in `src/utils.js`, used by GST Returns; unit tests
+"[V77] #89" in `scripts/tax-test.mjs` (25 and 300 lines against the invoice
+maths, and round() against toFixed(2)).
+
+---
+
 ## ERR-043 - Refreshing the page while editing an invoice blanked the app
 
 **Version:** since v1.5.0 · fixed in v1.10.76

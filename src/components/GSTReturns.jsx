@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { FileText, Download, Upload, ExternalLink, CheckCircle, ChevronDown, ChevronRight, AlertTriangle, BookOpen, BarChart3 } from 'lucide-react';
 import { getAllBills, getAllExpenses, getAllPurchases, getProfile } from '../store';
-import { formatCurrency, INVOICE_TYPES, calculateLineItemTax, getStateCode, formatDateGST, getFilingPeriod, getUnitUQC, getFYOptions, belongsToProfile, toCsvLine, isCancelledBill, b2clThreshold, GST_PORTAL_RATES, setOffITC } from '../utils';
+import { formatCurrency, INVOICE_TYPES, getStateCode, formatDateGST, getFilingPeriod, hsnUqc, getFYOptions, belongsToProfile, toCsvLine, isCancelledBill, b2clThreshold, GST_PORTAL_RATES, setOffITC, splitLineTax } from '../utils';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
 
@@ -34,28 +34,9 @@ function readFilingStatus(key) {
   try { return JSON.parse(localStorage.getItem(key) || localStorage.getItem('gst_filing_status') || '{}'); } catch { return {}; }
 }
 
-function computeItemTaxSplit(item, isInterState, taxInclusive = false, isIntraUT = false) {
-  // v1.10.31 — Cess (GST-C3) and UTGST (GST-C2 / H7) now flow through this
-  // helper so every downstream summary, CSV, and JSON payload gets them.
-  // Also: symmetric half-split for CGST/SGST (GST-H4/M6) — floor + ceil vs
-  // the prior asymmetric round-then-subtract which produced 1-paise
-  // portal mismatches per invoice.
-  const { afterDiscount, taxAmount } = calculateLineItemTax(item, taxInclusive);
-  const cessPct = Number(item.cessPercent) || 0;
-  const cess = round2(afterDiscount * cessPct / 100);
-  if (isInterState) return { taxable: afterDiscount, cgst: 0, sgst: 0, utgst: 0, igst: taxAmount, cess };
-  // Symmetric half-split: floor/ceil to nearest paise so CGST + SGST/UTGST
-  // sums exactly back to taxAmount (was: round + subtract, which produced
-  // asymmetric halves like {0.02, 0.01} for 0.03 → users saw "CGST > SGST").
-  const halfPaise = Math.round(taxAmount * 100) / 2;
-  const cgst = Math.floor(halfPaise) / 100;
-  const half2 = round2((Math.ceil(halfPaise) / 100));
-  if (isIntraUT) {
-    // 5 UTs without legislature — CGST + UTGST split; SGST bucket is zero.
-    return { taxable: afterDiscount, cgst, sgst: 0, utgst: half2, igst: 0, cess };
-  }
-  return { taxable: afterDiscount, cgst, sgst: half2, utgst: 0, igst: 0, cess };
-}
+// The per-line split lives in utils.js (splitLineTax) so it can be tested;
+// see v1.10.77 (#89) there.
+const computeItemTaxSplit = splitLineTax;
 
 function getTaxableAmount(totals) {
   return totals?.taxableAmount ?? ((totals?.subtotal || 0) - (totals?.totalDiscount || 0));
@@ -988,12 +969,12 @@ export default function GSTReturns() {
       (items || []).forEach(item => {
         const hsn = item.hsn || 'N/A';
         const rate = item.taxPercent || 0;
-        const uqc = getUnitUQC(item.unit) || 'NOS';
+        const uqc = hsnUqc(item) || 'NOS';
         const key = `${hsn}|${rate}|${uqc}`;
         if (!hsnDetailed[key]) hsnDetailed[key] = { hsn, desc: item.name || '', uqc, qty: 0, rate, taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0, totalValue: 0 };
         const split = computeItemTaxSplit(item, isInter, !!bill.data?.taxInclusive, isIntraUT);
         const sign = hsnSign(bill); // v1.10.74 - credit notes reduce the row
-        hsnDetailed[key].qty += sign * (item.quantity || 0);
+        hsnDetailed[key].qty += uqc === 'NA' ? 0 : sign * (item.quantity || 0);
         hsnDetailed[key].taxable += sign * split.taxable;
         hsnDetailed[key].cgst += sign * split.cgst;
         hsnDetailed[key].sgst += sign * (split.sgst + split.utgst);
@@ -1373,12 +1354,12 @@ export default function GSTReturns() {
         if (!hsnRaw || hsnRaw === 'N/A') return;
         const hsn = hsnRaw;
         const rate = item.taxPercent || 0; const key = `${hsn}_${rate}`;
-        const uqc = getUnitUQC(item.unit);
+        const uqc = hsnUqc(item);
         if (uqc === 'OTH' && item.unit) unknownUnitCount += 1;
         if (!hsnJsonMap[key]) hsnJsonMap[key] = { hsn_sc: hsn, desc: item.name || '', uqc, qty: 0, rt: rate, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
         const split = computeItemTaxSplit(item, isInter, !!bill.data?.taxInclusive);
         const sign = hsnSign(bill); // v1.10.74 - credit notes reduce the row
-        hsnJsonMap[key].qty += sign * (item.quantity || 0); hsnJsonMap[key].txval += sign * split.taxable; hsnJsonMap[key].iamt += sign * split.igst; hsnJsonMap[key].camt += sign * split.cgst; hsnJsonMap[key].samt += sign * split.sgst;
+        hsnJsonMap[key].qty += uqc === 'NA' ? 0 : sign * (item.quantity || 0); hsnJsonMap[key].txval += sign * split.taxable; hsnJsonMap[key].iamt += sign * split.igst; hsnJsonMap[key].camt += sign * split.cgst; hsnJsonMap[key].samt += sign * split.sgst;
         const cessPct = Number(item.cessPercent) || 0;
         if (cessPct > 0) hsnJsonMap[key].csamt += sign * split.taxable * cessPct / 100;
       });

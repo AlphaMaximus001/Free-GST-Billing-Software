@@ -7,6 +7,120 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.77] - 2026-10-11
+
+**PIN lock, stock value report, bulk product edit, Excel export on every
+report, delivery charges, one-page Tally invoices, and fixes from issues
+#84-#89.**
+
+### How to update
+
+**Current version:** 1.10.76  →  **New version:** 1.10.77
+
+#### If the in-app Update button works for you (1.10.73 and later)
+1. Open the app and click **Update to v1.10.77** in the sidebar, or
+   **Settings → App Updates → Update Now**.
+2. Wait about a minute, then reload the page.
+
+#### On 1.10.72 or older
+Use the launcher: **More options → Update to the latest version**, then
+**Open App**.
+
+#### If that does not work (or you are unsure)
+1. Download `Free-GST-Billing.zip` from the
+   [Releases page](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest).
+2. Close the app (click **Stop the app** in the launcher if it is running).
+3. **Right-click the ZIP → Extract All.** Do not open anything while still inside the ZIP.
+4. Extract over your existing Free GST Billing folder, replacing files when asked.
+   (Extracted it somewhere else? Its launcher offers **Update the installed
+   copy**, which works without internet.)
+5. Double-click **Free GST Billing - WINDOWS**.
+
+#### Linux / NAS
+Run `update-unix.sh` from the `_system` folder, or extract the new ZIP over
+the old folder. Restart the app afterwards.
+
+#### Is my data safe?
+Yes. Invoices, clients, products and settings live in `_system/data/`, which
+an update never touches. The updater also takes an automatic backup to
+`Documents\FreeGSTBill Backups\` before it changes anything.
+
+#### Something went wrong?
+Open an issue with a screenshot of the error:
+https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues
+
+### Fixed
+- **Opening a saved invoice replaced its Terms & Conditions** with your first
+  terms template, and auto-save then kept the wrong terms. A restored draft
+  lost its terms the same way. Saved invoices and drafts now keep their own
+  terms; only a new blank invoice gets the template (ERR-046).
+- **CGST and SGST did not match** (#89, thanks @jeyadreams). When a line's
+  tax ended in half a paisa, GST Returns rounded CGST down and SGST up, so
+  they differed by a paisa from each other and from the invoice. Both halves
+  are now always equal, as on the invoice (ERR-044).
+- **Tally style PDF split onto two pages** (#88, thanks @Mindfulbrain17)
+  although the preview fitted one page. The empty filler space in the item
+  table now shrinks to make room, so a short invoice is one page in every
+  design (ERR-045).
+- **Converted invoices showed Paid** (#86, thanks @sangwanmail-eng). An
+  invoice converted from a quotation or proforma, or a duplicate, now starts
+  Unpaid with no payments. Changing Paid → Unpaid removes the "marked paid"
+  payment, so the Paid column clears and **Send reminder** comes back
+  (ERR-047).
+- **Print** now prints at the same sharp quality as the downloaded PDF
+  (#86).
+- **Welcome pop-up and Region came back** (#84, thanks @sangwanmail-eng).
+  Some browsers clear a site's saved settings; the app now also keeps them in
+  its data folder and puts them back, so the welcome wizard does not return
+  and Region stays India (ERR-048).
+- **Duplicate business profiles** (#84): adding a profile with the same GSTIN,
+  or the same name when a GSTIN is missing, is refused.
+- **Terms on separate lines** (#84): lines typed in a terms template print as
+  separate lines, not one paragraph.
+- **Sluggish scrolling** (#84): removed the blur effect behind panels, which
+  made scrolling slow on many PCs.
+- **GSTR-1 HSN summary**: service lines (SAC 99…) now go in with UQC `NA`
+  and quantity 0, as the portal expects.
+- A PDF made with the app opened at `127.0.0.1` (instead of `localhost`)
+  came out without its styling.
+
+### Added
+- **PIN lock** (#84): **Settings → App lock** turns on a 6 or 8 digit PIN that
+  is asked when the app opens, plus **Lock now**. Off by default. It locks the
+  screen only; it does not encrypt your files. Forgot it? Put a file named
+  `RESET-PIN` in the Free-GST-Billing folder and reload. Backup files never
+  contain the PIN, and restoring a backup keeps the PIN you have.
+- **Reports → Stock** (#85, thanks @Mecancy-mac): closing stock and its value
+  at the end of any month, valued at purchase price, with the total.
+- **Bulk edit** on Products (#85): change name, HSN, purchase price, selling
+  price, GST %, unit and stock of many products at once, then save once.
+- **Excel export** (#85): every report (Profit & Loss by month, Outstanding,
+  Party Outstanding, Client Analytics, Product Performance, Stock), the
+  Expense statement and the Purchase register now have **Print / PDF**,
+  **Excel** and **CSV**, with totals.
+- **Delivery charges** (#87, thanks @jrp596): a **Delivery charges** button
+  under the items adds the charge as its own line (SAC 9968), taxed at the
+  highest GST rate on the invoice. It is in the total and GST returns, and
+  never counts as stock.
+- **Dashboard** (#84): a slimmer header; low stock scrolls as a ticker under
+  its own heading.
+- **Auto-hide menu** (#84): a checkbox under the app name shrinks the side
+  menu to icons; it opens when you point at it.
+- Thicker scrollbars, easier to grab with a mouse (#84).
+
+### Changed
+- **Cancelled invoices are read-only** (#86): only View, Duplicate and
+  **Undo**; the status menu is locked. A quotation, proforma or challan already
+  **converted** shows only View and Duplicate. Opened, both are read-only
+  (download and print still work); payment history stays viewable.
+- **Print button on every invoice row** of the Dashboard (#86) prints without
+  opening the invoice.
+
+### Not in this release
+- Bank and cash book, cash flow, balance sheet and trial balance (#85) are on
+  the roadmap. They need a proper ledger, which is a larger piece of work.
+- Batch-wise stock is not supported.
+
 ## [1.10.76] - 2026-10-05
 
 **Stock follows every edit, GSTR-3B uses your credit the way the law does,

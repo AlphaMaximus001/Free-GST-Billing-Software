@@ -571,6 +571,32 @@ export const isCreditNote = (bill) => (bill?.invoiceType || '') === 'credit-note
 // +1 for a sale, -1 for a credit note, 0 for quotes, challans and anything cancelled.
 export const salesSign = (bill) => (countsAsSales(bill) ? 1 : (isCreditNote(bill) ? -1 : 0));
 
+// One invoice line's tax for the GST returns: taxable value, CGST, SGST or
+// UTGST, IGST and cess.
+// v1.10.77 (#89) - the line tax is rounded to the paisa, as on the invoice
+// (computeInvoiceTotals), and CGST and SGST are each exactly half of it, NOT
+// rounded here: every return table adds lines up and rounds once (round2 at
+// output), so CGST = SGST = round(total / 2), as the invoice prints them. It used to give CGST the half rounded DOWN and SGST
+// the half rounded UP per line, so every odd-paisa line put a paisa more in
+// SGST; over a few dozen lines the HSN summary showed CGST 6,778.56 against
+// SGST 6,782.56 for a 5% item. Rounding each half per line instead drifts
+// from the invoice total by a paisa per line.
+// v1.10.31 - cess and UTGST flow through here too.
+export const splitLineTax = (item, isInterState, taxInclusive = false, isIntraUT = false) => {
+  const { afterDiscount, taxAmount: rawTax } = calculateLineItemTax(item, taxInclusive);
+  const paise = Math.round(rawTax * 100);
+  const taxAmount = paise / 100;
+  const cess = Math.round(afterDiscount * (Number(item.cessPercent) || 0)) / 100;
+  if (isInterState) return { taxable: afterDiscount, cgst: 0, sgst: 0, utgst: 0, igst: taxAmount, cess };
+  // An odd paisa leaves exactly half a paisa. Added up in floating point,
+  // x.xx5 lands a hair either side, so screen, CSV and JSON rounded the same
+  // half paisa differently. A 0.0000001 nudge makes every total of these
+  // halves round it UP, everywhere, without moving anything else.
+  const half = paise / 200 + (paise % 2 ? 1e-7 : 0);
+  // 5 UTs without a legislature: CGST + UTGST; the SGST bucket stays zero.
+  return { taxable: afterDiscount, cgst: half, sgst: isIntraUT ? 0 : half, utgst: isIntraUT ? half : 0, igst: 0, cess };
+};
+
 // v1.10.76 (#81) - GSTR-3B Table 6: input tax credit set off against output
 // tax in the order the law requires (Section 49(5), 49A, Rule 88A). Each head
 // used to be reduced only by its own credit, so CGST/SGST credit was stranded
@@ -685,9 +711,25 @@ export const markPaidPatch = (bill, note = 'Marked paid') => {
   return {
     paidAmount: Number(bill.totalAmount) || 0,
     payments: outstanding > 0.005
-      ? [...payments, { id: `pay_${now.getTime()}`, amount: Math.round(outstanding * 100) / 100, date: now.toISOString().split('T')[0], mode: 'other', note, recordedAt: now.toISOString() }]
+      ? [...payments, { id: `pay_${now.getTime()}`, amount: Math.round(outstanding * 100) / 100, date: now.toISOString().split('T')[0], mode: 'other', note, recordedAt: now.toISOString(), auto: true }]
       : payments,
   };
+};
+
+// v1.10.77 (#86) - choosing Unpaid takes back the payment that choosing Paid
+// recorded (auto: true, or older ones noted "Marked paid ..."). It used to
+// leave it, so an "Unpaid" invoice still showed the full amount as Paid and
+// never offered a reminder. Payments you recorded (or edited) are kept, and
+// the status then follows what they cover. Older "Marked paid" payments have
+// no auto flag; they are recognised by that note with mode "other".
+export const isAutoPaidPayment = (p) => !!p && (p.auto === true
+  || (p.auto === undefined && p.mode === 'other' && /^Marked paid/i.test(String(p.note || ''))));
+export const markUnpaidPatch = (bill) => {
+  const payments = (Array.isArray(bill.payments) ? bill.payments : []).filter((p) => !isAutoPaidPayment(p));
+  const paidAmount = Math.round(payments.reduce((s, p) => s + (Number(p.amount) || 0), 0) * 100) / 100;
+  const total = Number(bill.totalAmount) || 0;
+  const status = paidAmount <= 0.005 ? 'unpaid' : (paidAmount >= total - 0.005 ? 'paid' : 'partial');
+  return { payments, paidAmount, status };
 };
 
 // The online documentation. Help buttons link straight to the section for
@@ -1348,6 +1390,10 @@ export const getPaperSize = (key, options = {}) => {
 // is skipped entirely — that is already structured.
 export const splitNumberedTerms = (html) => {
   if (!html || typeof html !== 'string') return html;
+  // v1.10.77 (#84) - plain text (a Terms template typed in Settings, which
+  // has no formatting) keeps its line breaks. HTML ignores them, so separate
+  // lines printed as one paragraph.
+  if (!/<[a-z!/][^>]*>/i.test(html) && /\n/.test(html)) return html.trim().replace(/\r?\n/g, '<br />');
   if (/<(li|br)[ />]/i.test(html)) return html;   // already structured — leave it alone
   const marker = /(^|[\s>])(\d{1,2})\.\s+/g;
   const count = (html.match(marker) || []).length;
@@ -1358,6 +1404,22 @@ export const splitNumberedTerms = (html) => {
     seen += 1;
     return seen === 1 ? m : `${pre}<br />${num}. `;
   });
+};
+
+// v1.10.77 (#84) - the saved business profile that is the SAME business as
+// this one: the same GSTIN, or the same name on a saved profile that has no
+// GSTIN yet (ignoring case and spaces). Saving updates that profile instead of
+// adding a duplicate; matching on the name only let the same GSTIN be saved
+// twice under two spellings. A different GSTIN is a different business (two
+// branches can share a name), and a profile without a GSTIN never overwrites
+// one that has it. `loaded` is the saved profile the form was loaded from:
+// with the same name it is the one to update (a corrected GSTIN typo).
+export const findSameBusiness = (list, p, loaded = null) => {
+  const norm = (v) => String(v || '').trim().replace(/\s+/g, ' ').toUpperCase();
+  const gstin = norm(p?.gstin);
+  const name = norm(p?.businessName);
+  return (list || []).find((bp) => (gstin && norm(bp.gstin) === gstin) || (name && norm(bp.businessName) === name && !norm(bp.gstin)))
+    || (loaded && name && norm(loaded.businessName) === name ? loaded : null);
 };
 
 // v1.10.64 — requested (#55, @sangwanmail-eng): "keep both companies' data
@@ -1512,6 +1574,22 @@ export const BUILTIN_UNITS = [
 
 // Default unit per invoice mode — used when adding a new line item so the user
 // doesn't have to flip the unit dropdown 90% of the time.
+// v1.10.77 (#87) - delivery / shipping charges. Added as their own invoice
+// line (SAC 996812), so every total, GST return, HSN summary, report and
+// export includes them with no special case. Delivery billed with the goods
+// is a composite supply, taxed at the rate of the goods (the principal
+// supply), so the line starts at the highest GST rate on the invoice; the
+// user can change it. isCharge keeps it out of stock and product sales.
+export const DELIVERY_SAC = '996812';
+export const deliveryChargeLine = (items, amount = 0) => {
+  const goodsRates = (items || []).filter((i) => !i.isCharge).map((i) => Number(i.taxPercent) || 0);
+  return {
+    id: `dlv-${Date.now()}`, name: 'Delivery charges', description: '', hsn: DELIVERY_SAC,
+    quantity: 1, unit: 'Nos', rate: Number(amount) || 0, discount: 0,
+    taxPercent: goodsRates.length ? Math.max(...goodsRates) : 18, cessPercent: 0, isCharge: true,
+  };
+};
+
 export const getDefaultUnitForMode = (mode) => {
   if (mode === 'services') return 'Hrs';
   if (mode === 'mixed') return 'Pcs';
@@ -1559,6 +1637,9 @@ export const getUnitUQC = (label) => {
   const u = getAllUnits().find(x => x.label === label);
   return u?.uqc || 'OTH';
 };
+// v1.10.77 - GSTR-1 HSN summary: a service (SAC 99xxxx) has no unit; the
+// portal expects UQC "NA" and quantity 0 for it (delivery charges, setup fees).
+export const hsnUqc = (item) => (/^99/.test(String(item?.hsn || '').trim()) ? 'NA' : getUnitUQC(item?.unit));
 
 // ========== Tax ID validation ==========
 // Returns { ok: boolean, message: string }. Empty value is treated as ok (field is optional).
@@ -2063,4 +2144,11 @@ export const CURRENCY_NAMES = {
   PHP: { major: 'Pesos',    minor: 'Centavos' },
   IDR: { major: 'Rupiah',   minor: 'Sen'   },
   NZD: { major: 'Dollars',  minor: 'Cents' },
+};
+
+// v1.10.74 - today's LOCAL date as YYYY-MM-DD (toISOString is UTC, so before
+// 05:30 IST it gave yesterday). Call it when needed, not once at load.
+export const localToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };

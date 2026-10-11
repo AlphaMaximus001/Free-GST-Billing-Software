@@ -21,6 +21,7 @@ export default [
   <li>At the bottom, <b>App Ready</b> when all is well.</li>
 </ul>
 <p>At the end of the Dashboard, below the invoices, a small line shows the app's version, a link to DiceCodes and <a href="#support">Support</a>. It is never printed.</p>
+<p>Tick <b>Auto-hide menu</b>, under the app name, to shrink the sidebar to its icons and give the page more room. Point at it to open it. Untick it to keep it open.</p>
 <p>On a narrow screen, the sidebar folds away behind the ☰ menu button.</p>
 </section>
 
@@ -169,7 +170,7 @@ export default [
 
 <section id="other-devices">
 <h2>Can I use it on my phone or another computer?</h2>
-<p>The app runs on the computer it is installed on, and only that computer can open it. It has no login, so it is deliberately not shared over your network, where anyone connected could read your books. To work on another computer, <a href="backup.html#move-pc">move your data</a> there.</p>
+<p>The app runs on the computer it is installed on, and only that computer can open it. It has no user accounts, so it is deliberately not shared over your network, where anyone connected could read your books. (The optional <a href="settings.html#lock">PIN lock</a> locks the screen on this computer only.) To work on another computer, <a href="backup.html#move-pc">move your data</a> there.</p>
 </section>
 
 <section id="internet">
@@ -223,12 +224,12 @@ export default [
 
 <section id="accounting">
 <h2>Full accounting</h2>
-<p>There is no double-entry ledger, balance sheet, bank reconciliation or journal entries. It covers invoicing, receivables, purchases, expenses, stock counts and GST. For the rest, give your CA the CSV exports.</p>
+<p>There is no double-entry ledger, balance sheet, trial balance, cash or bank book, bank reconciliation or journal entries yet. It covers invoicing, receivables, purchases, expenses, stock and GST. For the rest, give your CA the Excel or CSV exports.</p>
 </section>
 
 <section id="multi-user">
 <h2>Several people, or several computers</h2>
-<p>There are no logins or user roles, and the app only opens on the computer it runs on. One computer holds the books; see <a href="backup.html#move-pc">moving to a new computer</a>.</p>
+<p>There are no user accounts or roles (an optional <a href="settings.html#lock">PIN</a> can lock the screen), and the app only opens on the computer it runs on. One computer holds the books; see <a href="backup.html#move-pc">moving to a new computer</a>.</p>
 </section>
 
 <section id="income-tax-limits">
@@ -238,7 +239,7 @@ export default [
 
 <section id="stock-limits">
 <h2>Stock</h2>
-<p>Stock is one count per product. There are no batches, expiry dates, serial numbers, warehouses or stock valuation.</p>
+<p>Stock is one count per product. There are no batches, expiry dates, serial numbers or warehouses. Stock is valued at purchase price in <a href="reports.html#stock">Reports, Stock</a>.</p>
 </section>
 `,
 },

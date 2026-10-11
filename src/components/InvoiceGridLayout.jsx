@@ -321,8 +321,10 @@ function TallyLayout({ ctx }) {
               <td style={{ ...vc, ...right, fontWeight: 700 }}>{v < 0 ? `(-)${num(-v)}` : num(v)}</td>
             </tr>
           ))}
+          {/* data-pdf-spacer: the PDF trims this padding if it alone would
+              push the footer onto a second page (#88). */}
           {spacer > 0 && (
-            <tr>{blank(colCount, spacer)}</tr>
+            <tr data-pdf-spacer="stretch">{blank(colCount, spacer)}</tr>
           )}
           <tr style={{ fontWeight: 800 }}>
             <td style={cell} />
@@ -477,7 +479,7 @@ function BoxedLayout({ ctx }) {
               );
             })}
             {Array.from({ length: filler }, (_, i) => (
-              <tr key={`fill-${i}`}>
+              <tr key={`fill-${i}`} data-pdf-spacer="row">
                 {Array.from({ length: colCount }, (__, c) => (
                   <td key={c} style={{ ...cell, height: 26, ...(c === 0 ? { borderLeft: 'none' } : {}), ...(c === colCount - 1 ? { borderRight: 'none' } : {}) }} />
                 ))}

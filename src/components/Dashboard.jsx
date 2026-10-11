@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts } from '../store';
-import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES } from '../utils';
+import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES } from '../utils';
 import { openWhatsAppShare } from '../utils/share';
 import PageHeader from './PageHeader';
 import SupportNudge from './SupportNudge';
@@ -155,7 +155,7 @@ function ReceiptModal({ target, onClose }) {
   );
 }
 
-export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpenProducts, onOpenSettings, onOpenGuide, onOpenSupport, activeProfile }) {
+export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConvert, onOpenProducts, onOpenSettings, onOpenGuide, onOpenSupport, activeProfile }) {
   // v1.10.64 — requested (#55, @sangwanmail-eng): "An invoice belonging to one
   // company should not appear under the other."
   //
@@ -480,10 +480,26 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
       // reports agree with the status (see markPaidPatch).
       Object.assign(updated, markPaidPatch(bill));
     }
+    if (newStatus === 'unpaid') Object.assign(updated, markUnpaidPatch(bill));
     await saveBill(updated, { overwrite: true });
+    // A payment taken back also leaves the Receipts page.
+    for (const p of (bill.payments || []).filter((x) => !(updated.payments || []).includes(x))) {
+      if (p.id) deleteReceipt(p.id).catch(() => {});
+    }
     try { await moveStock([plan]); } catch { /* the status change is saved */ }
-    toast(`Marked as ${STATUS_CONFIG[newStatus].label}`, 'info');
+    toast(updated.status === newStatus
+      ? `Marked as ${STATUS_CONFIG[newStatus].label}`
+      : `Payments recorded with a receipt remain, so it is ${STATUS_CONFIG[updated.status]?.label || updated.status}`, 'info');
     loadBills();
+  };
+
+  // v1.10.77 (#86) - Undo on a cancelled document: back to the status its
+  // payments say (it used to come back as Unpaid even when it had been paid).
+  const undoCancel = (bill) => {
+    const paid = (bill.payments || []).reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const total = Number(bill.totalAmount) || 0;
+    const next = !SALES_INVOICE_TYPES.includes(bill.invoiceType || 'tax-invoice') || paid <= 0.005 ? 'unpaid' : (paid >= total - 0.005 ? 'paid' : 'partial');
+    return changeStatus(bill, next);
   };
 
   const openPaymentModal = (bill) => {
@@ -642,7 +658,8 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
     const target = (bill.payments || [])[idx];
     const withId = target.id || ('pay_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
     const payments = (bill.payments || []).map((p, i) => i === idx
-      ? { ...p, id: withId, amount: newAmount, date: form.date, mode: form.mode, note: form.note }
+      // Edited by you, so no longer the automatic "Marked paid" payment (auto is dropped).
+      ? { ...p, id: withId, amount: newAmount, date: form.date, mode: form.mode, note: form.note, auto: false }
       : p);
     const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const status = totalPaid >= billTotal && billTotal > 0 ? 'paid' : (totalPaid > 0 ? 'partial' : 'unpaid');
@@ -720,6 +737,7 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
         const patch = { ...b, status: newStatus };
         delete patch.cancelledAt;
         if (newStatus === 'paid') Object.assign(patch, markPaidPatch(b, 'Marked paid (bulk)'));
+        if (newStatus === 'unpaid') Object.assign(patch, markUnpaidPatch(b));
         return patch;
       });
       const failed = results.filter(r => r.status === 'rejected').length;
@@ -1110,6 +1128,7 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
   return (
     <div className="dashboard-container">
       <PageHeader
+        compact
         icon="📊"
         title="Dashboard"
         subtitle="Overview of your invoices"
@@ -1291,44 +1310,35 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
         </div>
       </div>
 
-      {/* Low Stock Alerts */}
+      {/* Low Stock Alerts
+          v1.10.77 (#84) - one moving line under a "Low stock" heading, like a
+          news ticker, instead of a block of chips that pushed the invoices
+          down. It pauses while pointed at; with reduced motion it is a plain
+          row that scrolls sideways. Each name still opens Products (#44). */}
       {lowStockProducts.length > 0 && (
-        <div className="glass-panel" style={{ marginBottom: '1.25rem', padding: '1rem 1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <Package size={18} style={{ color: '#d97706' }} />
-            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#d97706' }}>
-              Low Stock Alert ({lowStockProducts.length} item{lowStockProducts.length > 1 ? 's' : ''})
-            </h3>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {/* v1.10.57 — reported (#44 item 3, @sangwanmail-eng): "Low stock
-                notification message should clickable to open direct product
-                tab". These were plain <div>s, so seeing the alert meant
-                finding Products in the sidebar yourself. Now each chip is a
-                real <button> that opens Products — matching the notification
-                bell, which already navigated there. */}
-            {lowStockProducts.map(p => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={onOpenProducts}
-                title={onOpenProducts ? `Open Products to restock ${p.name}` : undefined}
-                style={{
-                  padding: '0.4rem 0.75rem', borderRadius: 6, fontSize: '0.8rem',
-                  background: (p.stock ?? 0) <= 0 ? '#fef2f2' : '#fffbeb',
-                  border: `1px solid ${(p.stock ?? 0) <= 0 ? '#fecaca' : '#fde68a'}`,
-                  color: (p.stock ?? 0) <= 0 ? '#dc2626' : '#d97706',
-                  cursor: onOpenProducts ? 'pointer' : 'default',
-                  font: 'inherit',
-                  textAlign: 'left',
-                }}>
-                <strong>{p.name}</strong>
-                {p.hsn ? <span className="text-muted" style={{ marginLeft: 4, fontSize: '0.72rem' }}>({p.hsn})</span> : null}
-                <span style={{ marginLeft: 6, fontWeight: 700 }}>
-                  {(p.stock ?? 0) <= 0 ? 'Out of Stock' : `Stock: ${p.stock}`}
-                </span>
-              </button>
-            ))}
+        <div className="glass-panel low-stock-ticker" style={{ marginBottom: '1rem', padding: '0.55rem 1rem' }}>
+          <span className="low-stock-ticker-label">
+            <Package size={16} /> Low stock ({lowStockProducts.length})
+          </span>
+          <div className="low-stock-ticker-window">
+            <div className="low-stock-ticker-track" style={{ animationDuration: `${Math.max(12, lowStockProducts.length * 4)}s` }}>
+              {[0, 1].map((copy) => lowStockProducts.map((p) => (
+                <button
+                  key={`${copy}-${p.id}`}
+                  type="button"
+                  onClick={onOpenProducts}
+                  aria-hidden={copy === 1 ? 'true' : undefined}
+                  tabIndex={copy === 1 ? -1 : undefined}
+                  title={onOpenProducts ? `Open Products to restock ${p.name}` : undefined}
+                  className={`low-stock-chip${(p.stock ?? 0) <= 0 ? ' low-stock-out' : ''}`}>
+                  <strong>{p.name}</strong>
+                  {p.hsn ? <span className="text-muted" style={{ marginLeft: 4, fontSize: '0.72rem' }}>({p.hsn})</span> : null}
+                  <span style={{ marginLeft: 6, fontWeight: 700 }}>
+                    {(p.stock ?? 0) <= 0 ? 'Out of Stock' : `Stock: ${p.stock}`}
+                  </span>
+                </button>
+              )))}
+            </div>
           </div>
         </div>
       )}
@@ -1508,6 +1518,7 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
                   // v1.10.76 (#83) - only real sales get paid, so only they get the
                   // Paid / Unpaid / Partial menu (and can be overdue).
                   const tracksPayment = SALES_INVOICE_TYPES.includes(bill.invoiceType || 'tax-invoice');
+                  const readOnly = status === 'cancelled' || !!bill.convertedTo;
                   const isOverdue = tracksPayment && status !== 'paid' && status !== 'cancelled' && bill.data?.details?.dueDate && new Date(bill.data.details.dueDate) < new Date();
                   const daysOverdue = isOverdue ? Math.floor((new Date() - new Date(bill.data.details.dueDate)) / 86400000) : 0;
                   const billCurrency = bill.currency || bill.data?.invoiceOptions?.currency || 'INR';
@@ -1538,18 +1549,18 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
                       {visibleColumns.printed && <td className="text-muted" style={{ textAlign: 'center' }}>{Number(bill.printedCount) || 0}×</td>}
                       <td className="text-muted col-center">{(bill.paidAmount || 0) > 0 ? formatCurrency(bill.paidAmount, billCurrency) : <span className="cell-empty">—</span>}</td>
                       {visibleColumns.status && <td className="col-center">
-                        {!tracksPayment ? (
-                          status === 'cancelled' ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                              <span className="type-badge" style={{ background: sc.bg, color: sc.color }}>Cancelled</span>
-                              <button type="button" className="btn-link" onClick={() => changeStatus(bill, 'unpaid')} title="Bring this document back"
-                                style={{ background: 'none', border: 0, padding: 0, color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline' }}>Undo</button>
-                            </span>
-                          ) : (
-                            <span className="type-badge" title={bill.convertedTo ? `Converted to ${bill.convertedTo}` : ''}>
-                              {bill.convertedTo ? 'Converted' : bill.invoiceType === 'credit-note' ? 'Issued' : 'Open'}
-                            </span>
-                          )
+                        {/* v1.10.77 (#86) - a cancelled document is read-only: its status
+                            menu is locked, with Undo to bring it back. */}
+                        {status === 'cancelled' ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <span className="type-badge" style={{ background: sc.bg, color: sc.color }}>Cancelled</span>
+                            <button type="button" className="btn-link" onClick={() => undoCancel(bill)} title="Bring this document back"
+                              style={{ background: 'none', border: 0, padding: 0, color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline' }}>Undo</button>
+                          </span>
+                        ) : !tracksPayment ? (
+                          <span className="type-badge" title={bill.convertedTo ? `Converted to ${bill.convertedTo}` : ''}>
+                            {bill.convertedTo ? 'Converted' : bill.invoiceType === 'credit-note' ? 'Issued' : 'Open'}
+                          </span>
                         ) : <>
                         <select className="status-select" value={isOverdue && status !== 'overdue' ? 'overdue' : status}
                           style={{ background: sc.bg, color: sc.color, borderColor: sc.color + '44' }}
@@ -1563,15 +1574,22 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
                       </td>}
                       {visibleColumns.actions && <td>
                         <div className="table-actions" style={{ justifyContent: 'center' }}>
-                          <button className="icon-btn icon-btn-blue" onClick={() => handleView(bill)} title="Edit"><Edit3 size={15} /></button>
+                          <button className="icon-btn icon-btn-blue" onClick={() => handleView(bill)} title={readOnly ? 'View' : 'Edit'}><Edit3 size={15} /></button>
                           <button className="icon-btn icon-btn-blue" onClick={() => onDuplicate(bill)} title="Duplicate"><Copy size={15} /></button>
+                          {/* Payments on sales; on anything else (cancelled, converted, an
+                              advance on a proforma) only to see the history it has. */}
+                          {((tracksPayment && !readOnly) || (bill.payments || []).length > 0) && (
+                            <button className="icon-btn icon-btn-green" onClick={() => openPaymentModal(bill)}
+                              title={tracksPayment && !readOnly ? 'Payment' : 'Payment history'}><IndianRupee size={15} /></button>
+                          )}
+                          {/* v1.10.77 (#86) - cancelled and converted documents are read-only:
+                              View and Duplicate only (Undo is in the Status column). */}
+                          {!readOnly && <>
+                          <button className="icon-btn icon-btn-blue" onClick={() => onPrint(bill)} title="Print"><Printer size={15} /></button>
                           {/* v1.10.76 (#83) - gone once it has been converted (bill.convertedTo) */}
                           {['quotation', 'proforma', 'delivery-challan'].includes(bill.invoiceType) && !bill.convertedTo && (
                             <button className="icon-btn icon-btn-green" onClick={() => onConvert(bill)} title="Convert to Tax Invoice"><FileText size={15} /></button>
                           )}
-                          {/* v1.10.74 - kept for cancelled invoices so past payments stay viewable; saving is blocked in recordPayment */}
-                          <button className="icon-btn icon-btn-green" onClick={() => openPaymentModal(bill)}
-                            title={isCancelledBill(bill) ? 'Payment history (invoice is cancelled)' : 'Payment'}><IndianRupee size={15} /></button>
                           <button className="icon-btn icon-btn-green" onClick={() => shareWhatsApp(bill)}
                             title="Share via WhatsApp — PDF attaches on mobile Chrome/Safari. On desktop it sends the invoice as text only (browser can't attach files to WhatsApp Web — security limitation, not our app).">
                             <MessageCircle size={15} />
@@ -1592,9 +1610,9 @@ export default function Dashboard({ onNew, onEdit, onDuplicate, onConvert, onOpe
                           )}
                           <button className="icon-btn icon-btn-blue" onClick={() => shareEmail(bill)} title="Email"><Mail size={15} /></button>
                           <button className="icon-btn icon-btn-red" onClick={() => handleCancelInvoice(bill)}
-                            disabled={isCancelledBill(bill)}
-                            title={isCancelledBill(bill) ? 'Already cancelled' : 'Cancel invoice — keeps the number, undo from the status dropdown'}>
+                            title="Cancel invoice — keeps the number; Undo from the Status column">
                             <Ban size={15} /></button>
+                          </>}
                         </div>
                       </td>}
                     </tr>
