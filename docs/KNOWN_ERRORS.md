@@ -720,6 +720,33 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-049 - "Start numbering from" was shown but never used
+
+**Version:** since the number format settings were added · fixed in v1.10.78
+**Reported by:** @ved935030-afk (#93)
+
+**Symptom** - a business moving from a paper bill book could not start at its
+own number (1001): every new install numbered from 0001.
+
+**Cause** - the settings had a `startNumber`, but there was no field for it in
+Settings, and only the number SHOWN on a new invoice read it. The number
+actually taken on Save came from the server counter, which always started at
+1. So even with a start set, the screen could show 1001 and save 0001.
+
+**Rule** - a number that is shown and the number that is saved come from the
+same rule, in one place: `nextCounterValue` + `startFor` (src/utils.js), used
+by the server when it reserves a number, by recurring invoices, and by the
+preview. The next number is max(last + 1, start), so a used number is never
+reused. The start is for tax invoices only (the maintainer's call), passed by
+document type, so it holds with a custom prefix too; raising it is confirmed
+first, since it cannot be undone.
+
+**Guard** - unit tests "[V78] #93" in `scripts/tax-test.mjs`; smoke check
+"v78 #93 Start numbering from: a tax invoice is shown and saved as 900001; a
+quotation is not".
+
+---
+
 ## ERR-048 - Welcome wizard and Region came back after a restart
 
 **Version:** since the wizard was added · fixed in v1.10.77

@@ -12,7 +12,7 @@ import { fileURLToPath } from 'url';
 // invoice-level discount, and round-off. Previously the recurring auto-fire
 // re-implemented totals inline and silently reintroduced every bug the
 // v1.10.1 extraction fixed. Same source of truth now.
-import { computeInvoiceTotals, clientYearToDate } from './src/utils.js';
+import { computeInvoiceTotals, clientYearToDate, nextCounterValue, startFor } from './src/utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, 'data');
@@ -550,8 +550,9 @@ app.post('/api/meta/:key', (req, res) => {
 app.post('/api/meta/:key/increment', (req, res) => {
   if (req.params.key === LOCK_KEY) return errRes(res, 403, 'forbidden');
   const meta = readJSON(META_PATH, {});
-  const current = Number(meta[req.params.key] || 0);
-  const next = current + 1;
+  // v1.10.78 (#93) - a tax invoice sends its start ("Start numbering from");
+  // see nextCounterValue. Nothing else jumps.
+  const next = nextCounterValue(meta[req.params.key], req.body?.start);
   meta[req.params.key] = next;
   writeJSON(META_PATH, meta);
   res.json({ value: next });
@@ -1577,13 +1578,13 @@ function advanceDate(dateStr, frequency, interval) {
   return d.toISOString().split('T')[0];
 }
 
-function nextInvoiceNumber(prefix, settings = {}) {
+function nextInvoiceNumber(prefix, invoiceType = 'tax-invoice') {
   // Mirror the frontend's getNextInvoiceNumber logic — atomic counter via
   // meta, applied to the same brandPrefix / separator / padding settings.
   const key = `counter_${prefix}`;
   const meta = readJSON(META_PATH, {});
   const cfg = { format: 'branded', brandPrefix: '', separator: '/', showFinYear: true, padDigits: 4, ...(meta.invoiceNumberSettings || {}) };
-  const next = (Number(meta[key]) || 0) + 1;
+  const next = nextCounterValue(meta[key], startFor(invoiceType, cfg));
   meta[key] = next;
   writeJSON(META_PATH, meta);
   if (cfg.format === 'random') {
@@ -1648,9 +1649,9 @@ function generateFromTemplate(tpl, today) {
                    : 'INV');
       // Never overwrite an existing invoice: if the counter lags behind the
       // bills on disk (restored backup, hand-typed numbers), take the next one.
-      let invoiceNumber = nextInvoiceNumber(prefix);
+      let invoiceNumber = nextInvoiceNumber(prefix, tpl.invoiceType);
       for (let i = 0; i < 50 && fs.existsSync(path.join(DATA_DIR, 'bills', safeFileName(invoiceNumber) + '.json')); i++) {
-        invoiceNumber = nextInvoiceNumber(prefix);
+        invoiceNumber = nextInvoiceNumber(prefix, tpl.invoiceType);
       }
       const invoiceDate = today;
 

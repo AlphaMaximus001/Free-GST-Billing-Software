@@ -1140,7 +1140,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         const rawOverride = _psForPrefix.customPrefixes?.[type];
         const overridePrefix = rawOverride && rawOverride.trim();
         const prefix = overridePrefix || INVOICE_TYPES[type]?.prefix || 'INV';
-        getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix }).then(num => {
+        getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix, invoiceType: type }).then(num => {
           setDetails({ ...d.details, invoiceNumber: num, invoiceDate: new Date().toISOString().split('T')[0] });
           numberReserved.current = false;
         });
@@ -1153,7 +1153,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       const rawOverride = _psForPrefix.customPrefixes?.[invoiceType];
       const overridePrefix = rawOverride && rawOverride.trim();
       const prefix = overridePrefix || INVOICE_TYPES[invoiceType]?.prefix || 'INV';
-      getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix }).then(num => {
+      getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix, invoiceType }).then(num => {
         setDetails(prev => ({ ...prev, invoiceNumber: num }));
         numberReserved.current = false;
       });
@@ -1249,7 +1249,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     const overridePrefix = rawOverride && rawOverride.trim();
     const prefix = overridePrefix || config?.prefix || 'INV';
     // Peek — actual reservation happens on save.
-    const num = await getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix });
+    const num = await getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix, invoiceType: type });
     numberReserved.current = false;
     setDetails(prev => ({ ...prev, invoiceNumber: num }));
 
@@ -1594,7 +1594,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         const rawOverride = _psForPrefix.customPrefixes?.[invoiceType];
         const overridePrefix = rawOverride && rawOverride.trim();
         const prefix = overridePrefix || INVOICE_TYPES[invoiceType]?.prefix || 'INV';
-        finalInvoiceNumber = await getNextInvoiceNumber(prefix, { explicitPrefix: !!overridePrefix });
+        finalInvoiceNumber = await getNextInvoiceNumber(prefix, { explicitPrefix: !!overridePrefix, invoiceType });
         setDetails(prev => ({ ...prev, invoiceNumber: finalInvoiceNumber }));
         numberReserved.current = true;
       } catch { /* fall back to the peeked value; server will 409 if it collides */ }
@@ -1826,7 +1826,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           let success = false;
           for (let i = 0; i < 20; i++) {
             try {
-              nextNum = await getNextInvoiceNumber(prefix, { explicitPrefix: !!overridePrefix });
+              nextNum = await getNextInvoiceNumber(prefix, { explicitPrefix: !!overridePrefix, invoiceType });
               const retryBill = { ...bill, id: nextNum, invoiceNumber: nextNum };
               retryBill.data = { ...retryBill.data, details: { ...retryBill.data.details, invoiceNumber: nextNum } };
               await saveBill(retryBill, { overwrite: false });

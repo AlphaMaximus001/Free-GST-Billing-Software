@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban, Undo2 } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts } from '../store';
 import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES } from '../utils';
@@ -495,7 +495,21 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
 
   // v1.10.77 (#86) - Undo on a cancelled document: back to the status its
   // payments say (it used to come back as Unpaid even when it had been paid).
-  const undoCancel = (bill) => {
+  // v1.10.78 (#92) - asks first: it puts the document back into totals, GST
+  // returns and stock.
+  const undoCancel = async (bill) => {
+    const type = bill.invoiceType || 'tax-invoice';
+    const what = SALES_INVOICE_TYPES.includes(type) ? 'comes back into your totals and GST returns, and any stock it uses is taken out again.'
+      : type === 'credit-note' ? 'comes back into your GST returns, and the stock it returned is added back.'
+        : type === 'delivery-challan' ? 'comes back, and the stock it sends out is taken out again.'
+          : 'comes back as an open document.';
+    const ok = await confirmAction({
+      title: 'Undo the cancel?',
+      message: `${bill.invoiceNumber} ${what}`,
+      confirmLabel: 'Yes, undo',
+      cancelLabel: 'No',
+    });
+    if (!ok) return undefined;
     const paid = (bill.payments || []).reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const total = Number(bill.totalAmount) || 0;
     const next = !SALES_INVOICE_TYPES.includes(bill.invoiceType || 'tax-invoice') || paid <= 0.005 ? 'unpaid' : (paid >= total - 0.005 ? 'paid' : 'partial');
@@ -1310,37 +1324,9 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         </div>
       </div>
 
-      {/* Low Stock Alerts
-          v1.10.77 (#84) - one moving line under a "Low stock" heading, like a
-          news ticker, instead of a block of chips that pushed the invoices
-          down. It pauses while pointed at; with reduced motion it is a plain
-          row that scrolls sideways. Each name still opens Products (#44). */}
+      {/* Low stock: one line, moving only when it does not fit (LowStockTicker, below). */}
       {lowStockProducts.length > 0 && (
-        <div className="glass-panel low-stock-ticker" style={{ marginBottom: '1rem', padding: '0.55rem 1rem' }}>
-          <span className="low-stock-ticker-label">
-            <Package size={16} /> Low stock ({lowStockProducts.length})
-          </span>
-          <div className="low-stock-ticker-window">
-            <div className="low-stock-ticker-track" style={{ animationDuration: `${Math.max(12, lowStockProducts.length * 4)}s` }}>
-              {[0, 1].map((copy) => lowStockProducts.map((p) => (
-                <button
-                  key={`${copy}-${p.id}`}
-                  type="button"
-                  onClick={onOpenProducts}
-                  aria-hidden={copy === 1 ? 'true' : undefined}
-                  tabIndex={copy === 1 ? -1 : undefined}
-                  title={onOpenProducts ? `Open Products to restock ${p.name}` : undefined}
-                  className={`low-stock-chip${(p.stock ?? 0) <= 0 ? ' low-stock-out' : ''}`}>
-                  <strong>{p.name}</strong>
-                  {p.hsn ? <span className="text-muted" style={{ marginLeft: 4, fontSize: '0.72rem' }}>({p.hsn})</span> : null}
-                  <span style={{ marginLeft: 6, fontWeight: 700 }}>
-                    {(p.stock ?? 0) <= 0 ? 'Out of Stock' : `Stock: ${p.stock}`}
-                  </span>
-                </button>
-              )))}
-            </div>
-          </div>
-        </div>
+        <LowStockTicker products={lowStockProducts} onOpenProducts={onOpenProducts} />
       )}
 
       <div className="glass-panel">
@@ -1552,11 +1538,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                         {/* v1.10.77 (#86) - a cancelled document is read-only: its status
                             menu is locked, with Undo to bring it back. */}
                         {status === 'cancelled' ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <span className="type-badge" style={{ background: sc.bg, color: sc.color }}>Cancelled</span>
-                            <button type="button" className="btn-link" onClick={() => undoCancel(bill)} title="Bring this document back"
-                              style={{ background: 'none', border: 0, padding: 0, color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline' }}>Undo</button>
-                          </span>
+                          <span className="type-badge" style={{ background: sc.bg, color: sc.color }}>Cancelled</span>
                         ) : !tracksPayment ? (
                           <span className="type-badge" title={bill.convertedTo ? `Converted to ${bill.convertedTo}` : ''}>
                             {bill.convertedTo ? 'Converted' : bill.invoiceType === 'credit-note' ? 'Issued' : 'Open'}
@@ -1576,6 +1558,11 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                         <div className="table-actions" style={{ justifyContent: 'center' }}>
                           <button className="icon-btn icon-btn-blue" onClick={() => handleView(bill)} title={readOnly ? 'View' : 'Edit'}><Edit3 size={15} /></button>
                           <button className="icon-btn icon-btn-blue" onClick={() => onDuplicate(bill)} title="Duplicate"><Copy size={15} /></button>
+                          {status === 'cancelled' && (
+                            <button className="icon-btn icon-btn-blue" onClick={() => undoCancel(bill)} title="Undo cancel" aria-label={`Undo cancel of ${bill.invoiceNumber}`}>
+                              <Undo2 size={15} />
+                            </button>
+                          )}
                           {/* Payments on sales; on anything else (cancelled, converted, an
                               advance on a proforma) only to see the history it has. */}
                           {((tracksPayment && !readOnly) || (bill.payments || []).length > 0) && (
@@ -1761,6 +1748,59 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       {receiptTarget && (
         <ReceiptModal target={receiptTarget} onClose={() => setReceiptTarget(null)} />
       )}
+    </div>
+  );
+}
+
+// v1.10.77 (#84) - low stock as one line under a "Low stock" heading, like a
+// news ticker. v1.10.78 - it only moves when the list is wider than its strip
+// (then a second copy makes the loop seamless); a short list stays still, so
+// two products no longer show up as four. Pauses while pointed at; with
+// reduced motion it is a plain row that scrolls sideways. Each name opens
+// Products (#44).
+function LowStockTicker({ products, onOpenProducts }) {
+  const windowRef = useRef(null);
+  const trackRef = useRef(null);
+  const [scrolls, setScrolls] = useState(false);
+  useEffect(() => {
+    const win = windowRef.current;
+    const track = trackRef.current;
+    if (!win || !track || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => {
+      const oneCopy = track.scrollWidth / (track.dataset.copies === '2' ? 2 : 1);
+      setScrolls(oneCopy > win.clientWidth + 1);
+    });
+    ro.observe(win);
+    ro.observe(track);
+    return () => ro.disconnect();
+  }, [products.length]);
+  const copies = scrolls ? [0, 1] : [0];
+  return (
+    <div className="glass-panel low-stock-ticker" style={{ marginBottom: '1rem', padding: '0.55rem 1rem' }}>
+      <span className="low-stock-ticker-label">
+        <Package size={16} /> Low stock ({products.length})
+      </span>
+      <div ref={windowRef} className={`low-stock-ticker-window${scrolls ? ' is-scrolling' : ''}`}>
+        <div ref={trackRef} data-copies={copies.length} className="low-stock-ticker-track"
+          style={scrolls ? { animationDuration: `${Math.max(12, products.length * 4)}s` } : undefined}>
+          {copies.map((copy) => products.map((p) => (
+            <button
+              key={`${copy}-${p.id}`}
+              type="button"
+              onClick={onOpenProducts}
+              aria-hidden={copy === 1 ? 'true' : undefined}
+              tabIndex={copy === 1 ? -1 : undefined}
+              title={onOpenProducts ? `Open Products to restock ${p.name}` : undefined}
+              className={`low-stock-chip${(p.stock ?? 0) <= 0 ? ' low-stock-out' : ''}`}>
+              <strong>{p.name}</strong>
+              {p.hsn ? <span className="text-muted" style={{ marginLeft: 4, fontSize: '0.72rem' }}>({p.hsn})</span> : null}
+              <span style={{ marginLeft: 6, fontWeight: 700 }}>
+                {(p.stock ?? 0) <= 0 ? 'Out of Stock' : `Stock: ${p.stock}`}
+              </span>
+            </button>
+          )))}
+        </div>
+      </div>
     </div>
   );
 }

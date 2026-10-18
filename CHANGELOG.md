@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.78] - 2026-10-18
+
+**Start invoice numbers from your own number, a slimmer auto-hide menu,
+and Undo cancel with a confirmation (issues #92 and #93).**
+
+### How to update
+
+**Current version:** 1.10.77  →  **New version:** 1.10.78
+
+#### If the in-app Update button works for you (1.10.73 and later)
+1. Open the app and click **Update to v1.10.78** in the sidebar, or
+   **Settings → App Updates → Update Now**.
+2. Wait about a minute, then reload the page.
+
+#### On 1.10.72 or older
+Use the launcher: **More options → Update to the latest version**, then
+**Open App**.
+
+#### If that does not work (or you are unsure)
+1. Download `Free-GST-Billing.zip` from the
+   [Releases page](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest).
+2. Close the app (click **Stop the app** in the launcher if it is running).
+3. **Right-click the ZIP → Extract All.** Do not open anything while still inside the ZIP.
+4. Extract over your existing Free GST Billing folder, replacing files when asked.
+   (Extracted it somewhere else? Its launcher offers **Update the installed
+   copy**, which works without internet.)
+5. Double-click **Free GST Billing - WINDOWS**.
+
+#### Linux / NAS
+Run `update-unix.sh` from the `_system` folder, or extract the new ZIP over
+the old folder. Restart the app afterwards.
+
+#### Is my data safe?
+Yes. Invoices, clients, products and settings live in `_system/data/`, which
+an update never touches. The updater also takes an automatic backup to
+`Documents\FreeGSTBill Backups\` before it changes anything.
+
+#### Something went wrong?
+Open an issue with a screenshot of the error:
+https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues
+
+### Added
+- **Start numbering from** (#93, thanks @ved935030-afk): **Settings →
+  Invoice Number Format** now lets tax invoices carry on from your paper bill
+  book. Enter 1001 and the next tax invoice is `.../1001`, then 1002 and so
+  on. Before saving, the app asks to confirm the new number, because numbers
+  never go back down. If you have already gone past it, numbering just
+  continues; a number is never given twice. Quotations, challans, credit notes
+  and other types keep their own count (ERR-049).
+
+### Changed (#92, thanks @sangwanmail-eng)
+- **Auto-hide menu**: the closed menu is a slim strip of icons with the logo
+  on top; nothing is cut in half any more. Notifications show as a small dot.
+  Your business name and the checkbox come back when it opens.
+- **Undo cancel** is now an arrow button with the invoice's other actions,
+  styled like Edit, and asks **Yes, undo / No** first, saying what it will
+  bring back (totals, GST returns, stock) for that kind of document.
+- The side menu's scrollbar is thicker and easier to grab.
+- The low-stock line on the Dashboard only scrolls when the list does not
+  fit; a short list stays still and each product shows once.
+
+### Security
+- Updated two small dependencies (proxy-addr 2.0.8, source-map-js 1.2.2;
+  Dependabot #90, #91).
+
 ## [1.10.77] - 2026-10-11
 
 **PIN lock, stock value report, bulk product edit, Excel export on every

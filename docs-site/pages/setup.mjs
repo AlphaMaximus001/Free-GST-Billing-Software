@@ -70,6 +70,7 @@ export default [
   <tr><td>Simple Sequential</td><td><code>PREFIX/0001</code></td></tr>
   <tr><td>Random</td><td><code>PREFIX/A3X9K2</code></td></tr>
 </table>
+<p><strong>Start numbering from</strong> lets tax invoices carry on from your paper bill book: enter 1001 and the next tax invoice is <code>.../1001</code>, then 1002 and so on. When you save, the app shows the new next number and asks you to confirm, because numbers never go back down. If you have already gone past it, numbering simply continues; a number already used is never given again. Quotations, challans, credit notes, other types and receipts keep their own count. The preview at the top shows the real next tax invoice number.</p>
 <p>Under ${ui('⚙ Customize prefix, separator &amp; padding')}:</p>
 <ul>
   <li><strong>Brand Prefix</strong>: up to 10 capital letters and digits, such as ACME. Leave it empty to use each type's own prefix: INV, EST, BOS, COMP, CN and DC.</li>

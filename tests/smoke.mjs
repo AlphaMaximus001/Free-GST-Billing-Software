@@ -1605,6 +1605,72 @@ try {
       bulk77?.sellingPrice === 12.5 && bulk77?.rate === 12.5 && bulk77?.stock === 7, JSON.stringify(bulk77 && { s: bulk77.sellingPrice, r: bulk77.rate, st: bulk77.stock }));
   }
 
+  // ---- v1.10.78: issues #92, #93 -------------------------------------------
+  {
+    const get78 = (url) => page.evaluate(async (url) => (await fetch(url)).json(), url);
+    const post78 = (url, body) => page.evaluate(async ({ url, body }) => (await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json().catch(() => null), { url, body });
+    const toView78 = async (view) => {
+      await page.evaluate((v) => { sessionStorage.removeItem('gst_editingBill'); sessionStorage.removeItem('gst_invoiceDraft'); sessionStorage.setItem('gst_currentView', v); }, view);
+      await page.reload({ waitUntil: 'networkidle' });
+      await sleep(2500);
+      await dismissFirstRun(page);
+    };
+
+    // #93 "Start numbering from": a tax invoice saved through the editor gets
+    // it (it used to show it and save 0001); a quotation keeps its own count.
+    const numSettings = (await get78('/api/meta/invoiceNumberSettings')).value;
+    const counterBefore = (await get78('/api/meta/counter_INV')).value;
+    await post78('/api/meta/invoiceNumberSettings', { value: { ...(numSettings || {}), format: 'branded', startNumber: 900001 } });
+    const draft78 = (type) => ({
+      invoiceType: type,
+      client: { name: 'Smoke Test Client', address: '', city: '', pin: '', state: 'Punjab', gstin: '', country: 'India', email: '', phone: '', isSEZ: false },
+      details: { invoiceDate: new Date().toISOString().slice(0, 10), placeOfSupply: 'Punjab' },
+      items: draftItems, taxInclusive: false,
+    });
+    await openDraft(draft78('quotation'));
+    const quoShown = await page.locator('#invoice-preview').innerText().catch(() => '');
+    await toView78('new'); // a blank new tax invoice shows the next number
+    await page.waitForSelector('#invoice-preview', { timeout: 20000 });
+    await sleep(1500);
+    const invShown = await page.locator('#invoice-preview').innerText().catch(() => '');
+    await openDraft(draft78('tax-invoice'));
+    await page.getByRole('button', { name: /^Save$/ }).first().click();
+    await sleep(3500);
+    const saved78 = (await get78('/api/bills')).filter((x) => x.clientName === 'Smoke Test Client' && /\/900001$/.test(x.id));
+    check('v78 #93 Start numbering from: a tax invoice is shown and saved as 900001; a quotation is not',
+      /\/900001\b/.test(invShown) && saved78.length === 1 && !/900001/.test(quoShown),
+      JSON.stringify({ shown: /\/900001\b/.test(invShown), saved: saved78.map((x) => x.id), quotationUsesIt: /900001/.test(quoShown) }));
+    await post78('/api/meta/counter_INV', { value: counterBefore });
+    await post78('/api/meta/invoiceNumberSettings', { value: numSettings });
+
+    // #92 Undo is a button in the Actions column and asks first
+    const prof78 = await get78('/api/profile');
+    const today78 = new Date().toISOString().slice(0, 10);
+    await post78('/api/bills', {
+      id: 'smoketest-undo78', invoiceNumber: 'smoketest-undo78', clientName: 'Smoke Test Client', invoiceDate: today78, invoiceType: 'tax-invoice',
+      status: 'cancelled', cancelledAt: new Date().toISOString(), totalAmount: 1180, paidAmount: 0, payments: [],
+      data: { profile: prof78, client: { name: 'Smoke Test Client', state: prof78.state, country: 'India' }, details: { invoiceNumber: 'smoketest-undo78', invoiceDate: today78 },
+        invoiceType: 'tax-invoice', invoiceOptions: {}, totals: { total: 1180 }, stockApplied: {},
+        items: [{ id: 'l1', name: 'Smoke item', hsn: '9983', quantity: 1, rate: 1000, taxPercent: 18, discount: 0, unit: 'Nos' }] },
+    });
+    await toView78('dashboard');
+    const undoRow = page.locator('tr', { hasText: 'smoketest-undo78' }).first();
+    await undoRow.locator('button[title="Undo cancel"]').click();
+    await sleep(700);
+    const asked = await page.getByRole('button', { name: 'Yes, undo' }).count();
+    await page.getByRole('button', { name: 'No', exact: true }).click();
+    await sleep(1000);
+    const afterNo = (await get78('/api/bills')).find((x) => x.id === 'smoketest-undo78')?.status;
+    await undoRow.locator('button[title="Undo cancel"]').click();
+    await sleep(700);
+    await page.getByRole('button', { name: 'Yes, undo' }).click();
+    await sleep(2500);
+    const afterYes = (await get78('/api/bills')).find((x) => x.id === 'smoketest-undo78')?.status;
+    check('v78 #92 Undo cancel is in the Actions column, asks Yes/No, and only Yes brings it back',
+      asked === 1 && afterNo === 'cancelled' && afterYes === 'unpaid', JSON.stringify({ asked, afterNo, afterYes }));
+  }
+
   // Put the real business details back.
   await page.evaluate(async (prof) => {
     await fetch('/api/profile', {

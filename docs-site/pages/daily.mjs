@@ -73,7 +73,7 @@ export default [
 <p>Each invoice is <b>Unpaid</b>, <b>Partial</b>, <b>Paid</b>, <b>Overdue</b> or <b>Cancelled</b>. Recording payments sets it for you. Each time the Dashboard opens, unpaid and part-paid invoices past their due date become Overdue, and the row shows how many days late they are.</p>
 <p>You can also change it from the dropdown on the row. Choosing <b>Paid</b> records a payment for the rest of the balance, so your payment history stays complete.</p>
 <p>Choosing <b>Unpaid</b> on a paid invoice takes back the payment that marking it Paid recorded, so the Paid column clears and ${ui('Send reminder')} comes back. Payments you recorded yourself stay; delete them under Payment History if they were wrong.</p>
-<p>Only sales get paid, so only Tax Invoices, Bills of Supply and Composition bills have this dropdown. Quotations, proformas and delivery challans show <b>Open</b>, or <b>Converted</b> once turned into an invoice; credit notes show <b>Issued</b>. A cancelled one shows <b>Cancelled</b> with ${ui('Undo')}.</p>
+<p>Only sales get paid, so only Tax Invoices, Bills of Supply and Composition bills have this dropdown. Quotations, proformas and delivery challans show <b>Open</b>, or <b>Converted</b> once turned into an invoice; credit notes show <b>Issued</b>. A cancelled one shows <b>Cancelled</b>; ${ui('Undo cancel')} is with its actions.</p>
 </section>
 
 <section id="payments">
@@ -107,13 +107,13 @@ export default [
   <tr><td>Email</td><td>Opens your email program with the subject and a short message. Add the address and attach the PDF yourself.</td></tr>
   <tr><td>Cancel</td><td>See <a href="#cancel">Cancelling an invoice</a>.</td></tr>
 </table>
-<p>A cancelled invoice keeps only View, Duplicate and ${ui('Undo')}. A quotation, proforma or challan already converted keeps only View and Duplicate, so it cannot be changed or converted twice. Opened, either one is read-only: you can download or print it, not change it. Payments they already have stay viewable from the ${ui('₹')} button.</p>
+<p>A cancelled invoice keeps only View, Duplicate and ${ui('Undo cancel')}. A quotation, proforma or challan already converted keeps only View and Duplicate, so it cannot be changed or converted twice. Opened, either one is read-only: you can download or print it, not change it. Payments they already have stay viewable from the ${ui('₹')} button.</p>
 </section>
 
 <section id="cancel">
 <h2>Cancelling an invoice</h2>
 <p>${ui('Cancel')} asks first, then marks the invoice cancelled. It keeps its number, which GST requires, but no longer counts in totals, reports or GST returns, and any stock it used goes back.</p>
-<p>To undo it, click ${ui('Undo')} on the row. It goes back to Unpaid, Partial or Paid, from its payments, and the stock is taken out again. A cancelled invoice is never shown as overdue.</p>
+<p>To undo it, click the ${ui('Undo cancel')} arrow among the row's actions and answer <b>Yes, undo</b>. It goes back to Unpaid, Partial or Paid, from its payments, and the stock is taken out again. A cancelled invoice is never shown as overdue.</p>
 </section>
 
 <section id="quick-print">

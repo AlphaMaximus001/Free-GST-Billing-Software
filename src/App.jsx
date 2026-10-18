@@ -912,7 +912,7 @@ function App() {
               <Bell size={18} />
               Notifications
               {notifTotal > 0 && (
-                <span style={{
+                <span className="nav-badge" style={{
                   position: 'absolute', top: '8px', right: '12px',
                   minWidth: 18, height: 18, padding: '0 5px', borderRadius: '9px',
                   background: 'var(--danger)', color: '#fff',
@@ -950,7 +950,7 @@ function App() {
             >
               <Settings size={18} /> Settings
               {updateBannerVisible && (
-                <span style={{
+                <span className="nav-badge" style={{
                   position: 'absolute', top: '8px', right: '12px',
                   width: 8, height: 8, borderRadius: '50%',
                   background: '#f59e0b',

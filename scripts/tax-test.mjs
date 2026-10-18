@@ -43,6 +43,8 @@ import {
   findSameBusiness,
   splitNumberedTerms,
   deliveryChargeLine,
+  nextCounterValue,
+  startFor,
 } from '../src/utils.js';
 import { buildXlsx, colName } from '../src/utils/xlsx.js';
 import { bulkRowToProduct, closingStock, stockValueOf } from '../src/utils/products.js';
@@ -851,6 +853,20 @@ console.log('\n[V77] #85 bulk product edit, closing stock');
   eq(closingStock(products, bills, purchases, '2026-10-31').get('p1'), 50, 'Closing stock today equals current stock');
   eq(stockValueOf({ purchasePrice: 5, sellingPrice: 10 }, 35), { price: 5, value: 175, atCost: true }, 'Stock is valued at purchase price');
   eq(stockValueOf({ sellingPrice: 10 }, 3), { price: 10, value: 30, atCost: false }, 'No purchase price: valued at selling price, marked');
+}
+
+console.log('\n[V78] #93 start numbering from (tax invoices)');
+{
+  const settings = { startNumber: 1001 };
+  eq(nextCounterValue(undefined, startFor('tax-invoice', settings)), 1001, 'A new book with Start 1001: the first tax invoice is 1001');
+  eq(nextCounterValue(1001, startFor('tax-invoice', settings)), 1002, 'Then 1002, 1003...');
+  eq(nextCounterValue(5, startFor('tax-invoice', settings)), 1001, 'Already at 0005: raising the start jumps to 1001');
+  eq(nextCounterValue(1200, startFor('tax-invoice', settings)), 1201, 'A start below the last number never reuses a number');
+  eq(nextCounterValue(0, startFor(undefined, settings)), 1001, 'An invoice saved before types existed counts as a tax invoice');
+  eq([nextCounterValue(0, startFor('quotation', settings)), nextCounterValue(3, startFor('credit-note', settings)), nextCounterValue(0, startFor('delivery-challan', settings))], [1, 4, 1], 'Quotations, credit notes and challans keep their own count from 1');
+  eq(nextCounterValue(0), 1, 'No start (receipts): from 1');
+  eq([nextCounterValue(0, '1001'), nextCounterValue(0, 1001.7), nextCounterValue(0, -5), nextCounterValue(7.9, 1), nextCounterValue(0, '')], [1001, 1001, 1, 8, 1], 'Text, decimals, negatives and blanks are made safe');
+  eq(nextCounterValue(0, 1e15), 999999999, 'A start is capped at 999999999');
 }
 
 console.log('\n────────────────────────────────────────');

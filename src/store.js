@@ -1,7 +1,7 @@
 // File-based storage via local Express API server
 // All data persists as JSON files in the ./data/ folder
 
-import { getFinancialYearLabel } from './utils';
+import { getFinancialYearLabel, nextCounterValue, startFor } from './utils';
 
 const API = '/api';
 
@@ -138,16 +138,19 @@ export const setEnabledModules = (map) => {
 // Used by InvoiceGenerator to show the next number on form mount — the atomic
 // reservation happens only when the user actually saves. Cancelled forms no
 // longer burn counter values, so CA-audited businesses keep gapless sequences.
-export const getNextInvoiceNumber = async (prefix = 'INV', { peek = false, explicitPrefix = false } = {}) => {
+// v1.10.78 (#93) - pass invoiceType: a tax invoice starts at least from
+// "Start numbering from"; other types (and receipts, which pass none) from 1.
+export const getNextInvoiceNumber = async (prefix = 'INV', { peek = false, explicitPrefix = false, invoiceType = null } = {}) => {
   const settings = await getInvoiceNumberSettings();
   const key = `counter_${prefix}`;
+  const start = invoiceType ? startFor(invoiceType, settings) : 1;
   let next;
   if (peek) {
     const { value: current } = await apiFetch(`${API}/meta/${key}`);
-    const currentNum = Number(current) || (settings.startNumber || 1) - 1;
-    next = currentNum + 1;
+    // Same rule the server uses when the number is reserved.
+    next = nextCounterValue(current, start);
   } else {
-    const inc = await apiFetch(`${API}/meta/${key}/increment`, { method: 'POST', body: JSON.stringify({}) });
+    const inc = await apiFetch(`${API}/meta/${key}/increment`, { method: 'POST', body: JSON.stringify({ start }) });
     next = inc.value;
   }
 

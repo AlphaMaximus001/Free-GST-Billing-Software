@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getInvoiceNumberSettings, saveInvoiceNumberSettings, getRegionMode, setRegionMode, getEnabledModules, setEnabledModules, getStockAlertSettings, saveStockAlertSettings, getInvoiceDisplayOptions, saveInvoiceDisplayOptions } from '../store';
 import { ensureToken, findOrCreateFolder, uploadJSON } from '../services/googleDrive';
-import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, FEATURE_GROUPS, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, getFinancialYearLabel, findSameBusiness } from '../utils';
+import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, FEATURE_GROUPS, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, getFinancialYearLabel, findSameBusiness, nextCounterValue, MAX_START_NUMBER } from '../utils';
+import { getPrintSettings } from '../utils/printSettings';
 // v1.10.36 — lucide's `Image` icon was imported as `Image`, which
 // SHADOWED the browser's `HTMLImageElement` constructor. Reported:
 // "Uncaught TypeError: et is not a constructor at onChange" on logo
@@ -484,11 +485,46 @@ export default function SettingsView({ onSaved }) {
     setInvNumSettings(prev => ({ ...prev, [field]: value }));
   };
 
+  // v1.10.78 (#93) - the last tax invoice number used, so the preview and the
+  // "are you sure" can show the real next number.
+  const [taxInvoiceCounter, setTaxInvoiceCounter] = useState(0);
+  useEffect(() => {
+    const key = `counter_${(getPrintSettings().customPrefixes?.['tax-invoice'] || '').trim() || 'INV'}`;
+    fetch(`/api/meta/${encodeURIComponent(key)}`)
+      .then((r) => r.json()).then((j) => setTaxInvoiceCounter(Number(j?.value) || 0)).catch(() => {});
+  }, []);
+
   const handleSaveInvNumSettings = async () => {
+    let settings = invNumSettings;
+    if (settings.format === 'random') {
+      // The field is hidden for Random: never block Save on it.
+      settings = { ...settings, startNumber: Number.isInteger(Number(settings.startNumber)) && Number(settings.startNumber) >= 1 ? Number(settings.startNumber) : 1 };
+    } else {
+      const start = Number(settings.startNumber);
+      if (!Number.isInteger(start) || start < 1 || start > MAX_START_NUMBER) {
+        toast(`Start numbering from: a whole number from 1 to ${MAX_START_NUMBER}`, 'warning');
+        return;
+      }
+      settings = { ...settings, startNumber: start };
+      // Numbers never go back down, so moving the next tax invoice forward is
+      // asked first (a typo like 10001 would otherwise stick).
+      const now = nextCounterValue(taxInvoiceCounter, Number(JSON.parse(invNumSaved || '{}').startNumber) || 1);
+      const then = nextCounterValue(taxInvoiceCounter, start);
+      if (then > now) {
+        const ok = await confirmAction({
+          title: `Start tax invoices from ${then}?`,
+          message: `Your next tax invoice will be number ${then} (it would have been ${now}). Numbers never go back down, so the ones skipped can't be used later.`,
+          confirmLabel: `Yes, start from ${then}`,
+          cancelLabel: 'No',
+        });
+        if (!ok) return;
+      }
+    }
     setInvNumSaving(true);
     try {
-      await saveInvoiceNumberSettings(invNumSettings);
-      setInvNumSaved(JSON.stringify(invNumSettings));
+      await saveInvoiceNumberSettings(settings);
+      setInvNumSettings(settings);
+      setInvNumSaved(JSON.stringify(settings));
       toast('Invoice number settings saved!', 'success');
     } catch { toast('Failed to save settings', 'error'); }
     finally { setInvNumSaving(false); }
@@ -498,7 +534,8 @@ export default function SettingsView({ onSaved }) {
     const s = invNumSettings;
     const pfx = s.brandPrefix || 'INV';
     const sep = s.separator || '/';
-    const padded = String(s.startNumber || 1).padStart(s.padDigits || 4, '0');
+    // The real next tax invoice number (#93), not just the start.
+    const padded = String(nextCounterValue(taxInvoiceCounter, s.startNumber)).padStart(s.padDigits || 4, '0');
     if (s.format === 'random') {
       return `${pfx}${sep}A3X9K2`;
     }
@@ -1440,6 +1477,17 @@ export default function SettingsView({ onSaved }) {
               ))}
             </div>
           </div>
+          {/* v1.10.78 (#93) - carry on from a paper bill book (e.g. 1001). */}
+          {invNumSettings.format !== 'random' && (
+            <div className="form-group">
+              <label className="form-label" htmlFor="inv-start-number">Start numbering from</label>
+              <input id="inv-start-number" type="number" min={1} max={MAX_START_NUMBER} step={1} className="form-input" style={{ maxWidth: 180 }}
+                value={invNumSettings.startNumber ?? 1}
+                onWheel={e => e.currentTarget.blur()}
+                onChange={e => handleInvNumChange('startNumber', e.target.value === '' ? '' : Number(e.target.value))} />
+              <p className="field-hint">For tax invoices: the next one gets this number (carry on from your paper bill book), or the next unused one if you have already gone past it. A number already used is never given again. Quotations, challans, credit notes and other types keep their own count.</p>
+            </div>
+          )}
         </div>
 
         {/* v1.10.36 — Progressive disclosure. Prior UI showed 5 fields

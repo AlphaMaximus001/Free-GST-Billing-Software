@@ -21,7 +21,7 @@ export default [
   <li>At the bottom, <b>App Ready</b> when all is well.</li>
 </ul>
 <p>At the end of the Dashboard, below the invoices, a small line shows the app's version, a link to DiceCodes and <a href="#support">Support</a>. It is never printed.</p>
-<p>Tick <b>Auto-hide menu</b>, under the app name, to shrink the sidebar to its icons and give the page more room. Point at it to open it. Untick it to keep it open.</p>
+<p>Tick <b>Auto-hide menu</b>, under the app name, to shrink the sidebar to a slim strip of icons and give the page more room. Point at it to open it (the checkbox and your business name are there again). Untick it to keep it open.</p>
 <p>On a narrow screen, the sidebar folds away behind the ☰ menu button.</p>
 </section>
 

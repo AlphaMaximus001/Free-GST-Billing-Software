@@ -2146,6 +2146,21 @@ export const CURRENCY_NAMES = {
   NZD: { major: 'Dollars',  minor: 'Cents' },
 };
 
+// v1.10.78 (#93) - the next number of a document counter: one more than the
+// last one used, but at least `start`, so a business can carry on from its
+// paper bill book (1001). A number already used is never handed out again.
+// Only tax invoices pass a start ("Start numbering from" in Settings; see
+// startFor); every other type counts from 1.
+export const MAX_START_NUMBER = 999999999;
+export const nextCounterValue = (current, start = 1) => {
+  const last = Math.max(0, Math.floor(Number(current) || 0));
+  const from = Math.min(MAX_START_NUMBER, Math.max(1, Math.floor(Number(start) || 1)));
+  return Math.max(last + 1, from);
+};
+// The start a document type uses: Settings' start for tax invoices, else 1.
+export const startFor = (invoiceType, numberSettings) =>
+  ((invoiceType || 'tax-invoice') === 'tax-invoice' ? numberSettings?.startNumber : 1);
+
 // v1.10.74 - today's LOCAL date as YYYY-MM-DD (toISOString is UTC, so before
 // 05:30 IST it gave yesterday). Call it when needed, not once at load.
 export const localToday = () => {
