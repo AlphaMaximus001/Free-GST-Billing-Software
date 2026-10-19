@@ -22,6 +22,7 @@
  */
 import { firefox } from 'playwright';
 import { spawn } from 'child_process';
+import { PDFDocument } from 'pdf-lib';
 import { setTimeout as sleep } from 'timers/promises';
 
 const results = [];
@@ -201,6 +202,9 @@ try {
   await sleep(1400);
   await page.getByRole('button', { name: /add purchase/i }).first().click();
   await sleep(1200);
+  // The suggestions come from products and past purchases loaded in the
+  // background: on a slow machine (Docker) a fixed wait read them too early.
+  for (let i = 0; i < 16 && !(await page.locator('#fgsb-item-history option').count()); i++) await sleep(500);
 
   const opts = await page.evaluate(() =>
     [...document.querySelectorAll('#fgsb-item-history option')].map((o) => ({
@@ -911,6 +915,13 @@ try {
   // ======================================================================
   const salesCards = async () => {
     await reopenView('Dashboard');
+    // The cards show "—" until the invoices have loaded; reading them then
+    // gave 0 on a busy PC (v1.10.79 gate). Wait for real values, up to 8 s.
+    for (let i = 0; i < 16; i++) {
+      const v = await cardValues('Invoices');
+      if (v && v[0] && v[0] !== '—') break;
+      await sleep(500);
+    }
     return { total: rupees(await cardValues('Total Invoiced')), count: money((await cardValues('Invoices'))?.[0]) };
   };
   const seedBill = (id, number, type, amount, extra = {}) => api('/api/bills', {
@@ -1090,14 +1101,17 @@ try {
   const numBefore = await getMeta('invoiceNumberSettings');
   await page.locator('#section-company input[name="businessName"]').fill(`Smoke SaveAll ${Date.now() % 100000}`);
   await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
-  await page.locator('input[placeholder^="e.g. ACME"]').fill('SMKALL');
+  // v1.10.79 - a prefix that keeps credit notes within GST's 16 characters
+  // (SM-CN/26-27/0001): longer ones are now refused, rightly.
+  await page.locator('input[placeholder^="e.g. ACME"]').fill('SM');
+  await page.getByRole('button', { name: /^Short \(/ }).first().click();
   await sleep(500);
   await page.getByRole('button', { name: /Save all changes/i }).click();
   await sleep(2500);
   const savedName = await page.evaluate(async () => (await (await fetch('/api/profile')).json()).businessName);
   const savedPrefix = (await getMeta('invoiceNumberSettings')).brandPrefix;
   check('v75 "Save all changes" saves Company Details and Invoice Number Format together',
-    /^Smoke SaveAll/.test(savedName || '') && savedPrefix === 'SMKALL', `name=${savedName} prefix=${savedPrefix}`);
+    /^Smoke SaveAll/.test(savedName || '') && savedPrefix === 'SM', `name=${savedName} prefix=${savedPrefix}`);
   // Put both back.
   await page.locator('#section-company input[name="businessName"]').fill(nameBefore);
   await page.locator('input[placeholder^="e.g. ACME"]').fill(numBefore.brandPrefix || '');
@@ -1669,6 +1683,110 @@ try {
     const afterYes = (await get78('/api/bills')).find((x) => x.id === 'smoketest-undo78')?.status;
     check('v78 #92 Undo cancel is in the Actions column, asks Yes/No, and only Yes brings it back',
       asked === 1 && afterNo === 'cancelled' && afterYes === 'unpaid', JSON.stringify({ asked, afterNo, afterYes }));
+  }
+
+  // ---- v1.10.79: issues #94, #95, #96 --------------------------------------
+  {
+    const get79 = (url) => page.evaluate(async (url) => (await fetch(url)).json(), url);
+    const post79 = (url, body) => page.evaluate(async ({ url, body }) => (await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json().catch(() => null), { url, body });
+    const toNew79 = async () => {
+      await page.evaluate(() => { sessionStorage.removeItem('gst_editingBill'); sessionStorage.removeItem('gst_invoiceDraft'); sessionStorage.setItem('gst_currentView', 'new'); });
+      await page.reload({ waitUntil: 'networkidle' });
+      await sleep(3000);
+      await dismissFirstRun(page);
+      return page.locator('#invoice-preview').innerText().catch(() => '');
+    };
+    const profile79 = await get79('/api/profile');
+    const shared79 = (await get79('/api/meta/invoiceNumberSettings')).value;
+    const series79 = (await get79('/api/meta/invoiceNumberSeries')).value;
+
+    // #95 a second business with its own numbering: the screen shows its own
+    // next number (it used to show the shared series'), saving takes it.
+    const other79 = { businessName: 'Smoke Second Firm', state: 'Maharashtra', country: 'India', gstin: '27AAPFS9999Q1Z1' };
+    await post79('/api/meta/invoiceNumberSeries', { value: { ...(series79 || {}), '27AAPFS9999Q1Z1': { brandPrefix: 'SMKB', startNumber: 502 } } });
+    await post79('/api/profile', other79);
+    const own79 = await toNew79();
+    await post79('/api/profile', profile79);
+    const shared79Shown = await toNew79();
+    check('v79 #95 a business with its own numbering shows and numbers in its own series',
+      /SMKB\/[\d-]*\/?0502\b|SMKB\/0502\b/.test(own79) && !/SMKB/.test(shared79Shown),
+      JSON.stringify({ own: (own79.match(/SMKB[^\s]*/) || ['-'])[0], shared: (shared79Shown.match(/[A-Z-]+\/[\d-]+\/\d+/) || ['-'])[0] }));
+    await post79('/api/meta/invoiceNumberSeries', { value: series79 || {} });
+    await post79('/api/meta/' + encodeURIComponent('counter_INV@27AAPFS9999Q1Z1'), { value: null });
+
+    // Brand prefix: other types are brand-TYPE, so they never collide with invoices
+    await post79('/api/meta/invoiceNumberSettings', { value: { ...(shared79 || {}), brandPrefix: 'SMKA' } });
+    await page.evaluate(() => {
+      sessionStorage.setItem('gst_invoiceDraft', JSON.stringify({ invoiceType: 'quotation', client: { name: 'Smoke Test Client', state: 'Punjab', country: 'India' },
+        details: { invoiceDate: new Date().toISOString().slice(0, 10), placeOfSupply: 'Punjab' },
+        items: [{ id: 'l1', name: 'Smoke item', hsn: '9983', quantity: 1, rate: 1000, taxPercent: 18, discount: 0, unit: 'Nos' }] }));
+      sessionStorage.setItem('gst_currentView', 'new'); sessionStorage.removeItem('gst_editingBill');
+    });
+    await page.reload({ waitUntil: 'networkidle' });
+    await sleep(3000);
+    await dismissFirstRun(page);
+    await page.getByRole('button', { name: /^Save$/ }).first().click();
+    await sleep(3500);
+    const quo79 = (await get79('/api/bills')).filter((x) => x.clientName === 'Smoke Test Client' && x.invoiceType === 'quotation').map((x) => x.id);
+    check('v79 brand prefix: a quotation is numbered SMKA-QUO/..., apart from SMKA/... invoices', quo79.some((id) => /^SMKA-QUO\//.test(id)), quo79.join(','));
+    await post79('/api/meta/invoiceNumberSettings', { value: shared79 });
+
+    // #94 the saved PDF of a cancelled invoice is stamped, and Undo restores it
+    const pdf = await PDFDocument.create();
+    pdf.addPage([595, 842]);
+    const bytes = await pdf.save();
+    const name79 = 'INV_smoketest-pdf79.pdf';
+    const savedPdf = await page.evaluate(async ({ b, name }) => (await fetch(`/api/save-pdf?name=${encodeURIComponent(name)}&client=Smoke%20Test%20Client&month=Smoke`, {
+      method: 'POST', headers: { 'Content-Type': 'application/pdf' }, body: new Uint8Array(b) })).json(), { b: [...bytes], name: name79 });
+    const stamp79 = await post79('/api/saved-pdf/cancel-mark', { fileName: name79, clientName: 'Smoke Test Client', cancelled: true });
+    const again79 = await post79('/api/saved-pdf/cancel-mark', { fileName: name79, clientName: 'Smoke Test Client', cancelled: true });
+    const undo79 = await post79('/api/saved-pdf/cancel-mark', { fileName: name79, clientName: 'Smoke Test Client', cancelled: false });
+    const undoAgain79 = await post79('/api/saved-pdf/cancel-mark', { fileName: name79, clientName: 'Smoke Test Client', cancelled: false });
+    check('v79 #94 a saved PDF is stamped CANCELLED (once, however often) and Undo restores it',
+      savedPdf?.saved && stamp79?.updated === 1 && again79?.updated === 1 && undo79?.updated === 1 && undoAgain79?.updated === 0,
+      JSON.stringify({ stamp: stamp79, undo: undo79, undoAgain: undoAgain79 }));
+    await post79('/api/trash-pdf', { fileName: name79, clientName: 'Smoke Test Client' });
+
+    // A renamed business keeps its own numbering
+    await post79('/api/meta/invoiceNumberSeries', { value: { ...(series79 || {}), 'NAME:smoke old name': { brandPrefix: 'SMKR' } } });
+    await post79('/api/meta/' + encodeURIComponent('counter_INV@NAME:smoke old name'), { value: 41 });
+    const moved79 = await post79('/api/number-series/rename', { from: 'NAME:smoke old name', to: '27AAPFR9999Q1Z1' });
+    const map79 = (await get79('/api/meta/invoiceNumberSeries')).value || {};
+    const ctr79 = (await get79('/api/meta/' + encodeURIComponent('counter_INV@27AAPFR9999Q1Z1'))).value;
+    check('v79 #95 a business saved under a new GSTIN keeps its own numbering and count',
+      moved79?.moved && map79['27AAPFR9999Q1Z1']?.brandPrefix === 'SMKR' && !map79['NAME:smoke old name'] && ctr79 === 41,
+      JSON.stringify({ moved79, ctr79 }));
+    await post79('/api/meta/invoiceNumberSeries', { value: series79 || {} });
+    await post79('/api/meta/' + encodeURIComponent('counter_INV@27AAPFR9999Q1Z1'), { value: null });
+
+    // Converting two quotations in a row makes two invoices (the second used
+    // to overwrite the first: a conversion saved under a number it only peeked).
+    const quoteOf79 = (id) => ({
+      id, invoiceNumber: id, clientName: 'Smoke Test Client', invoiceDate: new Date().toISOString().slice(0, 10), invoiceType: 'quotation',
+      status: 'unpaid', totalAmount: 1180, paidAmount: 0, payments: [],
+      data: { profile: profile79, client: { name: 'Smoke Test Client', state: profile79.state, country: 'India' }, details: { invoiceNumber: id, invoiceDate: new Date().toISOString().slice(0, 10) },
+        invoiceType: 'quotation', invoiceOptions: {}, totals: { total: 1180 }, stockApplied: {},
+        items: [{ id: 'l1', name: 'Smoke item', hsn: '9983', quantity: 1, rate: 1000, taxPercent: 18, discount: 0, unit: 'Nos' }] },
+    });
+    const before79 = (await get79('/api/bills')).filter((x) => x.clientName === 'Smoke Test Client' && x.invoiceType === 'tax-invoice').map((x) => x.id);
+    for (const qid of ['smoketest-conv79a', 'smoketest-conv79b']) {
+      const q = quoteOf79(qid);
+      await post79('/api/bills', q);
+      await page.evaluate((bill) => {
+        sessionStorage.setItem('gst_editingBill', JSON.stringify({ ...bill, _isDuplicate: true, _convertToType: 'tax-invoice' }));
+        sessionStorage.setItem('gst_currentView', 'new'); sessionStorage.removeItem('gst_invoiceDraft');
+      }, q);
+      await page.reload({ waitUntil: 'networkidle' });
+      await sleep(3000);
+      await dismissFirstRun(page);
+      await page.getByRole('button', { name: /^Save$/ }).first().click();
+      await sleep(3500);
+    }
+    const after79 = (await get79('/api/bills')).filter((x) => x.clientName === 'Smoke Test Client' && x.invoiceType === 'tax-invoice').map((x) => x.id);
+    const made79 = after79.filter((id) => !before79.includes(id));
+    check('v79 converting two quotations in a row makes two invoices, neither overwritten', made79.length === 2, made79.join(', '));
+    for (const id of made79) await page.evaluate(async (id) => fetch('/api/bills/' + encodeURIComponent(id), { method: 'DELETE' }), id);
   }
 
   // Put the real business details back.

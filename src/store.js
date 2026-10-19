@@ -1,7 +1,7 @@
 // File-based storage via local Express API server
 // All data persists as JSON files in the ./data/ folder
 
-import { getFinancialYearLabel, nextCounterValue, startFor } from './utils';
+import { getFinancialYearLabel, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, INVOICE_TYPES, savedPdfNameFor } from './utils';
 
 const API = '/api';
 
@@ -49,6 +49,24 @@ export const saveInvoiceNumberSettings = async (settings) => {
     method: 'POST',
     body: JSON.stringify({ value: settings }),
   });
+};
+
+// v1.10.79 (#95) - businesses with their own numbering: { [businessKey]: settings }.
+export const getNumberSeriesMap = async () => {
+  const { value } = await apiFetch(`${API}/meta/invoiceNumberSeries`);
+  return value && typeof value === 'object' ? value : {};
+};
+export const saveNumberSeriesMap = (map) => apiFetch(`${API}/meta/invoiceNumberSeries`, {
+  method: 'POST', body: JSON.stringify({ value: map || {} }),
+});
+// A business saved under a new GSTIN or name keeps its own series (#95).
+export const renameNumberSeries = (from, to) => apiFetch(`${API}/number-series/rename`, {
+  method: 'POST', body: JSON.stringify({ from, to }),
+});
+// The settings a business numbers with (own series, else shared); .own tells which.
+export const getNumberSeries = async (businessKey) => {
+  const [shared, map] = await Promise.all([getInvoiceNumberSettings(), businessKey ? getNumberSeriesMap() : {}]);
+  return numberSeriesFor(shared, map, businessKey);
 };
 
 // ---- Stock-alert Settings ----
@@ -140,47 +158,36 @@ export const setEnabledModules = (map) => {
 // longer burn counter values, so CA-audited businesses keep gapless sequences.
 // v1.10.78 (#93) - pass invoiceType: a tax invoice starts at least from
 // "Start numbering from"; other types (and receipts, which pass none) from 1.
-export const getNextInvoiceNumber = async (prefix = 'INV', { peek = false, explicitPrefix = false, invoiceType = null } = {}) => {
-  const settings = await getInvoiceNumberSettings();
-  const key = `counter_${prefix}`;
+// v1.10.79 (#95) - pass businessKey: a business with its own numbering counts
+// in its own series, with its own prefix (Print Settings' per-type prefixes
+// belong to the shared series).
+export const getNextInvoiceNumber = async (prefix = 'INV', { peek = false, explicitPrefix = false, invoiceType = null, businessKey = '' } = {}) => {
+  const settings = await getNumberSeries(businessKey);
+  const typePrefix = settings.own ? (INVOICE_TYPES[invoiceType]?.prefix || prefix) : prefix;
+  const key = counterKeyFor(typePrefix, settings, businessKey);
   const start = invoiceType ? startFor(invoiceType, settings) : 1;
   let next;
   if (peek) {
-    const { value: current } = await apiFetch(`${API}/meta/${key}`);
+    // Encoded: a key can hold a business name ("M/S Sharma", "Shop #12").
+    const { value: current } = await apiFetch(`${API}/meta/${encodeURIComponent(key)}`);
     // Same rule the server uses when the number is reserved.
     next = nextCounterValue(current, start);
   } else {
-    const inc = await apiFetch(`${API}/meta/${key}/increment`, { method: 'POST', body: JSON.stringify({ start }) });
+    const inc = await apiFetch(`${API}/meta/${encodeURIComponent(key)}/increment`, { method: 'POST', body: JSON.stringify({ start }) });
     next = inc.value;
   }
 
   // v1.10.10 — When `explicitPrefix` is true, the caller (per-type
   // prefix override from Print Settings) wants THEIR prefix used as-is
   // instead of the global brandPrefix from Invoice Number Settings.
-  // Prior code always let brandPrefix win, so setting "Tax Invoice
-  // prefix = RPT" was silently ignored because brandPrefix = 'DICECODES'.
-  const pfx = explicitPrefix ? prefix : (settings.brandPrefix || prefix);
-
-  if (settings.format === 'random') {
-    const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `${pfx}${settings.separator}${rand}`;
-  }
-
-  const sep = settings.separator || '/';
-  const padded = String(next).padStart(settings.padDigits || 4, '0');
-
-  if (settings.showFinYear) {
-    // v1.10.53 — was `new Date().getFullYear()`, i.e. the CALENDAR year.
-    // India's FY runs April→March, so every invoice minted between 1 Jan
-    // and 31 Mar was stamped with the NEXT financial year: an invoice on
-    // 15 Jan 2027 belongs to FY 2026-27 but was numbered .../2027-28/...
-    // That number is what gets reported in GSTR-1, so it was a compliance
-    // defect for three months of every year. Now uses the one shared
-    // definition in utils.js.
-    return `${pfx}${sep}${getFinancialYearLabel()}${sep}${padded}`;
-  }
-
-  return `${pfx}${sep}${padded}`;
+  // v1.10.53 — the financial year label is India's April-March FY.
+  // v1.10.79 — formatting lives in utils (formatDocNumber), shared with the
+  // server's recurring invoices.
+  return formatDocNumber({
+    settings, typePrefix, next,
+    explicitPrefix: settings.own ? false : explicitPrefix,
+    fyLabel: getFinancialYearLabel(),
+  });
 };
 
 // ---- Bills ----
@@ -327,6 +334,12 @@ export const saveReceipt = async (receipt) => {
   if (res.id) receipt.id = res.id;
   return receipt;
 };
+
+// v1.10.79 (#94) - stamp CANCELLED on the invoice's saved PDF, or put the
+// original back (Undo). Nothing happens when no PDF was ever saved.
+export const markSavedPdfCancelled = (bill, cancelled) => apiFetch(`${API}/saved-pdf/cancel-mark`, {
+  method: 'POST', body: JSON.stringify({ ...savedPdfNameFor(bill), cancelled }),
+});
 
 export const deleteReceipt = async (id) => {
   return apiFetch(`${API}/receipts/${encodeURIComponent(id)}`, { method: 'DELETE' });

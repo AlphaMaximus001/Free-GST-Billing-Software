@@ -426,7 +426,7 @@ export default function ExpenseTracker() {
                   <th style={{ textAlign: 'right' }}>Amount</th>
                   <th style={{ textAlign: 'right' }}>GST</th>
                   <th>Mode</th>
-                  <th>Actions</th>
+                  <th className="col-center">Actions</th>
                 </tr>
               </thead>
               <tbody>

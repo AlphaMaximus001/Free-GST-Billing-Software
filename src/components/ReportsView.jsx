@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package, Boxes } from 'lucide-react';
 import { getAllBills, getAllExpenses, getProfile } from '../store';
-import { formatCurrency, getFYOptions, belongsToProfile, isCancelledBill, salesSign, countsAsSales, calculateLineItemTax } from '../utils';
+import { formatCurrency, getFYOptions, belongsToProfile, isCancelledBill, salesSign, countsAsSales, calculateLineItemTax, roundQty } from '../utils';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
 import PartyOutstandingReport from './PartyOutstandingReport';
@@ -636,7 +636,8 @@ export default function ReportsView() {
             if (item.hsn && !byProduct[name].hsn) byProduct[name].hsn = item.hsn;
           });
         });
-        const productArr = Object.values(byProduct);
+        // #96 - quantities rounded once, after adding up (6356.959999 -> 6356.96).
+        const productArr = Object.values(byProduct).map((p) => ({ ...p, qty: roundQty(p.qty) }));
         const bestSellers = [...productArr].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
         const mostSoldByUnits = [...productArr].sort((a, b) => b.qty - a.qty).slice(0, 10);
         return (

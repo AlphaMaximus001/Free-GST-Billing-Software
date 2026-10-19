@@ -3,7 +3,7 @@ import { ArrowLeft, Plus, Trash2, Download, UserPlus, Pencil, Settings, ChevronU
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { saveBill, applyStockChanges, getNextInvoiceNumber, getTermsTemplates, getAllClients, saveClient, getProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllBills } from '../store';
-import { INVOICE_TYPES, COUNTRIES, printedSubtotal, deliveryChargeLine, stockEffect, appliedStock, stockDelta, generateEWayBillJSON, formatCurrency, getCountryConfig, getStatesForCountry, getAllUnits, addCustomUnit, removeCustomUnit, getCountriesForRegion, TDS_SECTIONS, TCS_SECTIONS, REMOVED_TCS_SECTIONS, TERMS_PRESETS, getActiveAccounts, getDefaultAccount, getAccountById, getDefaultUnitForMode, filterUnitsByMode, PAPER_SIZES, getPaperSize, computeInvoiceTotals, clientYearToDate, htmlHasText, ORDER_DETAIL_FIELDS, invoiceOptionOn, DEFAULT_DECLARATION, decodeGstin, safePageBoundaries } from '../utils';
+import { INVOICE_TYPES, businessKeyOf, GST_DOC_NUMBER, COUNTRIES, printedSubtotal, deliveryChargeLine, stockEffect, appliedStock, stockDelta, generateEWayBillJSON, formatCurrency, getCountryConfig, getStatesForCountry, getAllUnits, addCustomUnit, removeCustomUnit, getCountriesForRegion, TDS_SECTIONS, TCS_SECTIONS, REMOVED_TCS_SECTIONS, TERMS_PRESETS, getActiveAccounts, getDefaultAccount, getAccountById, getDefaultUnitForMode, filterUnitsByMode, PAPER_SIZES, getPaperSize, computeInvoiceTotals, clientYearToDate, htmlHasText, ORDER_DETAIL_FIELDS, invoiceOptionOn, DEFAULT_DECLARATION, decodeGstin, safePageBoundaries } from '../utils';
 import { getPrintSettings, savePrintSettings } from '../utils/printSettings';
 import { openWhatsAppShare } from '../utils/share';
 import { confirmAction, promptAction } from './ConfirmModal';
@@ -747,7 +747,16 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   // For new bills, flips to true after the first successful save. Used to
   // decide whether subsequent saves need overwrite: true (they do — same
   // invoice number, otherwise the server 409s).
-  const hasBeenSaved = useRef(!!editingBill);
+  // v1.10.79 - a duplicate or conversion has not been saved yet.
+  const hasBeenSaved = useRef(!!editingBill && !editingBill._isDuplicate);
+  // The last number the editor filled in by itself (a peek), so it knows which
+  // number it may replace when the business turns out to be another (#95).
+  const peekedNumber = useRef(null);
+  // Each number request gets a ticket; only the latest one's answer is used, so
+  // an answer that arrives late (asked before the business was known) cannot
+  // overwrite the right one.
+  const peekSeq = useRef(0);
+  const warnedLongNumber = useRef(false);
 
   const typeConfig = INVOICE_TYPES[invoiceType];
   const showGST = invoiceOptions.showGST;
@@ -939,7 +948,9 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     // separate effect below, so nothing is lost if the tab crashes.
     // Nothing is stored yet, so the badge must not say "All changes saved"
     // (it used to flash that here); it reads "Not saved yet" instead.
-    if (!editingBill && !hasBeenSaved.current) return;
+    // Duplicates and conversions too (v1.10.79): nothing is stored, and no
+    // number is taken, until the first Save.
+    if ((!editingBill || editingBill._isDuplicate) && !hasBeenSaved.current) return;
 
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
@@ -1140,7 +1151,10 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         const rawOverride = _psForPrefix.customPrefixes?.[type];
         const overridePrefix = rawOverride && rawOverride.trim();
         const prefix = overridePrefix || INVOICE_TYPES[type]?.prefix || 'INV';
-        getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix, invoiceType: type }).then(num => {
+        const seq = ++peekSeq.current;
+        getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix, invoiceType: type, businessKey: businessKeyOf(profile) }).then(num => {
+          if (seq !== peekSeq.current) return;
+          peekedNumber.current = num;
           setDetails({ ...d.details, invoiceNumber: num, invoiceDate: new Date().toISOString().split('T')[0] });
           numberReserved.current = false;
         });
@@ -1153,12 +1167,42 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       const rawOverride = _psForPrefix.customPrefixes?.[invoiceType];
       const overridePrefix = rawOverride && rawOverride.trim();
       const prefix = overridePrefix || INVOICE_TYPES[invoiceType]?.prefix || 'INV';
-      getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix, invoiceType }).then(num => {
+      const seq = ++peekSeq.current;
+      getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix, invoiceType, businessKey: businessKeyOf(profile) }).then(num => {
+        if (seq !== peekSeq.current) return;
+        peekedNumber.current = num;
         setDetails(prev => ({ ...prev, invoiceNumber: num }));
         numberReserved.current = false;
       });
     }
   }, [editingBill]);
+
+  // v1.10.79 (#95) - the number shown on an unsaved invoice follows the
+  // business it is for: each business can number on its own, and the business
+  // is often known only after the first render. Without this the screen showed
+  // the shared series' next number while Save took the business's own.
+  const bizKey = businessKeyOf(profile);
+  const peekedFor = useRef(bizKey);
+  useEffect(() => {
+    if (!bizKey || peekedFor.current === bizKey) return;
+    peekedFor.current = bizKey;
+    if ((editingBill && !editingBill._isDuplicate) || numberReserved.current || hasBeenSaved.current) return;
+    // Only a number the editor filled in itself (or none): a draft's own
+    // number, or one typed by hand, stays as it is.
+    if (details.invoiceNumber && details.invoiceNumber !== peekedNumber.current) return;
+    const rawOverride = getPrintSettings().customPrefixes?.[invoiceType];
+    const overridePrefix = rawOverride && rawOverride.trim();
+    const prefix = overridePrefix || INVOICE_TYPES[invoiceType]?.prefix || 'INV';
+    const seq = ++peekSeq.current;
+    getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix, invoiceType, businessKey: bizKey })
+      .then((num) => {
+        if (seq !== peekSeq.current || numberReserved.current) return;
+        setDetails((prev) => (prev.invoiceNumber && prev.invoiceNumber !== peekedNumber.current ? prev : { ...prev, invoiceNumber: num }));
+        peekedNumber.current = num;
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bizKey]);
 
   // Seed the payment-account selection on first render. For a freshly-created
   // invoice (no editingBill, no value yet) we prefer the profile's ⭐ default,
@@ -1249,7 +1293,10 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     const overridePrefix = rawOverride && rawOverride.trim();
     const prefix = overridePrefix || config?.prefix || 'INV';
     // Peek — actual reservation happens on save.
-    const num = await getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix, invoiceType: type });
+    const seq = ++peekSeq.current;
+    const num = await getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix, invoiceType: type, businessKey: businessKeyOf(profile) });
+    if (seq !== peekSeq.current) return;
+    peekedNumber.current = num;
     numberReserved.current = false;
     setDetails(prev => ({ ...prev, invoiceNumber: num }));
 
@@ -1587,14 +1634,19 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     // (printedCount + lastPrintedAt) at save time without needing to
     // pipe them through the entire bill state.
     let finalInvoiceNumber = details.invoiceNumber;
-    if (!editingBill && !numberReserved.current) {
+    // v1.10.79 - a duplicate or a conversion is a new document too: it reserves
+    // its number like a new invoice. It used to save under the number it only
+    // peeked, without moving the counter, so the next conversion got the same
+    // number and failed to save.
+    const isNewDoc = !editingBill || !!editingBill._isDuplicate;
+    if (isNewDoc && !numberReserved.current) {
       try {
         // v1.10.10 — honour user's per-type prefix override.
         const _psForPrefix = getPrintSettings();
         const rawOverride = _psForPrefix.customPrefixes?.[invoiceType];
         const overridePrefix = rawOverride && rawOverride.trim();
         const prefix = overridePrefix || INVOICE_TYPES[invoiceType]?.prefix || 'INV';
-        finalInvoiceNumber = await getNextInvoiceNumber(prefix, { explicitPrefix: !!overridePrefix, invoiceType });
+        finalInvoiceNumber = await getNextInvoiceNumber(prefix, { explicitPrefix: !!overridePrefix, invoiceType, businessKey: businessKeyOf(profile) });
         setDetails(prev => ({ ...prev, invoiceNumber: finalInvoiceNumber }));
         numberReserved.current = true;
       } catch { /* fall back to the peeked value; server will 409 if it collides */ }
@@ -1725,7 +1777,11 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     // later save this session → also overwrite (same invoice number, would
     // otherwise 409). NEW bill on first save → no overwrite, so a typo
     // hitting an existing invoice number gets caught by the server.
-    const shouldOverwrite = !!editingBill || hasBeenSaved.current;
+    // v1.10.79 - a duplicate or conversion is NEW on its first save. It used to
+    // count as "editing", so saving it overwrote whatever invoice already had
+    // that number: converting two quotations in a row replaced the first
+    // invoice with the second.
+    const shouldOverwrite = !isNewDoc || hasBeenSaved.current;
     // The number this bill actually ended up under: the 409 retry below can
     // move it, and the recurring template + callers must use the real one.
     let savedNumber = bill.id;
@@ -1817,7 +1873,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         // retry with a fresh reservation, incrementing the counter until
         // we land on a truly unused number (capped at 20 tries so a
         // pathological data state can't spin forever).
-        if (!editingBill && !shouldOverwrite) {
+        if (isNewDoc && !shouldOverwrite) {
           const _psForPrefix = getPrintSettings();
           const rawOverride = _psForPrefix.customPrefixes?.[invoiceType];
           const overridePrefix = rawOverride && rawOverride.trim();
@@ -1826,7 +1882,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           let success = false;
           for (let i = 0; i < 20; i++) {
             try {
-              nextNum = await getNextInvoiceNumber(prefix, { explicitPrefix: !!overridePrefix, invoiceType });
+              nextNum = await getNextInvoiceNumber(prefix, { explicitPrefix: !!overridePrefix, invoiceType, businessKey: businessKeyOf(profile) });
               const retryBill = { ...bill, id: nextNum, invoiceNumber: nextNum };
               retryBill.data = { ...retryBill.data, details: { ...retryBill.data.details, invoiceNumber: nextNum } };
               await saveBill(retryBill, { overwrite: false });
@@ -1943,6 +1999,12 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           else if (product.stock <= 5) toast(`${product.name} has only ${product.stock} left in stock`, 'warning');
         }
       }
+    }
+    // GSTR-1 refuses invoice and credit-note numbers over 16 characters
+    // (letters, digits, - and /). Say so now rather than at filing time.
+    if (['tax-invoice', 'credit-note'].includes(invoiceType) && savedNumber && !GST_DOC_NUMBER.test(savedNumber) && !warnedLongNumber.current) {
+      warnedLongNumber.current = true;
+      toast(`${savedNumber} has ${savedNumber.length} characters; GST allows 16, so GSTR-1 will refuse it. Shorten the format in Settings → Invoice Number Format.`, 'warning', 10000);
     }
     return savedNumber;
   };
@@ -3068,7 +3130,9 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
 
       // Save to local "Saved Invoices" folder (Client Name / Month / file.pdf)
       const clientName = client?.name || 'General';
-      saveToInvoicesFolder(pdfBlob, fileName).catch(() => {});
+      // A cancelled invoice keeps its CANCELLED-stamped copy in Saved Invoices
+      // (and the original kept for Undo); downloading it again leaves those alone.
+      if (!(readOnlyDoc && editingBill?.status === 'cancelled')) saveToInvoicesFolder(pdfBlob, fileName).catch(() => {});
 
       toast(`Invoice downloaded & saved to Saved Invoices/${clientName}/`, 'success');
       uploadToGoogleDrive(pdfBlob, fileName);
@@ -3173,7 +3237,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
             const label = saving ? 'Saving…'
               : saved ? 'All changes saved'
               : isDraft ? 'Draft — click to complete'
-              : (!editingBill && !hasBeenSaved.current) ? 'Not saved yet'
+              : ((!editingBill || editingBill._isDuplicate) && !hasBeenSaved.current) ? 'Not saved yet'
               : 'Ready';
             const onClick = () => {
               if (!isDraft) return;

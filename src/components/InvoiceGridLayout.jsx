@@ -14,7 +14,7 @@
 // Every block and every table row here carries data-pdf-page-boundary, so a
 // page can end between rows or blocks but never cuts through one.
 import React from 'react';
-import { filledOrderDetails, getStateCode, printedSubtotal } from '../utils';
+import { filledOrderDetails, getStateCode, printedSubtotal, roundQty } from '../utils';
 
 const LINE = '#1f2937';
 const B = `1px solid ${LINE}`;
@@ -231,7 +231,7 @@ function TallyLayout({ ctx }) {
   );
   const rows = taxRows(ctx);
   const units = [...new Set(items.map((i) => i.unit || ''))];
-  const totalQty = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+  const totalQty = roundQty(items.reduce((s, i) => s + (Number(i.quantity) || 0), 0)); // #96: 0.1 + 0.2 printed as 0.30000000000000004
   const showQtyTotal = units.length === 1 && t.itemQty;
   // Sl No + Description + Amount, plus the optional columns.
   const colCount = 3 + (t.hsn ? 1 : 0) + (t.itemQty ? 1 : 0) + (t.rate ? 2 : 0) + (ctx.hasAnyDiscount ? 1 : 0);

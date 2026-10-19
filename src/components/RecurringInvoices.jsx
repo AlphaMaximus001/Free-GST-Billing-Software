@@ -387,7 +387,7 @@ export default function RecurringInvoices() {
                   <th style={{ textAlign: 'right' }}>Amount</th>
                   <th>Next Due</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  <th className="col-center">Actions</th>
                 </tr>
               </thead>
               <tbody>

@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { FileText, Download, Upload, ExternalLink, CheckCircle, ChevronDown, ChevronRight, AlertTriangle, BookOpen, BarChart3 } from 'lucide-react';
 import { getAllBills, getAllExpenses, getAllPurchases, getProfile } from '../store';
-import { formatCurrency, INVOICE_TYPES, getStateCode, formatDateGST, getFilingPeriod, hsnUqc, getFYOptions, belongsToProfile, toCsvLine, isCancelledBill, b2clThreshold, GST_PORTAL_RATES, setOffITC, splitLineTax } from '../utils';
+import { formatCurrency, INVOICE_TYPES, getStateCode, formatDateGST, getFilingPeriod, hsnUqc, getFYOptions, belongsToProfile, toCsvLine, isCancelledBill, b2clThreshold, GST_PORTAL_RATES, setOffITC, splitLineTax, roundQty, placeOfSupplyLabel, countsAsSales } from '../utils';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
 
 const GST_TYPES = ['tax-invoice', 'credit-note'];
+// GSTR-1 Table 13 "nature of document" codes.
+const DOC_ISSUE_NATURE = { 'tax-invoice': 1, 'bill-of-supply': 1, composition: 1, 'credit-note': 5, 'delivery-challan': 12 };
+const DOC_NATURE_LABEL = { 1: 'Invoices for outward supply', 5: 'Credit notes', 12: 'Delivery challans' };
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const QUARTERS = [
   { id: 'Q1', label: 'Q1 (Apr–Jun)', months: [3, 4, 5] },
@@ -705,6 +708,29 @@ export default function GSTReturns() {
   });
   const b2cRates = Object.keys(b2cByRate).map(Number).sort((a, b) => a - b);
 
+  // v1.10.79 (#95) - the screen shows Table 7 the way the portal takes it: one
+  // row per supply type, place of supply and rate. It used to add every state
+  // into one row per rate, so inter-state sales to Bihar, Punjab... could not
+  // be read off it. B2C Large (Table 5) invoices are listed under it.
+  const b2cPos = (bill) => getStateCode(bill.data?.details?.placeOfSupply || bill.data?.client?.state || bill.data?.profile?.state || '');
+  const b2cTable7 = (() => {
+    const rows = {};
+    b2cSmall.forEach(bill => {
+      const isInter = billIsInterstate(bill);
+      const isIntraUT = billIsIntraUT(bill);
+      const pos = b2cPos(bill);
+      (bill.data.items || []).forEach(item => {
+        const rate = item.taxPercent || 0;
+        const key = `${isInter ? 'INTER' : 'INTRA'}_${pos}_${rate}`;
+        if (!rows[key]) rows[key] = { inter: isInter, pos, rate, taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0 };
+        const split = computeItemTaxSplit(item, isInter, !!bill.data?.taxInclusive, isIntraUT);
+        rows[key].taxable += split.taxable; rows[key].cgst += split.cgst; rows[key].sgst += split.sgst + split.utgst;
+        rows[key].igst += split.igst; rows[key].cess += split.cess;
+      });
+    });
+    return Object.values(rows).sort((a, b) => (a.inter - b.inter) || a.pos.localeCompare(b.pos) || a.rate - b.rate);
+  })();
+
   // ========== HSN Summary ==========
   // v1.10.31 — GST-H3 fix: key by hsn+rate+uqc so items with the same HSN
   // but different UQCs (KGS vs NOS vs PCS) don't get their quantities
@@ -731,7 +757,8 @@ export default function GSTReturns() {
       hsnMap[key].totalTax += sign * (split.cgst + split.sgst + split.utgst + split.igst + split.cess);
     });
   });
-  const hsnRows = Object.values(hsnMap).sort((a, b) => (a.hsn || '').localeCompare(b.hsn || ''));
+  const hsnRows = Object.values(hsnMap).map((r) => ({ ...r, quantity: roundQty(r.quantity) }))
+    .sort((a, b) => (a.hsn || '').localeCompare(b.hsn || ''));
 
   // ========== Totals ==========
   // v1.10.31 — GST-C3: sumRows now carries cess. GST-H2: credit notes
@@ -824,15 +851,25 @@ export default function GSTReturns() {
   // v1.10.74 - Table 13 counts cancelled documents too: "Total" is every
   // number issued in the series, "Cancelled" the ones cancelled, and the
   // portal's net issued is the difference.
+  // v1.10.79 - one row per number series, under the portal's document
+  // nature (1 invoices, 5 credit notes, 12 delivery challans). It was one row
+  // per type, so two series (a changed prefix, a business's own numbering)
+  // made a from/to that spanned both; quotations and proformas, which are not
+  // reported, were listed; and the file numbered natures by list position.
   const docSummary = {};
+  const trailingNo = (n) => Number((String(n).match(/(\d+)\s*$/) || [])[1] || 0);
   [...allFilteredBills, ...cancelledInPeriod].forEach(bill => {
     const type = bill.invoiceType || 'tax-invoice';
-    const prefix = INVOICE_TYPES[type]?.prefix || 'INV';
-    if (!docSummary[prefix]) docSummary[prefix] = { type: INVOICE_TYPES[type]?.label || type, from: bill.invoiceNumber, to: bill.invoiceNumber, total: 0, cancelled: 0 };
-    docSummary[prefix].total++;
-    if (isCancelledBill(bill)) docSummary[prefix].cancelled++;
-    if (bill.invoiceNumber < docSummary[prefix].from) docSummary[prefix].from = bill.invoiceNumber;
-    if (bill.invoiceNumber > docSummary[prefix].to) docSummary[prefix].to = bill.invoiceNumber;
+    const nature = DOC_ISSUE_NATURE[type];
+    if (!nature || !bill.invoiceNumber) return;
+    const series = String(bill.invoiceNumber).replace(/\d+\s*$/, '');
+    const key = `${nature}|${series}`;
+    if (!docSummary[key]) docSummary[key] = { nature, type: DOC_NATURE_LABEL[nature], series, from: bill.invoiceNumber, to: bill.invoiceNumber, total: 0, cancelled: 0 };
+    const d = docSummary[key];
+    d.total++;
+    if (isCancelledBill(bill)) d.cancelled++;
+    if (trailingNo(bill.invoiceNumber) < trailingNo(d.from)) d.from = bill.invoiceNumber;
+    if (trailingNo(bill.invoiceNumber) > trailingNo(d.to)) d.to = bill.invoiceNumber;
   });
 
   // ========== Validation Warnings ==========
@@ -852,6 +889,14 @@ export default function GSTReturns() {
     });
     if (client?.gstin && !client?.state) {
       warnings.push({ type: 'warning', msg: `Invoice ${bill.invoiceNumber}: Client ${client.name} has GSTIN but no State — Place of Supply may be wrong` });
+    }
+    // v1.10.79 (#95) - an inter-state sale needs the buyer's state as place of
+    // supply; the portal refuses an inter-state row whose state is your own.
+    if (!client?.gstin && billIsInterstate(bill) && !isExportBill(bill) && countsAsSales(bill)) {
+      const pos = getStateCode(bill.data?.details?.placeOfSupply || client?.state || '');
+      if (!pos || pos === (getStateCode(profile.gstin || '') || getStateCode(profile.state || ''))) {
+        warnings.push({ type: 'error', msg: `Invoice ${bill.invoiceNumber}: inter-state sale to ${client?.name || 'an unregistered buyer'} without the buyer's state as Place of Supply. Open the invoice and set Place of Supply.` });
+      }
     }
   });
   if (!profile.gstin) {
@@ -927,7 +972,7 @@ export default function GSTReturns() {
         const { client, totals, details } = bill.data;
         const isInter = billIsInterstate(bill);
         const pos = getStateCode(details?.placeOfSupply || client?.state || '');
-        return [client.gstin, client.name || bill.clientName || '', bill.invoiceNumber || '', formatDateGST(bill.invoiceDate), (totals?.total || 0).toFixed(2), pos, 'N', 'Regular', isInter ? 'Inter State' : 'Intra State', getTaxableAmount(totals).toFixed(2), isInter ? 0 : (totals?.cgst || 0).toFixed(2), isInter ? 0 : (totals?.sgst || 0).toFixed(2), isInter ? (totals?.igst || 0).toFixed(2) : 0];
+        return [client.gstin, client.name || bill.clientName || '', bill.invoiceNumber || '', formatDateGST(bill.invoiceDate), (totals?.total || 0).toFixed(2), placeOfSupplyLabel(pos), 'N', 'Regular', isInter ? 'Inter State' : 'Intra State', getTaxableAmount(totals).toFixed(2), isInter ? 0 : (totals?.cgst || 0).toFixed(2), isInter ? 0 : (totals?.sgst || 0).toFixed(2), isInter ? (totals?.igst || 0).toFixed(2) : 0];
       }));
     toast('B2B CSV downloaded — matches GSTR-1 Table 4A format', 'success');
   };
@@ -944,15 +989,16 @@ export default function GSTReturns() {
         const rate = item.taxPercent || 0;
         const key = `${splyType}_${pos}_${rate}`;
         if (!b2csData[key]) b2csData[key] = { splyType, pos, rate, taxable: 0, cgst: 0, sgst: 0, igst: 0 };
-        const split = computeItemTaxSplit(item, isInter, !!bill.data?.taxInclusive);
-        b2csData[key].taxable += split.taxable; b2csData[key].cgst += split.cgst; b2csData[key].sgst += split.sgst; b2csData[key].igst += split.igst;
+        const split = computeItemTaxSplit(item, isInter, !!bill.data?.taxInclusive, billIsIntraUT(bill));
+        b2csData[key].taxable += split.taxable; b2csData[key].cgst += split.cgst; b2csData[key].sgst += split.sgst + split.utgst; b2csData[key].igst += split.igst;
+        b2csData[key].cess = (b2csData[key].cess || 0) + split.cess;
       });
     });
     downloadCSV('GSTR1_B2C_Small.csv', ['Type', 'Place of Supply', 'Rate', 'Taxable Value', 'CGST Amount', 'SGST Amount', 'IGST Amount', 'Cess Amount'],
-      Object.values(b2csData).map(d => [d.splyType === 'INTER' ? 'Inter State' : 'Intra State', d.pos, d.rate + '%', d.taxable.toFixed(2), d.cgst.toFixed(2), d.sgst.toFixed(2), d.igst.toFixed(2), '0.00']));
+      Object.values(b2csData).map(d => [d.splyType === 'INTER' ? 'Inter State' : 'Intra State', placeOfSupplyLabel(d.pos), d.rate + '%', d.taxable.toFixed(2), d.cgst.toFixed(2), d.sgst.toFixed(2), d.igst.toFixed(2), (d.cess || 0).toFixed(2)]));
     if (b2cLarge.length > 0) {
       downloadCSV('GSTR1_B2C_Large.csv', ['Invoice Number', 'Invoice Date', 'Invoice Value', 'Place of Supply', 'Taxable Value', 'IGST Amount', 'Cess Amount'],
-        b2cLarge.map(bill => { const { client, totals, details } = bill.data; const pos = getStateCode(details?.placeOfSupply || client?.state || ''); return [bill.invoiceNumber, formatDateGST(bill.invoiceDate), (totals?.total || 0).toFixed(2), pos, getTaxableAmount(totals).toFixed(2), (totals?.igst || 0).toFixed(2), '0.00']; }));
+        b2cLarge.map(bill => { const { client, totals, details } = bill.data; const pos = getStateCode(details?.placeOfSupply || client?.state || ''); return [bill.invoiceNumber, formatDateGST(bill.invoiceDate), (totals?.total || 0).toFixed(2), placeOfSupplyLabel(pos), getTaxableAmount(totals).toFixed(2), (totals?.igst || 0).toFixed(2), '0.00']; }));
     }
     toast('B2C CSV downloaded', 'success');
   };
@@ -997,7 +1043,7 @@ export default function GSTReturns() {
         r.hsn,
         r.desc,
         r.uqc,
-        r.qty,
+        roundQty(r.qty, 2),
         r.totalValue.toFixed(2),
         r.rate,
         r.taxable.toFixed(2),
@@ -1365,7 +1411,12 @@ export default function GSTReturns() {
       });
     });
 
-    const docDet = Object.entries(docSummary).map(([, d], i) => ({ doc_num: i + 1, docs: [{ num: 1, from: d.from, to: d.to, totnum: d.total, cancel: d.cancelled, net_issue: d.total - d.cancelled }] }));
+    const byNature = {};
+    Object.values(docSummary).forEach((d) => { (byNature[d.nature] = byNature[d.nature] || []).push(d); });
+    const docDet = Object.entries(byNature).map(([nature, list]) => ({
+      doc_num: Number(nature),
+      docs: list.map((d, i) => ({ num: i + 1, from: d.from, to: d.to, totnum: d.total, cancel: d.cancelled, net_issue: d.total - d.cancelled })),
+    }));
 
     // v1.10.43 — Aggregate turnover fields required by portal.
     // `gt`     = aggregate turnover of the PREVIOUS FY (typically
@@ -1394,7 +1445,7 @@ export default function GSTReturns() {
       b2b: Object.values(b2bMap), b2cs: b2csArr,
       ...(Object.keys(b2clMap).length > 0 ? { b2cl: Object.values(b2clMap) } : {}),
       ...(Object.keys(cdnrMap).length > 0 ? { cdnr: Object.values(cdnrMap) } : {}),
-      hsn: { data: Object.values(hsnJsonMap).map((r, i) => ({ num: i + 1, ...r, txval: round2(r.txval), iamt: round2(r.iamt), camt: round2(r.camt), samt: round2(r.samt), csamt: round2(r.csamt) })) },
+      hsn: { data: Object.values(hsnJsonMap).map((r, i) => ({ num: i + 1, ...r, qty: roundQty(r.qty, 2), txval: round2(r.txval), iamt: round2(r.iamt), camt: round2(r.camt), samt: round2(r.samt), csamt: round2(r.csamt) })) },
       doc_issue: { doc_det: docDet },
     };
 
@@ -1653,24 +1704,39 @@ export default function GSTReturns() {
             ) : (
               <div className="table-scroll">
                 <table className="data-table">
-                  <thead><tr><th>Rate %</th><th style={{ textAlign: 'right' }}>Taxable</th><th style={{ textAlign: 'right' }}>CGST</th><th style={{ textAlign: 'right' }}>SGST</th><th style={{ textAlign: 'right' }}>IGST</th><th style={{ textAlign: 'right' }}>Total</th></tr></thead>
+                  <thead><tr><th>Type</th><th>Place of supply</th><th>Rate %</th><th style={{ textAlign: 'right' }}>Taxable</th><th style={{ textAlign: 'right' }}>CGST</th><th style={{ textAlign: 'right' }}>SGST</th><th style={{ textAlign: 'right' }}>IGST</th><th style={{ textAlign: 'right' }}>Total</th></tr></thead>
                   <tbody>
-                    {b2cRates.map(rate => {
-                      const d = b2cByRate[rate];
+                    {b2cTable7.map(d => (
+                      <tr key={`${d.inter}-${d.pos}-${d.rate}`}>
+                        <td>{d.inter ? 'Inter-state' : 'Intra-state'}</td>
+                        <td>{placeOfSupplyLabel(d.pos) || '-'}</td>
+                        <td><span className="type-badge">{d.rate}%</span></td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(d.taxable)}</td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(d.cgst)}</td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(d.sgst)}</td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(d.igst)}</td>
+                        <td style={{ textAlign: 'right' }} className="font-bold">{formatCurrency(d.taxable + d.cgst + d.sgst + d.igst + d.cess)}</td>
+                      </tr>
+                    ))}
+                    {b2cLarge.map(bill => {
+                      const t = bill.data?.totals || {};
+                      const taxable = getTaxableAmount(t);
                       return (
-                        <tr key={rate}>
-                          <td><span className="type-badge">{rate}%</span></td>
-                          <td style={{ textAlign: 'right' }}>{formatCurrency(d.taxable)}</td>
-                          <td style={{ textAlign: 'right' }}>{formatCurrency(d.cgst)}</td>
-                          <td style={{ textAlign: 'right' }}>{formatCurrency(d.sgst)}</td>
-                          <td style={{ textAlign: 'right' }}>{formatCurrency(d.igst)}</td>
-                          <td style={{ textAlign: 'right' }} className="font-bold">{formatCurrency(d.total)}</td>
+                        <tr key={bill.id} title="B2C Large (Table 5): an inter-state sale to an unregistered buyer above the limit is reported invoice by invoice">
+                          <td>Inter-state, large</td>
+                          <td>{placeOfSupplyLabel(b2cPos(bill)) || '-'}</td>
+                          <td className="text-muted" style={{ fontSize: '0.78rem' }}>{bill.invoiceNumber}</td>
+                          <td style={{ textAlign: 'right' }}>{formatCurrency(taxable)}</td>
+                          <td style={{ textAlign: 'right' }}>{formatCurrency(0)}</td>
+                          <td style={{ textAlign: 'right' }}>{formatCurrency(0)}</td>
+                          <td style={{ textAlign: 'right' }}>{formatCurrency(t.igst || 0)}</td>
+                          <td style={{ textAlign: 'right' }} className="font-bold">{formatCurrency(taxable + (t.igst || 0) + (t.cess || 0))}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                   <tfoot><tr style={{ fontWeight: 'bold', borderTop: '2px solid var(--border)' }}>
-                    <td>B2C Total</td>
+                    <td colSpan={3}>B2C Total</td>
                     <td style={{ textAlign: 'right' }}>{formatCurrency(b2cTotals.taxable)}</td>
                     <td style={{ textAlign: 'right' }}>{formatCurrency(b2cTotals.cgst)}</td>
                     <td style={{ textAlign: 'right' }}>{formatCurrency(b2cTotals.sgst)}</td>

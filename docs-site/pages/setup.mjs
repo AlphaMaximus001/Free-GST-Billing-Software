@@ -71,11 +71,13 @@ export default [
   <tr><td>Random</td><td><code>PREFIX/A3X9K2</code></td></tr>
 </table>
 <p><strong>Start numbering from</strong> lets tax invoices carry on from your paper bill book: enter 1001 and the next tax invoice is <code>.../1001</code>, then 1002 and so on. When you save, the app shows the new next number and asks you to confirm, because numbers never go back down. If you have already gone past it, numbering simply continues; a number already used is never given again. Quotations, challans, credit notes, other types and receipts keep their own count. The preview at the top shows the real next tax invoice number.</p>
+<p><strong>16 characters at most.</strong> GST allows invoice and credit note numbers of up to 16 characters (letters, digits, <code>-</code> and <code>/</code>), and GSTR-1 refuses longer ones. If a prefix, year and number together would be longer, Settings says so in red and will not save; use a shorter prefix, the short year, or fewer digits.</p>
+<p><strong>More than one business?</strong> Each can number on its own. With the business selected in the sidebar, choose ${ui('Own numbering for this business')}, give it a prefix of its own (such as its initials, <code>KS</code>) and, if you like, a start number, then ${ui('Save Number Format')}. Its invoices then run <code>KS/26-27/0502</code>, <code>0503</code>... whatever the other businesses do (it starts with the short year, so its credit notes, <code>KS-CN/26-27/0001</code>, fit the 16 characters). Its receipts follow its numbering too, and it keeps its numbering when you change its name or add its GSTIN. The prefix must differ from every other business's, because two invoices can never share a number. ${ui('Shared numbering')} puts a business back on the shared series; invoices it already made keep their numbers.</p>
 <p>Under ${ui('⚙ Customize prefix, separator &amp; padding')}:</p>
 <ul>
-  <li><strong>Brand Prefix</strong>: up to 10 capital letters and digits, such as ACME. Leave it empty to use each type's own prefix: INV, EST, BOS, COMP, CN and DC.</li>
+  <li><strong>Brand Prefix</strong>: up to 10 capital letters and digits, such as ACME. Tax invoices print it alone (<code>ACME/2026-27/0001</code>); every other document adds its type (<code>ACME-QUO/...</code>, <code>ACME-DC/...</code>, <code>ACME-CN/...</code>), because each type keeps its own count. Leave it empty to use each type's own prefix: INV, QUO, EST, BOS, COMP, CN and DC.</li>
   <li><strong>Separator</strong>: <code>/</code>, <code>-</code> or <code>#</code>.</li>
-  <li><strong>Include Financial Year</strong>: yes or no.</li>
+  <li><strong>Include Financial Year</strong>: yes (<code>2026-27</code>), short (<code>26-27</code>) or no.</li>
   <li><strong>Number Padding</strong>: 3 to 6 digits, such as 0001.</li>
 </ul>
 <p>Click ${ui('Save Number Format')}. Each document type keeps its own count. A type can also have its own prefix in <a href="print-settings.html#prefixes">Print Settings</a>.</p>

@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getInvoiceNumberSettings, saveInvoiceNumberSettings, getRegionMode, setRegionMode, getEnabledModules, setEnabledModules, getStockAlertSettings, saveStockAlertSettings, getInvoiceDisplayOptions, saveInvoiceDisplayOptions } from '../store';
+import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getRegionMode, setRegionMode, getEnabledModules, setEnabledModules, getStockAlertSettings, saveStockAlertSettings, renameNumberSeries, getInvoiceDisplayOptions, saveInvoiceDisplayOptions } from '../store';
 import { ensureToken, findOrCreateFolder, uploadJSON } from '../services/googleDrive';
-import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, FEATURE_GROUPS, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, getFinancialYearLabel, findSameBusiness, nextCounterValue, MAX_START_NUMBER } from '../utils';
-import { getPrintSettings } from '../utils/printSettings';
+import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, FEATURE_GROUPS, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, findSameBusiness, businessKeyOf } from '../utils';
 // v1.10.36 — lucide's `Image` icon was imported as `Image`, which
 // SHADOWED the browser's `HTMLImageElement` constructor. Reported:
 // "Uncaught TypeError: et is not a constructor at onChange" on logo
@@ -17,6 +16,7 @@ import { confirmAction } from './ConfirmModal';
 import PrintSettings from './PrintSettings';
 import HelpButton from './HelpButton';
 import AppLockSettings from './AppLockSettings';
+import InvoiceNumberSettings from './InvoiceNumberSettings';
 import { getBackupsList, restoreBackup, triggerBackup, deleteBackup, getTrashedBills, restoreTrashedBill, purgeTrashedBill, runUpdateNow } from '../store';
 
 // v1.10.36 — Section order for the jump-nav pill bar. Keeping this at
@@ -105,6 +105,7 @@ export default function SettingsView({ onSaved }) {
   // can never drift from what is actually stored.
   const markProfileSaved = (p) => {
     savedProfileRef.current = JSON.stringify(p);
+    setActiveBusiness(p);
     setProfileDirty(false);
   };
 
@@ -151,10 +152,13 @@ export default function SettingsView({ onSaved }) {
   const [driveConnected, setDriveConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [businessProfiles, setBusinessProfiles] = useState([]);
-  const [invNumSettings, setInvNumSettings] = useState({
-    format: 'branded', brandPrefix: '', separator: '/', showFinYear: true, startNumber: 1, padDigits: 4,
-  });
+  // v1.10.79 - Invoice Number Format is its own component (InvoiceNumberSettings);
+  // the page's "Save all" bar talks to it through this ref and two flags.
+  const invNumRef = useRef(null);
+  const [invNumDirty, setInvNumDirty] = useState(false);
   const [invNumSaving, setInvNumSaving] = useState(false);
+  // The business this page belongs to (as saved), for its own numbering (#95).
+  const [activeBusiness, setActiveBusiness] = useState(null);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   // v1.10.69 - see runUpdateNow() in store.js: this used to be a link to a URL
@@ -174,7 +178,6 @@ export default function SettingsView({ onSaved }) {
   const [stockAlertsSaving, setStockAlertsSaving] = useState(false);
   // v1.10.75 - what is on disk for the forms that have their own Save, so
   // the bottom "Save all changes" bar knows what is still unsaved.
-  const [invNumSaved, setInvNumSaved] = useState(null);
   const [stockSaved, setStockSaved] = useState(null);
 
   const toggleModule = (moduleId) => {
@@ -207,11 +210,11 @@ export default function SettingsView({ onSaved }) {
       setProfile(p);
       // Baseline for the unsaved-changes check — what is currently on disk.
       savedProfileRef.current = JSON.stringify(p);
+      setActiveBusiness(p);
     }).catch(() => {}).finally(() => setProfileLoaded(true));
     loadTemplates();
     loadBusinessProfiles();
     setDriveConnected(isConnected());
-    getInvoiceNumberSettings().then((v) => { setInvNumSettings(v); setInvNumSaved(JSON.stringify(v)); });
     getStockAlertSettings().then((v) => { setStockAlerts(v); setStockSaved(JSON.stringify(v)); }).catch(() => {});
   }, []);
 
@@ -436,6 +439,10 @@ export default function SettingsView({ onSaved }) {
     try {
       setSaving(true);
       await saveProfile(profile);
+      // v1.10.79 (#95) - saved under a new GSTIN or name: its own numbering follows.
+      const oldKey = businessKeyOf(activeBusiness);
+      const newKey = businessKeyOf(profile);
+      if (oldKey && newKey && oldKey !== newKey) await renameNumberSeries(oldKey, newKey).catch(() => {});
       // v1.10.16 — reported: "uploaded logo and saved but it's not showing on
       // invoice". Root cause was a stale `freegstbill_invoiceOptions.showLogo`
       // in localStorage from before the upload — DEFAULT_OPTIONS has it true,
@@ -478,72 +485,6 @@ export default function SettingsView({ onSaved }) {
       toast('Profile saved!', 'success');
     } catch { toast('Failed to save profile', 'error'); }
     finally { setSaving(false); }
-  };
-
-  // Invoice Number Settings
-  const handleInvNumChange = (field, value) => {
-    setInvNumSettings(prev => ({ ...prev, [field]: value }));
-  };
-
-  // v1.10.78 (#93) - the last tax invoice number used, so the preview and the
-  // "are you sure" can show the real next number.
-  const [taxInvoiceCounter, setTaxInvoiceCounter] = useState(0);
-  useEffect(() => {
-    const key = `counter_${(getPrintSettings().customPrefixes?.['tax-invoice'] || '').trim() || 'INV'}`;
-    fetch(`/api/meta/${encodeURIComponent(key)}`)
-      .then((r) => r.json()).then((j) => setTaxInvoiceCounter(Number(j?.value) || 0)).catch(() => {});
-  }, []);
-
-  const handleSaveInvNumSettings = async () => {
-    let settings = invNumSettings;
-    if (settings.format === 'random') {
-      // The field is hidden for Random: never block Save on it.
-      settings = { ...settings, startNumber: Number.isInteger(Number(settings.startNumber)) && Number(settings.startNumber) >= 1 ? Number(settings.startNumber) : 1 };
-    } else {
-      const start = Number(settings.startNumber);
-      if (!Number.isInteger(start) || start < 1 || start > MAX_START_NUMBER) {
-        toast(`Start numbering from: a whole number from 1 to ${MAX_START_NUMBER}`, 'warning');
-        return;
-      }
-      settings = { ...settings, startNumber: start };
-      // Numbers never go back down, so moving the next tax invoice forward is
-      // asked first (a typo like 10001 would otherwise stick).
-      const now = nextCounterValue(taxInvoiceCounter, Number(JSON.parse(invNumSaved || '{}').startNumber) || 1);
-      const then = nextCounterValue(taxInvoiceCounter, start);
-      if (then > now) {
-        const ok = await confirmAction({
-          title: `Start tax invoices from ${then}?`,
-          message: `Your next tax invoice will be number ${then} (it would have been ${now}). Numbers never go back down, so the ones skipped can't be used later.`,
-          confirmLabel: `Yes, start from ${then}`,
-          cancelLabel: 'No',
-        });
-        if (!ok) return;
-      }
-    }
-    setInvNumSaving(true);
-    try {
-      await saveInvoiceNumberSettings(settings);
-      setInvNumSettings(settings);
-      setInvNumSaved(JSON.stringify(settings));
-      toast('Invoice number settings saved!', 'success');
-    } catch { toast('Failed to save settings', 'error'); }
-    finally { setInvNumSaving(false); }
-  };
-
-  const getInvNumPreview = () => {
-    const s = invNumSettings;
-    const pfx = s.brandPrefix || 'INV';
-    const sep = s.separator || '/';
-    // The real next tax invoice number (#93), not just the start.
-    const padded = String(nextCounterValue(taxInvoiceCounter, s.startNumber)).padStart(s.padDigits || 4, '0');
-    if (s.format === 'random') {
-      return `${pfx}${sep}A3X9K2`;
-    }
-    if (s.showFinYear) {
-      // v1.10.74 - financial year, not calendar year (Jan-Mar belongs to the previous FY)
-      return `${pfx}${sep}${getFinancialYearLabel()}${sep}${padded}`;
-    }
-    return `${pfx}${sep}${padded}`;
   };
 
   // Google Drive
@@ -805,7 +746,7 @@ export default function SettingsView({ onSaved }) {
   // these are the four that wait for a Save.
   const unsaved = [
     profileDirty && 'Company Details',
-    invNumSaved !== null && JSON.stringify(invNumSettings) !== invNumSaved && 'Invoice Number Format',
+    invNumDirty && 'Invoice Number Format',
     stockSaved !== null && JSON.stringify(stockAlerts) !== stockSaved && 'Low-stock alerts',
     !!editingTemplate && 'Terms template',
   ].filter(Boolean);
@@ -814,14 +755,14 @@ export default function SettingsView({ onSaved }) {
     // The Company form goes through its own submit, so its checks still run.
     if (profileDirty) companyFormRef.current?.requestSubmit();
     const jobs = [];
-    if (unsaved.includes('Invoice Number Format')) jobs.push(handleSaveInvNumSettings());
+    if (unsaved.includes('Invoice Number Format')) jobs.push(invNumRef.current?.save());
     if (unsaved.includes('Low-stock alerts')) jobs.push(saveStockAlerts());
     if (editingTemplate) jobs.push(handleSaveTemplate());
     await Promise.all(jobs);
   };
   const discardAll = () => {
     if (profileDirty && savedProfileRef.current) setProfile(JSON.parse(savedProfileRef.current));
-    if (invNumSaved !== null) setInvNumSettings(JSON.parse(invNumSaved));
+    invNumRef.current?.discard();
     if (stockSaved !== null) setStockAlerts(JSON.parse(stockSaved));
     setEditingTemplate(null);
   };
@@ -1449,114 +1390,11 @@ export default function SettingsView({ onSaved }) {
           );
         })()}
 
-        {/* Invoice Number Format */}
-        <h3 className="section-title mt-8"><Hash size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />Invoice Number Format</h3>
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>Preview:</p>
-          <p style={{ fontSize: '1.1rem', fontWeight: 700, fontFamily: 'monospace', color: 'var(--accent)', margin: 0 }}>{getInvNumPreview()}</p>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="form-group full-width">
-            <label className="form-label">Format Style</label>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {[
-                { id: 'branded', label: 'Branded Sequential', desc: `PREFIX/${getFinancialYearLabel()}/0001` },
-                { id: 'sequential', label: 'Simple Sequential', desc: 'PREFIX/0001' },
-                { id: 'random', label: 'Random', desc: 'PREFIX/A3X9K2' },
-              ].map(f => (
-                <button key={f.id} type="button"
-                  className={`type-chip ${invNumSettings.format === f.id ? 'type-chip-active' : ''}`}
-                  onClick={() => {
-                    const updates = { format: f.id };
-                    if (f.id === 'sequential') updates.showFinYear = false;
-                    if (f.id === 'branded') updates.showFinYear = true;
-                    setInvNumSettings(prev => ({ ...prev, ...updates }));
-                  }}>
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* v1.10.78 (#93) - carry on from a paper bill book (e.g. 1001). */}
-          {invNumSettings.format !== 'random' && (
-            <div className="form-group">
-              <label className="form-label" htmlFor="inv-start-number">Start numbering from</label>
-              <input id="inv-start-number" type="number" min={1} max={MAX_START_NUMBER} step={1} className="form-input" style={{ maxWidth: 180 }}
-                value={invNumSettings.startNumber ?? 1}
-                onWheel={e => e.currentTarget.blur()}
-                onChange={e => handleInvNumChange('startNumber', e.target.value === '' ? '' : Number(e.target.value))} />
-              <p className="field-hint">For tax invoices: the next one gets this number (carry on from your paper bill book), or the next unused one if you have already gone past it. A number already used is never given again. Quotations, challans, credit notes and other types keep their own count.</p>
-            </div>
-          )}
-        </div>
-
-        {/* v1.10.36 — Progressive disclosure. Prior UI showed 5 fields
-             unconditionally (format + prefix + separator + fin-year +
-             padding). For 95% of users the branded-sequential + `/` +
-             4-digit + fin-year default is fine — most never need to
-             touch these. Wrapped in <details> so the form loads clean
-             and users open the drawer only if they want custom prefix
-             (e.g. their brand initials) or different padding. */}
-        <details style={{ marginTop: '0.5rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-secondary)' }}>
-          <summary style={{ padding: '0.65rem 0.85rem', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            ⚙ Customize prefix, separator & padding
-            <span style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.3rem' }}>
-              (defaults are fine for most businesses)
-            </span>
-          </summary>
-          <div className="grid grid-cols-2 gap-4" style={{ padding: '0.75rem 0.85rem 0.85rem' }}>
-            <div className="form-group">
-              <label className="form-label">Brand Prefix</label>
-              <input type="text" className="form-input" value={invNumSettings.brandPrefix}
-                onChange={e => handleInvNumChange('brandPrefix', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                placeholder="e.g. ACME, BK (leave empty for INV/QUO/EST/BOS/COMP/CN/DC)" maxLength={10} />
-              <p className="field-hint">Your brand name or abbreviation. Leave empty to use default type prefix (INV, QUO, EST, BOS, COMP, CN, DC).</p>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Separator</label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {['/', '-', '#'].map(sep => (
-                  <button key={sep} type="button"
-                    className={`type-chip ${invNumSettings.separator === sep ? 'type-chip-active' : ''}`}
-                    style={{ minWidth: 44, fontFamily: 'monospace', fontWeight: 700 }}
-                    onClick={() => handleInvNumChange('separator', sep)}>
-                    {sep}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {invNumSettings.format !== 'random' && (
-              <>
-                <div className="form-group">
-                  <label className="form-label">Include Financial Year</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: 4 }}>
-                    <button type="button"
-                      className={`type-chip ${invNumSettings.showFinYear ? 'type-chip-active' : ''}`}
-                      onClick={() => handleInvNumChange('showFinYear', true)}>Yes ({getFinancialYearLabel()})</button>
-                    <button type="button"
-                      className={`type-chip ${!invNumSettings.showFinYear ? 'type-chip-active' : ''}`}
-                      onClick={() => handleInvNumChange('showFinYear', false)}>No</button>
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Number Padding</label>
-                  <select className="form-input" value={invNumSettings.padDigits}
-                    onChange={e => handleInvNumChange('padDigits', Number(e.target.value))}>
-                    <option value={3}>3 digits (001)</option>
-                    <option value={4}>4 digits (0001)</option>
-                    <option value={5}>5 digits (00001)</option>
-                    <option value={6}>6 digits (000001)</option>
-                  </select>
-                </div>
-              </>
-            )}
-          </div>
-        </details>
-        <div className="mt-4 flex justify-end">
-          <button type="button" className="btn btn-primary" onClick={handleSaveInvNumSettings} disabled={invNumSaving}>
-            <Save size={16} /> {invNumSaving ? 'Saving...' : 'Save Number Format'}
-          </button>
-        </div>
+        {/* Invoice Number Format (per business since v1.10.79, #95) */}
+        <InvoiceNumberSettings ref={invNumRef}
+          businessKey={businessKeyOf(activeBusiness)} businessName={activeBusiness?.businessName}
+          showScope={businessProfiles.length > 1}
+          onDirtyChange={setInvNumDirty} onSavingChange={setInvNumSaving} />
 
         {/* Logo & Signature */}
         <h3 className="section-title mt-8">Branding</h3>

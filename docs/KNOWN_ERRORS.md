@@ -720,6 +720,157 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-056 - GSTR-1 Table 13 mixed number series and listed quotations
+
+**Version:** since GSTR-1 was added · fixed in v1.10.79
+**Reported by:** found by the v1.10.79 review
+
+**Symptom** - "documents issued" showed one row per type, so two series in one
+period (a changed prefix, a business's own numbering) gave a from/to that ran
+across both; quotations and proformas, which are not reported, were listed;
+and the file numbered the document natures 1, 2, 3 by position.
+
+**Cause** - grouped by type prefix, compared numbers as text, and used the
+list index as `doc_num`.
+
+**Rule** - Table 13 rows are per number series, under the portal's nature
+codes (1 invoices, 5 credit notes, 12 delivery challans); from/to by the
+number's value.
+
+**Guard** - none automated beyond the GSTR-1 checks in the smoke suite.
+
+---
+
+## ERR-055 - A second conversion overwrote the first invoice
+
+**Version:** long-standing · fixed in v1.10.79
+**Reported by:** found by the v1.10.79 review, confirmed on the demo app
+
+**Symptom** - convert quotation A to an invoice, then quotation B: only one
+invoice existed afterwards. Duplicating twice could do the same.
+
+**Cause** - the editor treated a duplicate or conversion as "editing", so its
+first save did not reserve a number (it used the one it had only peeked) and
+was sent with overwrite. The second conversion peeked the same number and
+replaced the first invoice. Auto-save could also store a duplicate before
+the first Save.
+
+**Rule** - a duplicate or conversion is a NEW document until its first save:
+it reserves its number, saves without overwrite (retrying on a clash), and is
+not auto-saved before you press Save.
+
+**Guard** - smoke check "v79 converting two quotations in a row makes two
+invoices, neither overwritten".
+
+---
+
+## ERR-054 - A long invoice shared on WhatsApp or in Bulk PDF was squashed onto one page
+
+**Version:** since v1.10.22 (share) / v1.10.71 (Bulk PDF) · fixed in v1.10.79
+**Reported by:** found while checking #94
+
+**Symptom** - an invoice taller than one A4 page came out of WhatsApp share or
+Bulk PDF as a single page, its rows squeezed to fit.
+
+**Cause** - both drew the captured invoice with `Math.min(height, 297)`:
+clamping the height to one page shrinks the picture instead of continuing it.
+
+**Rule** - a picture taller than a page is cut into page-high slices, one page
+each (`addCanvasAsA4Pages` in Dashboard.jsx). Never clamp an image height to fit.
+
+**Guard** - none automated in the smoke suite (Bulk PDF needs a download); the
+v1.10.79 e2e run checked a 60-item invoice comes out as 3 pages.
+
+---
+
+## ERR-053 - GSTR-1 B2C did not show sales by state
+
+**Version:** since GSTR-1 was added · fixed in v1.10.79
+**Reported by:** @Vim1972 (#95)
+
+**Symptom** - inter-state sales to unregistered buyers in Bihar, Punjab and
+other states did not appear state by state in the GSTR-1 B2C table.
+
+**Cause** - the screen's B2C table added everything up by tax rate only. The
+JSON and CSV files were grouped by place of supply, but the screen, which is
+what people check against the portal, was not; and the CSV wrote states as a
+bare code (10) instead of the portal's "10-Bihar".
+
+**Rule** - what the screen shows for a return table is grouped exactly as the
+portal's table is. Places of supply are written "NN-State" (placeOfSupplyLabel).
+
+**Guard** - unit test "Place of supply written the portal way"; smoke/e2e check
+"GSTR-1 Table 7 shows the inter-state sale under 10-Bihar".
+
+---
+
+## ERR-052 - With a brand prefix, a quotation and an invoice could get the same number
+
+**Version:** since brand prefixes were added · fixed in v1.10.79
+**Reported by:** found while working on #95
+
+**Symptom** - with a brand prefix such as ACME, every document printed
+ACME/2026-27/0001-style numbers. Quotations and invoices count separately, so a
+quotation's next number was often an invoice's number: the app skipped numbers
+until it found a free one, and failed after 20.
+
+**Cause** - the brand prefix replaced the type prefix for every type, while
+each type kept its own counter. Invoices are stored under their number.
+
+**Rule** - two series that count separately must never print the same
+numbers. Tax invoices print the brand alone; other types print brand-TYPE
+(formatDocNumber).
+
+**Guard** - unit test "Brand prefix: invoices ACME/..., other types
+ACME-QUO/..."; smoke check "v79 brand prefix: a quotation is numbered
+SMKA-QUO/...". The type tag makes numbers longer, so Settings checks the
+GST limit of 16 characters (numberFormatProblem) and offers the short year.
+
+---
+
+## ERR-051 - Two businesses shared one invoice number series
+
+**Version:** since more than one business was supported · fixed in v1.10.79
+**Reported by:** @Vim1972 (#95)
+
+**Symptom** - with two firms, the second firm's invoices continued the first
+firm's numbers (1225, 1226...) instead of its own series (502...).
+
+**Cause** - when businesses were separated (v1.10.64), lists and reports were
+split by GSTIN but the number format and its counters stayed global. The
+editor also asked for the next number before the active business had loaded,
+so it showed the shared series' number even where Save would use another.
+
+**Rule** - anything a business can configure for its own documents is looked
+up by business (businessKeyOf), and the shown number is re-read when the
+business is known. A business with its own series must use its own prefix.
+
+**Guard** - unit tests "[V79] ... per-business numbering"; smoke check "v79 #95
+a business with its own numbering shows and numbers in its own series".
+
+---
+
+## ERR-050 - Added-up quantities shown as 6356.9599999999
+
+**Version:** since the reports were added · fixed in v1.10.79
+**Reported by:** @Vim1972 (#96)
+
+**Symptom** - Product Performance showed quantities such as 6356.9599999999.
+The GSTR-1 HSN summary, the Tally invoice's total quantity and stock after a
+decimal purchase could do the same.
+
+**Cause** - decimal quantities added up in floating point (0.1 + 0.2 =
+0.30000000000000004) and were shown or saved without rounding. Money was
+always rounded; quantities never were.
+
+**Rule** - any added-up quantity goes through roundQty before it is shown,
+exported or saved (3 decimals; 2 for the GST portal).
+
+**Guard** - unit test "Added-up quantities are rounded"; e2e check "Product
+Performance shows 0.1 + 0.2 as 0.3".
+
+---
+
 ## ERR-049 - "Start numbering from" was shown but never used
 
 **Version:** since the number format settings were added · fixed in v1.10.78

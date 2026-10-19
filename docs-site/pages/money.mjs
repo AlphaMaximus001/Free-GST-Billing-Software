@@ -49,7 +49,8 @@ export default [
   <tr><th>Table</th><th>What is in it</th></tr>
   <tr><td>B2B Sales (4A)</td><td>Invoices to GST-registered clients, one row each: GSTIN, client, number, date, place of supply code, Inter or Intra, taxable value, CGST, SGST, IGST and total</td></tr>
   <tr><td>Credit/Debit Notes (9B)</td><td>Credit notes, to registered clients or marked Unregistered</td></tr>
-  <tr><td>B2C Sales (7)</td><td>Sales to unregistered buyers, added up by tax rate. Inter-state B2C invoices above ₹1 lakh (₹2.5 lakh for invoices before 1 August 2024) are reported separately as B2C Large.</td></tr>
+  <tr><td>B2C Sales (7)</td><td>Sales to unregistered buyers, added up the way the portal's Table 7 takes them: one row for each supply type (intra-state or inter-state), place of supply (such as 10-Bihar) and tax rate. Inter-state B2C invoices above ₹1 lakh (₹2.5 lakh for invoices before 1 August 2024) are B2C Large (Table 5); they are listed under it, invoice by invoice. An inter-state sale whose place of supply is missing or is your own state is flagged in red: open the invoice and set the buyer's state.</td></tr>
+  <tr><td>Document Summary (13)</td><td>Invoices, credit notes and delivery challans issued, one row for each number series, with the first and last number, the total and how many were cancelled. Quotations and proformas are not reported.</td></tr>
   <tr><td>HSN Summary (12)</td><td>Quantity, taxable value and tax for each HSN code. Items with no HSN show as N/A.</td></tr>
   <tr><td>Document Summary (13)</td><td>For each document type, the first and last number, how many were issued and how many of those were cancelled</td></tr>
   <tr><td>Summary Totals</td><td>B2B and B2C together, less credit notes</td></tr>

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { ShoppingCart, Plus, Edit3, Trash2, Search, X, Save, Download, Wand2, FileText, Eye } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllPurchases, savePurchase, deletePurchase, getAllProducts, saveProduct, getProfile } from '../store';
-import { formatCurrency, calculateRoundOff, getFYOptions, belongsToProfile, isUnassignedToBusiness, isInterstateSupply, localToday } from '../utils';
+import { formatCurrency, calculateRoundOff, getFYOptions, belongsToProfile, isUnassignedToBusiness, isInterstateSupply, localToday, roundQty } from '../utils';
 import TableExport from './TableExport';
 import UnassignedBanner from './UnassignedBanner';
 import { getPrintSettings } from '../utils/printSettings';
@@ -516,7 +516,7 @@ export default function PurchaseBills() {
           if (prod._placeholderId) {
             const existing = byId.get(prod._placeholderId);
             const delta = stockDeltaById.get(prod._placeholderId) || 0;
-            const newStock = Math.max(0, (Number(existing.stock) || 0) + delta);
+            const newStock = Math.max(0, roundQty((Number(existing.stock) || 0) + delta));
             upserts.push(saveProduct({ ...prod, stock: newStock, _placeholderId: undefined }));
           } else {
             upserts.push(saveProduct(prod));
@@ -570,7 +570,7 @@ export default function PurchaseBills() {
     }
     await Promise.all([...minus].map(([pid, qty]) => {
       const prod = byId.get(pid);
-      return saveProduct({ ...prod, stock: Math.max(0, (Number(prod.stock) || 0) - qty) });
+      return saveProduct({ ...prod, stock: Math.max(0, roundQty((Number(prod.stock) || 0) - qty)) });
     }));
   };
 
@@ -1211,7 +1211,7 @@ export default function PurchaseBills() {
                   <th style={{ textAlign: 'right' }}>Tax</th>
                   <th style={{ textAlign: 'right' }}>Total</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  <th className="col-center">Actions</th>
                 </tr>
               </thead>
               <tbody>

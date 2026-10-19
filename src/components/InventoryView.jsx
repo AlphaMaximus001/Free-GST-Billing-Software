@@ -348,7 +348,7 @@ export default function InventoryView() {
                   <th>GST %</th>
                   <th>Unit</th>
                   <th>Stock</th>
-                  <th>Actions</th>
+                  <th className="col-center">Actions</th>
                 </tr>
               </thead>
               <tbody>

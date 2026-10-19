@@ -7,6 +7,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.79] - 2026-10-19
+
+**Separate invoice numbering for each business, GSTR-1 B2C by state, a
+CANCELLED stamp on saved PDFs, and fixes from issues #94-#97.**
+
+### How to update
+
+**Current version:** 1.10.78  →  **New version:** 1.10.79
+
+#### If the in-app Update button works for you (1.10.73 and later)
+1. Open the app and click **Update to v1.10.79** in the sidebar, or
+   **Settings → App Updates → Update Now**.
+2. Wait about a minute, then reload the page.
+
+#### On 1.10.72 or older
+Use the launcher: **More options → Update to the latest version**, then
+**Open App**.
+
+#### If that does not work (or you are unsure)
+1. Download `Free-GST-Billing.zip` from the
+   [Releases page](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest).
+2. Close the app (click **Stop the app** in the launcher if it is running).
+3. **Right-click the ZIP → Extract All.** Do not open anything while still inside the ZIP.
+4. Extract over your existing Free GST Billing folder, replacing files when asked.
+   (Extracted it somewhere else? Its launcher offers **Update the installed
+   copy**, which works without internet.)
+5. Double-click **Free GST Billing - WINDOWS**.
+
+#### Linux / NAS
+Run `update-unix.sh` from the `_system` folder, or extract the new ZIP over
+the old folder. Restart the app afterwards.
+
+#### Is my data safe?
+Yes. Invoices, clients, products and settings live in `_system/data/`, which
+an update never touches. The updater also takes an automatic backup to
+`Documents\FreeGSTBill Backups\` before it changes anything.
+
+#### Something went wrong?
+Open an issue with a screenshot of the error:
+https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues
+
+### Added
+- **Own invoice numbering for each business** (#95, thanks @Vim1972). With
+  more than one business, **Settings → Invoice Number Format → Own numbering
+  for this business** gives the selected business its own prefix, start number
+  and count (for example `KS/2026-27/1225` for one firm and
+  `AE/2026-27/0502` for the other). Businesses without one keep the shared
+  numbering exactly as before; its receipts follow its numbering too, and it
+  keeps its numbering when you change its name or add its GSTIN (ERR-051).
+- **CANCELLED on the saved PDF** (#94, thanks @sangwanmail-eng): cancelling an
+  invoice stamps CANCELLED across every page of its PDF in `Saved Invoices`;
+  Undo puts the original back exactly as it was.
+
+### Fixed
+- **Converting two quotations (or proformas) in a row replaced the first
+  invoice with the second.** A conversion or a duplicate saved under the
+  number it only showed, without taking it, so the next one got the same
+  number and overwrote it. Each now takes its own number, and never
+  overwrites another invoice (ERR-055).
+- **GSTR-1 B2C did not show each state** (#95): the B2C table now has one row
+  per supply type, place of supply (such as 10-Bihar) and tax rate, as the
+  portal's Table 7 takes it, with B2C Large invoices listed by state. An
+  inter-state sale without the buyer's state as place of supply is flagged.
+  The CSV files write places of supply the portal way, `10-Bihar` (ERR-053).
+- **Quantities like 6356.9599999999** (#96, thanks @Vim1972) in Product
+  Performance, and the same in the GSTR-1 HSN summary, the Tally invoice's
+  total quantity and stock after a purchase: added-up quantities are now
+  rounded (ERR-050).
+- **With a brand prefix, quotations, challans and credit notes collided with
+  invoices** (both numbered ACME/2026-27/...), so numbers were skipped. Tax
+  invoices keep `ACME/...`; other documents are now `ACME-QUO/...`,
+  `ACME-DC/...`, `ACME-CN/...`. Documents already made keep their numbers
+  (ERR-052).
+- **Long invoices shared on WhatsApp or in Bulk PDF were squashed onto one
+  page**; they now run onto more A4 pages (ERR-054).
+- **Actions column** (#94): centred under its heading on every screen.
+- **GSTR-1 Table 13 (documents issued)** now lists each number series on its
+  own row under the portal's document type (invoices, credit notes, delivery
+  challans), and leaves out quotations and proformas, which are not reported
+  (ERR-056).
+- **Invoice numbers longer than the GST limit**: invoice and credit-note
+  numbers may have at most 16 characters (GSTR-1 refuses longer ones).
+  Settings → Invoice Number Format now says when a format is too long and
+  will not save it; a new **Short** year option (`26-27`) helps it fit. The
+  invoice screen also warns when it saves a number that is too long. If you
+  use a brand prefix, check this once after updating: credit notes now carry
+  it as `BRAND-CN/...`.
+
+### Not changed
+- **GSTIN → party name and address** (#97): looking these up needs an online
+  GST service; the app stays offline and private. Typing a GSTIN still fills
+  the state offline.
+- **Sidebar scrollbar on the left** (#94): kept on the right, where Windows and
+  every other app put it.
+
 ## [1.10.78] - 2026-10-18
 
 **Start invoice numbers from your own number, a slimmer auto-hide menu,

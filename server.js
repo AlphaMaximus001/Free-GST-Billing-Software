@@ -12,7 +12,7 @@ import { fileURLToPath } from 'url';
 // invoice-level discount, and round-off. Previously the recurring auto-fire
 // re-implemented totals inline and silently reintroduced every bug the
 // v1.10.1 extraction fixed. Same source of truth now.
-import { computeInvoiceTotals, clientYearToDate, nextCounterValue, startFor } from './src/utils.js';
+import { computeInvoiceTotals, clientYearToDate, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, businessKeyOf, getFinancialYearLabel, INVOICE_TYPES } from './src/utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, 'data');
@@ -732,6 +732,16 @@ app.post('/api/import', (req, res) => {
       // The PIN on this PC stays as it is: a backup never sets, removes or
       // brings back an old PIN.
       writeJSON(META_PATH, withLock(withoutLock(data.meta), readJSON(META_PATH, {})[LOCK_KEY]));
+    } else {
+      // v1.10.79 (#95) - a merge keeps what is here and adds the backup's own
+      // number series and the higher of each counter, so no number is reused.
+      const meta = readJSON(META_PATH, {});
+      const series = { ...(data.meta.invoiceNumberSeries || {}), ...(meta.invoiceNumberSeries || {}) };
+      if (Object.keys(series).length) meta.invoiceNumberSeries = series;
+      for (const [k, v] of Object.entries(data.meta)) {
+        if (k.startsWith('counter_') && Number(v) > (Number(meta[k]) || 0)) meta[k] = Number(v);
+      }
+      writeJSON(META_PATH, meta);
     }
   }
 
@@ -743,6 +753,7 @@ app.post('/api/import', (req, res) => {
     const meta = readJSON(META_PATH, {});
     const billFiles = fs.readdirSync(path.join(DATA_DIR, 'bills')).filter(f => f.endsWith('.json'));
     const maxByPrefix = {};
+    const maxByKey = {};
     for (const f of billFiles) {
       let bill;
       try { bill = readJSON(path.join(DATA_DIR, 'bills', f), null); } catch { continue; }
@@ -754,10 +765,25 @@ app.post('/api/import', (req, res) => {
       const suffix = parseInt(m[2], 10);
       if (!Number.isFinite(suffix)) continue;
       if (!maxByPrefix[prefix] || suffix > maxByPrefix[prefix]) maxByPrefix[prefix] = suffix;
+      // v1.10.79 (#95) - the counter this bill's series really uses: its own
+      // business series (counter_INV@<GSTIN>) or the shared one, by type.
+      // The leading-token bump above stays for per-type prefixes from Print
+      // Settings, whose counter is named after the prefix itself.
+      const typePrefix = INVOICE_TYPES[bill.invoiceType || bill.data?.invoiceType || 'tax-invoice']?.prefix;
+      if (typePrefix) {
+        const biz = businessKeyOf(bill.data?.profile || { gstin: bill.ownerGstin, businessName: bill.ownerName });
+        const series = numberSeriesFor(meta.invoiceNumberSettings, meta.invoiceNumberSeries, biz);
+        const head = formatDocNumber({ settings: { ...series, format: 'sequential', showFinYear: false }, typePrefix, next: 0 })
+          .replace(/0+$/, '');
+        if (num.toUpperCase().startsWith(head.toUpperCase())) {
+          const key = counterKeyFor(typePrefix, series, biz);
+          if (!maxByKey[key] || suffix > maxByKey[key]) maxByKey[key] = suffix;
+        }
+      }
     }
     let metaChanged = false;
-    for (const [prefix, maxNum] of Object.entries(maxByPrefix)) {
-      const key = `counter_${prefix}`;
+    const wanted = { ...Object.fromEntries(Object.entries(maxByPrefix).map(([pfx, n]) => [`counter_${pfx}`, n])), ...maxByKey };
+    for (const [key, maxNum] of Object.entries(wanted)) {
       const existing = Number(meta[key]) || 0;
       if (maxNum > existing) {
         meta[key] = maxNum;
@@ -798,12 +824,124 @@ app.post('/api/save-pdf', express.raw({ type: 'application/pdf', limit: '20mb' }
 
     if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath, { recursive: true });
     fs.writeFileSync(filePath, req.body);
+    // v1.10.79 (#94) - a PDF saved now replaces any original kept for Undo of
+    // a CANCELLED stamp, so an old copy can never come back over a new one.
+    const keptOriginal = path.join(DATA_DIR, 'cancelled-pdf-originals', path.relative(INVOICES_DIR, filePath));
+    if (isPathInside(keptOriginal, path.join(DATA_DIR, 'cancelled-pdf-originals')) && fs.existsSync(keptOriginal)) {
+      try { fs.unlinkSync(keptOriginal); } catch { /* leave it */ }
+    }
     // Don't leak absolute FS path — client only needs to know it saved
     // and where (relative). Absolute path revealed OS username +
     // install dir to any origin.
     res.json({ saved: true, relPath: path.relative(__dirname, filePath).split(path.sep).join('/') });
   } catch (err) {
     errRes(res, 500, 'server-error', err);
+  }
+});
+
+// ========================
+// Number series follow a renamed business (v1.10.79, #95)
+// ========================
+// An own series is filed under the business's GSTIN, or its name when it has
+// none. When Settings saves the business under a new GSTIN or name, its series
+// and counters move with it, so it keeps numbering where it was.
+app.post('/api/number-series/rename', (req, res) => {
+  const { from, to } = req.body || {};
+  if (!from || !to || typeof from !== 'string' || typeof to !== 'string' || from === to) return errRes(res, 400, 'bad-request');
+  const meta = readJSON(META_PATH, {});
+  const series = meta.invoiceNumberSeries || {};
+  if (!series[from] || series[to]) return res.json({ moved: false });
+  series[to] = series[from];
+  delete series[from];
+  meta.invoiceNumberSeries = series;
+  for (const key of Object.keys(meta)) {
+    if (key.startsWith('counter_') && key.endsWith(`@${from}`)) {
+      const target = key.slice(0, -from.length) + to;
+      meta[target] = Math.max(Number(meta[target]) || 0, Number(meta[key]) || 0);
+      delete meta[key];
+    }
+  }
+  writeJSON(META_PATH, meta);
+  return res.json({ moved: true });
+});
+
+// ========================
+// CANCELLED on saved PDFs (v1.10.79, #94)
+// ========================
+// Cancelling an invoice stamps "CANCELLED" across every page of its PDF in
+// Saved Invoices; Undo puts the original back, byte for byte. The original is
+// kept under data/ (so backups carry it), never in the folder people browse.
+const PDF_ORIGINALS_DIR = path.join(DATA_DIR, 'cancelled-pdf-originals');
+
+// The copies of one invoice's PDF in Saved Invoices: <client>/<month>/<name>,
+// or loose in the folder. Same lookup as Move saved PDF to Trash below.
+function findSavedPdfs(fileName, clientName) {
+  const safeClient = safePathSegment(clientName, 'General');
+  const safeName = safePathSegment(fileName, 'Untitled.pdf');
+  const out = [];
+  const clientDir = path.join(INVOICES_DIR, safeClient);
+  if (isPathInside(clientDir, INVOICES_DIR) && fs.existsSync(clientDir)) {
+    for (const month of fs.readdirSync(clientDir)) {
+      const file = path.join(clientDir, month, safeName);
+      if (isPathInside(file, INVOICES_DIR) && fs.existsSync(file)) out.push(file);
+    }
+  }
+  const flat = path.join(INVOICES_DIR, safeName);
+  if (isPathInside(flat, INVOICES_DIR) && fs.existsSync(flat)) out.push(flat);
+  return out;
+}
+
+async function stampCancelled(bytes) {
+  // Loaded here, not at start-up: if pdf-lib were ever missing (a failed
+  // update), only this stamp would fail, never the whole app.
+  const { PDFDocument, StandardFonts, rgb, degrees } = await import('pdf-lib');
+  const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+  const font = await doc.embedFont(StandardFonts.HelveticaBold);
+  const text = 'CANCELLED';
+  const angle = 30;
+  const rad = (angle * Math.PI) / 180;
+  for (const page of doc.getPages()) {
+    const { width, height } = page.getSize();
+    const size = Math.min(width, height) / 6.5;
+    const w = font.widthOfTextAtSize(text, size);
+    // Start point that puts the middle of the rotated word at the page centre.
+    const x = width / 2 - (w / 2) * Math.cos(rad) + (size / 3) * Math.sin(rad);
+    const y = height / 2 - (w / 2) * Math.sin(rad) - (size / 3) * Math.cos(rad);
+    page.drawText(text, { x, y, size, font, color: rgb(0.86, 0.15, 0.15), opacity: 0.28, rotate: degrees(angle) });
+  }
+  return doc.save();
+}
+
+// { fileName, clientName, cancelled } -> { updated: n }
+app.post('/api/saved-pdf/cancel-mark', express.json(), async (req, res) => {
+  try {
+    const { fileName, clientName, cancelled } = req.body || {};
+    if (!fileName || typeof cancelled !== 'boolean') return errRes(res, 400, 'bad-request');
+    let updated = 0;
+    let failed = 0;
+    for (const file of findSavedPdfs(fileName, clientName)) {
+      const original = path.join(PDF_ORIGINALS_DIR, path.relative(INVOICES_DIR, file));
+      if (!isPathInside(original, PDF_ORIGINALS_DIR)) continue;
+      // One copy that cannot be written (open in a PDF reader) never stops the rest.
+      try {
+        if (cancelled) {
+          // Always stamp from the original, so cancelling twice never stamps twice.
+          if (!fs.existsSync(original)) { ensureDir(path.dirname(original)); fs.copyFileSync(file, original); }
+          fs.writeFileSync(file, await stampCancelled(fs.readFileSync(original)));
+          updated++;
+        } else if (fs.existsSync(original)) {
+          fs.copyFileSync(original, file);
+          fs.unlinkSync(original);
+          updated++;
+        }
+      } catch (err) {
+        failed++;
+        console.warn('[pdf] CANCELLED stamp/undo failed:', err.message);
+      }
+    }
+    return res.json({ updated, failed });
+  } catch (err) {
+    return errRes(res, 500, 'server-error', err);
   }
 });
 
@@ -1578,33 +1716,17 @@ function advanceDate(dateStr, frequency, interval) {
   return d.toISOString().split('T')[0];
 }
 
-function nextInvoiceNumber(prefix, invoiceType = 'tax-invoice') {
-  // Mirror the frontend's getNextInvoiceNumber logic — atomic counter via
-  // meta, applied to the same brandPrefix / separator / padding settings.
-  const key = `counter_${prefix}`;
+function nextInvoiceNumber(prefix, invoiceType = 'tax-invoice', businessKey = '') {
+  // The same rules as the app's getNextInvoiceNumber (src/utils.js): the
+  // business's own series when it has one (v1.10.79, #95), else the shared
+  // one; atomic counter in meta; brand-TYPE prefixes; India's FY label.
   const meta = readJSON(META_PATH, {});
-  const cfg = { format: 'branded', brandPrefix: '', separator: '/', showFinYear: true, padDigits: 4, ...(meta.invoiceNumberSettings || {}) };
-  const next = nextCounterValue(meta[key], startFor(invoiceType, cfg));
+  const series = numberSeriesFor(meta.invoiceNumberSettings, meta.invoiceNumberSeries, businessKey);
+  const key = counterKeyFor(prefix, series, businessKey);
+  const next = nextCounterValue(meta[key], startFor(invoiceType, series));
   meta[key] = next;
   writeJSON(META_PATH, meta);
-  if (cfg.format === 'random') {
-    return `${cfg.brandPrefix || prefix}${cfg.separator}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-  }
-  const sep = cfg.separator || '/';
-  const pfx = cfg.brandPrefix || prefix;
-  const padded = String(next).padStart(cfg.padDigits || 4, '0');
-  if (cfg.showFinYear) {
-    // India's financial year runs April to March, as in the app's own
-    // numbering (utils.getFinancialYearLabel). This used the calendar year,
-    // so recurring invoices made in Jan-Mar carried the NEXT year's label.
-    const now = new Date();
-    const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-    return `${pfx}${sep}${y}-${String(y + 1).slice(-2)}${sep}${padded}`;
-  }
-  return `${pfx}${sep}${padded}`;
-  // Ignored other settings flags — they'd just produce slightly different
-  // formatting; matches frontend behaviour closely enough for the rare
-  // server-side firing.
+  return formatDocNumber({ settings: series, typePrefix: prefix, next, fyLabel: getFinancialYearLabel() });
 }
 
 // v1.10.6 — audit L19: made async and yields between templates via
@@ -1649,9 +1771,10 @@ function generateFromTemplate(tpl, today) {
                    : 'INV');
       // Never overwrite an existing invoice: if the counter lags behind the
       // bills on disk (restored backup, hand-typed numbers), take the next one.
-      let invoiceNumber = nextInvoiceNumber(prefix, tpl.invoiceType);
+      const bizKey = businessKeyOf(profile);
+      let invoiceNumber = nextInvoiceNumber(prefix, tpl.invoiceType, bizKey);
       for (let i = 0; i < 50 && fs.existsSync(path.join(DATA_DIR, 'bills', safeFileName(invoiceNumber) + '.json')); i++) {
-        invoiceNumber = nextInvoiceNumber(prefix, tpl.invoiceType);
+        invoiceNumber = nextInvoiceNumber(prefix, tpl.invoiceType, bizKey);
       }
       const invoiceDate = today;
 

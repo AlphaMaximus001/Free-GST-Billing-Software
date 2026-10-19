@@ -45,6 +45,15 @@ import {
   deliveryChargeLine,
   nextCounterValue,
   startFor,
+  roundQty,
+  placeOfSupplyLabel,
+  businessKeyOf,
+  numberSeriesFor,
+  counterKeyFor,
+  formatDocNumber,
+  ownPrefixProblem,
+  numberFormatProblem,
+  savedPdfNameFor,
 } from '../src/utils.js';
 import { buildXlsx, colName } from '../src/utils/xlsx.js';
 import { bulkRowToProduct, closingStock, stockValueOf } from '../src/utils/products.js';
@@ -867,6 +876,54 @@ console.log('\n[V78] #93 start numbering from (tax invoices)');
   eq(nextCounterValue(0), 1, 'No start (receipts): from 1');
   eq([nextCounterValue(0, '1001'), nextCounterValue(0, 1001.7), nextCounterValue(0, -5), nextCounterValue(7.9, 1), nextCounterValue(0, '')], [1001, 1001, 1, 8, 1], 'Text, decimals, negatives and blanks are made safe');
   eq(nextCounterValue(0, 1e15), 999999999, 'A start is capped at 999999999');
+}
+
+console.log('\n[V79] #96 quantities, #95 places of supply and per-business numbering');
+{
+  let sum = 0; for (let i = 0; i < 400; i++) sum += 15.8924; // floating point drifts
+  eq([roundQty(sum), roundQty(6356.959999999999), roundQty(0.1 + 0.2), roundQty(6356.959999999999, 2)], [6356.96, 6356.96, 0.3, 6356.96], 'Added-up quantities are rounded (6356.9599999 -> 6356.96)');
+  eq([placeOfSupplyLabel('10'), placeOfSupplyLabel('Bihar'), placeOfSupplyLabel('03AAAAA0000A1Z5'), placeOfSupplyLabel('')], ['10-Bihar', '10-Bihar', '03-Punjab', ''], 'Place of supply written the portal way: 10-Bihar');
+
+  const brand = { brandPrefix: 'ACME', separator: '/', showFinYear: true, padDigits: 4 };
+  const fmt = (settings, typePrefix, next, extra = {}) => formatDocNumber({ settings, typePrefix, next, fyLabel: '2026-27', ...extra });
+  eq([fmt(brand, 'INV', 6), fmt(brand, 'QUO', 6), fmt(brand, 'DC', 1), fmt(brand, 'RCP', 2)],
+    ['ACME/2026-27/0006', 'ACME-QUO/2026-27/0006', 'ACME-DC/2026-27/0001', 'ACME-RCP/2026-27/0002'],
+    'Brand prefix: invoices ACME/..., other types ACME-QUO/... so a quotation never collides with an invoice');
+  eq([fmt({}, 'INV', 7), fmt({ ...brand, showFinYear: false }, 'INV', 7), fmt(brand, 'RPT', 3, { explicitPrefix: true })],
+    ['INV/2026-27/0007', 'ACME/0007', 'RPT/2026-27/0003'], 'No brand: type prefix; no FY; a Print Settings per-type prefix is used as is');
+
+  const kaveri = { businessName: 'Kaveri Stationers', gstin: '29abcde1234f1zw' };
+  const anant = { businessName: '  Anant  Exports ', gstin: '' };
+  eq([businessKeyOf(kaveri), businessKeyOf(anant), businessKeyOf(null)], ['29ABCDE1234F1ZW', 'NAME:anant exports', ''], 'A business is known by its GSTIN, else its name');
+  const shared = { brandPrefix: '', startNumber: 1 };
+  const map = { [businessKeyOf(anant)]: { brandPrefix: 'AE', startNumber: 502 } };
+  const a = numberSeriesFor(shared, map, businessKeyOf(kaveri));
+  const b = numberSeriesFor(shared, map, businessKeyOf(anant));
+  eq([a.own, b.own, b.brandPrefix, b.startNumber, b.separator], [false, true, 'AE', 502, '/'], 'A business without its own numbering uses the shared one; one with it uses its own');
+  eq([counterKeyFor('INV', a, businessKeyOf(kaveri)), counterKeyFor('INV', b, businessKeyOf(anant))], ['counter_INV', 'counter_INV@NAME:anant exports'], 'Each own series has its own counters');
+  eq([fmt(a, 'INV', nextCounterValue(1225, startFor('tax-invoice', a))), fmt(b, 'INV', nextCounterValue(undefined, startFor('tax-invoice', b)))],
+    ['INV/2026-27/1226', 'AE/2026-27/0502'], '#95: firm A continues at 1226, firm B starts its own series at 0502');
+
+  const ctx = { shared: { brandPrefix: 'ACME' }, seriesMap: map, businessKey: businessKeyOf(kaveri), customPrefixes: { 'tax-invoice': 'RPT' } };
+  eq([!!ownPrefixProblem('', ctx), !!ownPrefixProblem('inv', ctx), !!ownPrefixProblem('ACME', ctx), !!ownPrefixProblem('AE', ctx), !!ownPrefixProblem('RPT', ctx), ownPrefixProblem('KS', ctx)],
+    [true, true, true, true, true, ''], 'An own prefix must be set and unlike any other series (type prefixes, shared, other businesses, Print Settings)');
+  eq(ownPrefixProblem('AE', { ...ctx, businessKey: businessKeyOf(anant) }), '', 'A business may keep its own prefix when it saves again');
+}
+
+console.log('\n[V79] GST 16-character numbers, short year, portal state names, saved PDF names');
+{
+  const fy = '2026-27';
+  eq(numberFormatProblem({}, { fyLabel: fy }), '', 'Default INV/2026-27/0001 (16) and CN/2026-27/0001 fit the GST limit');
+  eq(/Credit Note .* 18 characters/.test(numberFormatProblem({ brandPrefix: 'XY' }, { fyLabel: fy })), true, 'Brand XY: XY-CN/2026-27/0001 is 18 characters and is refused');
+  eq(numberFormatProblem({ brandPrefix: 'XY', fyStyle: 'short' }, { fyLabel: fy }), '', 'With the short year it fits: XY-CN/26-27/0001 (16)');
+  eq(formatDocNumber({ settings: { brandPrefix: 'KS', fyStyle: 'short' }, typePrefix: 'CN', next: 7, fyLabel: fy }), 'KS-CN/26-27/0007', 'Short year writes 26-27');
+  eq(/ACME\/2026-27\/0001/.test(numberFormatProblem({ brandPrefix: 'ACME' }, { fyLabel: fy })), true, 'A 4-letter brand with the full year is already too long for a tax invoice');
+  eq(/does not accept "#"/.test(numberFormatProblem({ separator: '#' }, { fyLabel: fy })), true, 'The # separator is refused (the portal rejects it)');
+  eq(/12345/.test(numberFormatProblem({}, { fyLabel: fy, nextInvoice: 12345 })), true, 'Past 9999 the number grows to 17 characters and is flagged');
+  eq(numberFormatProblem({ brandPrefix: 'KS' }, { fyLabel: fy, own: true, customPrefixes: { 'tax-invoice': 'VERYLONGPREFIX' } }).includes('VERYLONG'), false, 'An own series ignores Print Settings per-type prefixes');
+  eq([placeOfSupplyLabel('01'), placeOfSupplyLabel('26'), placeOfSupplyLabel('97')], ['01-Jammu & Kashmir', '26-Dadra & Nagar Haveli & Daman & Diu', '97-Other Territory'], 'Places of supply spelt as on the GST portal');
+  eq(savedPdfNameFor({ invoiceNumber: 'INV/2026-27/0007', invoiceType: 'tax-invoice', data: { client: { name: 'Meera' } } }), { fileName: 'INV_INV-2026-27-0007.pdf', clientName: 'Meera' }, 'Saved PDF found under the name the editor saves it with');
+  eq(savedPdfNameFor({ invoiceNumber: 'CN/2026-27/0002', invoiceType: 'credit-note', data: {} }), { fileName: 'CN_CN-2026-27-0002.pdf', clientName: 'General' }, 'A credit note, no client: the General folder');
 }
 
 console.log('\n────────────────────────────────────────');

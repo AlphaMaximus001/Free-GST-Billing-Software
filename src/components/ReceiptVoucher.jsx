@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Receipt, Plus, Trash2, Search, Printer, Pencil } from 'lucide-react';
 import { getAllReceipts, saveReceipt, deleteReceipt, getAllBills, getProfile, getNextInvoiceNumber, saveBill } from '../store';
-import { formatCurrency, numberToWords, belongsToProfile, isUnassignedToBusiness, countsAsSales } from '../utils';
+import { formatCurrency, numberToWords, belongsToProfile, isUnassignedToBusiness, countsAsSales, businessKeyOf } from '../utils';
 import UnassignedBanner from './UnassignedBanner';
 import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
@@ -61,7 +61,8 @@ export default function ReceiptVoucher() {
   // which raced under concurrent saves + two tabs.
   const getNextReceiptNo = async () => {
     try {
-      return await getNextInvoiceNumber('RCP', { peek: true });
+      // v1.10.79 (#95) - a business with its own numbering numbers its receipts too.
+      return await getNextInvoiceNumber('RCP', { peek: true, businessKey: businessKeyOf(profile) });
     } catch {
       // Fallback preserves old behaviour if server is offline mid-mount
       const count = receipts.length + 1;
@@ -134,7 +135,7 @@ export default function ReceiptVoucher() {
       // (or an empty field) is swapped for a freshly reserved one.
       if (!editingId && (!receiptNo.trim() || receiptNo.trim() === previewedNoRef.current)) {
         try {
-          receiptNo = await getNextInvoiceNumber('RCP');
+          receiptNo = await getNextInvoiceNumber('RCP', { businessKey: businessKeyOf(profile) });
         } catch { receiptNo = receiptNo.trim() || previewedNoRef.current; /* fall back to peeked number */ }
       }
 
@@ -459,7 +460,7 @@ export default function ReceiptVoucher() {
                   <th>Against Invoice</th>
                   <th style={{ textAlign: 'right' }}>Amount</th>
                   <th>Mode</th>
-                  <th>Actions</th>
+                  <th className="col-center">Actions</th>
                 </tr>
               </thead>
               <tbody>

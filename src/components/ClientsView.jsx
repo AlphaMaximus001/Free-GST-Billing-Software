@@ -898,7 +898,7 @@ export default function ClientsView({ onEdit, onDuplicate, onNew }) {
                               <th>Type</th>
                               <th style={{ textAlign: 'right' }}>Amount</th>
                               <th>Status</th>
-                              <th>Actions</th>
+                              <th className="col-center">Actions</th>
                             </tr>
                           </thead>
                           <tbody>

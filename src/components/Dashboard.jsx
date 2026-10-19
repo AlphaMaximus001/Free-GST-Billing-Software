@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban, Undo2 } from 'lucide-react';
 import HelpButton from './HelpButton';
-import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts } from '../store';
+import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts, markSavedPdfCancelled } from '../store';
 import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES } from '../utils';
 import { openWhatsAppShare } from '../utils/share';
 import PageHeader from './PageHeader';
@@ -16,6 +16,48 @@ import { confirmAction } from './ConfirmModal';
 // user reported "NEW ISSUE IN CASE OF DARK MODE". rgba() with 12%
 // alpha lets the underlying row bg show through and works in both
 // themes.
+// v1.10.79 - put a captured invoice on A4 pages. It used to be drawn into one
+// page whatever its height (`Math.min(h, 297)`), so a long invoice shared on
+// WhatsApp or in Bulk PDF came out squashed into a single page. Now each
+// 297 mm slice is its own page.
+// `breaks` are canvas heights where a page may end (row and block bottoms,
+// see safeBreaks): a page ends at the last one that fits, so rows and the
+// signature are not cut in half.
+function addCanvasAsA4Pages(doc, canvas, startOnNewPage, breaks = []) {
+  const pageW = 210;
+  const pageH = 297;
+  const slicePx = Math.floor((canvas.width * pageH) / pageW);
+  for (let y = 0, page = 0; y < canvas.height; page++) {
+    let h = Math.min(slicePx, canvas.height - y);
+    if (y + h < canvas.height) {
+      const cut = breaks.filter((b) => b > y + slicePx * 0.5 && b <= y + slicePx).pop();
+      if (cut) h = cut - y;
+    }
+    if (page > 0 && h < 4) break; // a sliver of white margin is not worth a page
+    const slice = document.createElement('canvas');
+    slice.width = canvas.width;
+    slice.height = h;
+    const ctx = slice.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, slice.width, slice.height);
+    ctx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+    if (page > 0 || startOnNewPage) doc.addPage();
+    doc.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pageW, (h * pageW) / canvas.width, undefined, 'FAST');
+    y += h;
+  }
+}
+
+// Heights (in canvas pixels) where a page may end: the bottom of each table
+// row and of each block the editor's own PDF also keeps whole.
+function safeBreaks(el, canvas) {
+  const top = el.getBoundingClientRect().top;
+  const scale = canvas.height / Math.max(1, el.getBoundingClientRect().height);
+  return [...el.querySelectorAll('tr, .inv-footer-block, [data-pdf-page-boundary], .inv-signature')]
+    .map((n) => Math.round((n.getBoundingClientRect().bottom - top) * scale))
+    .filter((b) => b > 0 && b < canvas.height)
+    .sort((a, b) => a - b);
+}
+
 const STATUS_CONFIG = {
   unpaid:  { label: 'Unpaid',  icon: Clock,          color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.14)' },
   partial: { label: 'Partial', icon: Clock,          color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.14)' },
@@ -445,6 +487,14 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     return results;
   };
 
+  // v1.10.79 (#94) - the PDF in Saved Invoices follows: stamped CANCELLED, or
+  // back to the original on Undo. A save problem here never undoes the cancel.
+  const syncSavedPdfs = async (bills, cancelled) => {
+    const results = await Promise.allSettled(bills.map((b) => markSavedPdfCancelled(b, cancelled)));
+    const failed = results.filter((r) => r.status === 'rejected' || r.value?.failed > 0).length;
+    if (failed) toast(`${failed === 1 ? 'A saved PDF' : `${failed} saved PDFs`} could not be ${cancelled ? 'marked CANCELLED' : 'put back'}. Close the PDF if it is open, then ${cancelled ? 'cancel' : 'undo'} again.`, 'warning', 8000);
+  };
+
   const handleCancelInvoice = async (bill) => {
     if (isCancelledBill(bill)) return;
     const ok = await confirmAction({
@@ -457,6 +507,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       try {
         const [res] = await saveWithStock([planStock(bill, 'cancelled')], (b) => ({ ...b, status: 'cancelled', cancelledAt: new Date().toISOString() }));
         if (res.status === 'rejected') throw res.reason;
+        syncSavedPdfs([bill], true);
         toast('Invoice cancelled & stock restored', 'success');
         loadBills();
       } catch { toast('Failed to cancel', 'error'); }
@@ -487,6 +538,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       if (p.id) deleteReceipt(p.id).catch(() => {});
     }
     try { await moveStock([plan]); } catch { /* the status change is saved */ }
+    if (isCancelledBill(bill) !== (updated.status === 'cancelled')) syncSavedPdfs([bill], updated.status === 'cancelled');
     toast(updated.status === newStatus
       ? `Marked as ${STATUS_CONFIG[newStatus].label}`
       : `Payments recorded with a receipt remain, so it is ${STATUS_CONFIG[updated.status]?.label || updated.status}`, 'info');
@@ -755,6 +807,14 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         return patch;
       });
       const failed = results.filter(r => r.status === 'rejected').length;
+      const done = sel.filter((_, i) => results[i]?.status !== 'rejected');
+      syncSavedPdfs(done.filter((b) => isCancelledBill(b)), false);
+      if (newStatus === 'unpaid') {
+        for (const b of done) {
+          const kept = markUnpaidPatch(b).payments;
+          for (const pay of (b.payments || []).filter((x) => !kept.includes(x))) if (pay.id) deleteReceipt(pay.id).catch(() => {});
+        }
+      }
       if (failed > 0) toast(`${sel.length - failed} updated, ${failed} failed`, 'warning');
       else toast(`Marked ${sel.length} as ${newStatus}`, 'success');
       clearSelection();
@@ -777,6 +837,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       const at = new Date().toISOString();
       const results = await saveWithStock(sel.map((b) => planStock(b, 'cancelled')), (b) => ({ ...b, status: 'cancelled', cancelledAt: at }));
       const failed = results.filter(r => r.status === 'rejected').length;
+      syncSavedPdfs(sel.filter((_, i) => results[i]?.status !== 'rejected'), true);
       if (failed > 0) toast(`${sel.length - failed} cancelled, ${failed} failed`, 'warning');
       else toast(`Cancelled ${sel.length} invoice${sel.length !== 1 ? 's' : ''}`, 'success');
       clearSelection();
@@ -879,10 +940,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             scale: capScale,
             backgroundColor: '#ffffff', useCORS: false, logging: false,
           });
-          const img = canvas.toDataURL('image/jpeg', 0.92);
-          const w = 210, h = (canvas.height * 210) / canvas.width;
-          if (ok > 0) doc.addPage();
-          doc.addImage(img, 'JPEG', 0, 0, w, Math.min(h, 297), undefined, 'FAST');
+          addCanvasAsA4Pages(doc, canvas, ok > 0, safeBreaks(container.firstElementChild || container, canvas));
           ok++;
         } catch (e) { /* skip broken bill silently */ }
         // Yield to the event loop between invoices so the browser can
@@ -953,9 +1011,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         scale: capScale, backgroundColor: '#ffffff', useCORS: false, logging: false,
       });
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-      const img = canvas.toDataURL('image/jpeg', 0.92);
-      const h = (canvas.height * 210) / canvas.width;
-      doc.addImage(img, 'JPEG', 0, 0, 210, Math.min(h, 297), undefined, 'FAST');
+      addCanvasAsA4Pages(doc, canvas, false, safeBreaks(container.firstElementChild || container, canvas));
       return doc.output('blob');
     } finally {
       root.unmount();

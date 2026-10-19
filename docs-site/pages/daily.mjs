@@ -112,8 +112,8 @@ export default [
 
 <section id="cancel">
 <h2>Cancelling an invoice</h2>
-<p>${ui('Cancel')} asks first, then marks the invoice cancelled. It keeps its number, which GST requires, but no longer counts in totals, reports or GST returns, and any stock it used goes back.</p>
-<p>To undo it, click the ${ui('Undo cancel')} arrow among the row's actions and answer <b>Yes, undo</b>. It goes back to Unpaid, Partial or Paid, from its payments, and the stock is taken out again. A cancelled invoice is never shown as overdue.</p>
+<p>${ui('Cancel')} asks first, then marks the invoice cancelled. It keeps its number, which GST requires, but no longer counts in totals, reports or GST returns, and any stock it used goes back. If you saved or printed its PDF, the copy in the <code>Saved Invoices</code> folder gets <b>CANCELLED</b> across every page.</p>
+<p>To undo it, click the ${ui('Undo cancel')} arrow among the row's actions and answer <b>Yes, undo</b>. It goes back to Unpaid, Partial or Paid, from its payments, the stock is taken out again, and its saved PDF is put back exactly as it was. A cancelled invoice is never shown as overdue.</p>
 </section>
 
 <section id="quick-print">
