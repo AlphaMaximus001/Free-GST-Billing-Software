@@ -106,6 +106,9 @@ export default function InventoryView() {
       const sellingPrice = form.sellingPrice ? parseFloat(form.sellingPrice) : 0;
       const purchasePrice = form.purchasePrice ? parseFloat(form.purchasePrice) : 0;
       const product = {
+        // Fields this form does not show (cess % from purchase bills, etc.)
+        // are kept: the record used to be rebuilt from the form alone.
+        ...(editingId ? (products.find(p => p.id === editingId) || {}) : {}),
         ...(editingId ? { id: editingId } : {}),
         name: form.name.trim(),
         hsn: form.hsn.trim(),
@@ -155,7 +158,9 @@ export default function InventoryView() {
     let inQuotes = false;
     for (let i = 0; i < line.length; i++) {
       const ch = line[i];
-      if (ch === '"') { inQuotes = !inQuotes; }
+      // "" inside quotes is a literal quote (as our own exports write it).
+      if (ch === '"' && inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuotes = !inQuotes; }
       else if (ch === ',' && !inQuotes) { result.push(current); current = ''; }
       else { current += ch; }
     }
@@ -167,10 +172,12 @@ export default function InventoryView() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const text = await file.text();
+      // Excel's "CSV UTF-8" starts with a byte-order mark, which turned the
+      // first header into "\uFEFFname" so no row had a name and nothing imported.
+      const text = (await file.text()).replace(/^\uFEFF/, '');
       const lines = text.split(/\r?\n/).filter(l => l.trim());
       if (lines.length < 2) { toast('CSV file is empty or has no data rows', 'warning'); return; }
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+      const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
       let imported = 0;
       // v1.10.74 - importing the same file twice made duplicates. Skip names
       // already in the list (trimmed, any case), including repeats inside the file.

@@ -12,7 +12,7 @@ import { fileURLToPath } from 'url';
 // invoice-level discount, and round-off. Previously the recurring auto-fire
 // re-implemented totals inline and silently reintroduced every bug the
 // v1.10.1 extraction fixed. Same source of truth now.
-import { computeInvoiceTotals, clientYearToDate, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, businessKeyOf, getFinancialYearLabel, INVOICE_TYPES } from './src/utils.js';
+import { templateTotals, clientYearToDate, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, businessKeyOf, getFinancialYearLabel, INVOICE_TYPES } from './src/utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, 'data');
@@ -78,8 +78,16 @@ app.use((req, res, next) => {
 // could OOM the Node process with a nested-JSON payload.
 // v1.10.77 - except /api/local-prefs, which parses its own body (below).
 const LOCAL_PREFS_ROUTE = '/api/local-prefs';
+// A full backup is bigger: every invoice keeps a copy of the business
+// profile, logo and signature images included, so a few hundred invoices
+// with a logo passed 5mb and Restore failed with "Request body too large".
+const IMPORT_ROUTE = '/api/import';
 const jsonBody = express.json({ limit: '5mb' });
-app.use((req, res, next) => (req.path === LOCAL_PREFS_ROUTE ? next() : jsonBody(req, res, next)));
+const importBody = express.json({ limit: '500mb' });
+app.use((req, res, next) => {
+  if (req.path === LOCAL_PREFS_ROUTE) return next();
+  return (req.path === IMPORT_ROUTE ? importBody : jsonBody)(req, res, next);
+});
 
 // Ensure data directory and sub-directories exist
 const DIRS = ['bills', 'clients', 'templates', 'products', 'expenses', 'recurring', 'receipts', 'profiles', 'purchases'];
@@ -103,6 +111,7 @@ function safePathSegment(input, fallback = 'Untitled') {
   if (input === undefined || input === null) return fallback;
   let s;
   try { s = decodeURIComponent(String(input)); } catch { s = String(input); }
+  // eslint-disable-next-line no-control-regex -- stripping control characters is the point
   s = s.replace(/[<>:"/\\|?*\x00-\x1f]/g, '-');    // reserved/control chars
   s = s.replace(/\.{2,}/g, '-');                    // squash .. and ...
   s = s.replace(/^[.\s]+|[.\s]+$/g, '');            // trim leading/trailing . and space (Windows reserves)
@@ -292,12 +301,15 @@ app.delete('/api/bills/:id', (req, res) => {
   }
   if (req.query.permanent === '1') {
     try { fs.unlinkSync(filePath); } catch { /* ignore */ }
+    invalidateCache('bills');
     return res.json({ success: true, permanent: true });
   }
   try {
     const trashDir = path.join(DATA_DIR, 'trash');
     if (!fs.existsSync(trashDir)) fs.mkdirSync(trashDir, { recursive: true });
     fs.renameSync(filePath, path.join(trashDir, fname));
+    // The list must not serve the moved bill from cache for 5 more seconds.
+    invalidateCache('bills');
     res.json({ success: true, trashed: true });
   } catch (err) {
     errRes(res, 500, 'server-error', err);
@@ -536,6 +548,7 @@ app.get('/api/meta/:key', (req, res) => {
 
 app.post('/api/meta/:key', (req, res) => {
   if (req.params.key === LOCK_KEY) return errRes(res, 403, 'forbidden');
+  if (!req.body || !('value' in req.body)) return errRes(res, 400, 'bad-request');
   const meta = readJSON(META_PATH, {});
   meta[req.params.key] = req.body.value;
   writeJSON(META_PATH, meta);
@@ -1303,7 +1316,10 @@ function runDailyBackup() {
 }
 
 setTimeout(runDailyBackup, 5000);
-setInterval(runDailyBackup, 24 * 60 * 60 * 1000);
+// Checked every hour (it does nothing once today's backup exists), so a PC
+// left on overnight gets the new day's backup soon after midnight rather
+// than up to 24 hours later.
+setInterval(runDailyBackup, 60 * 60 * 1000);
 
 // Backup management endpoints
 app.get('/api/backups', (req, res) => {
@@ -1396,12 +1412,17 @@ app.post('/api/backups/:date/restore', (req, res) => {
       restoredDirs.push(entry.name);
     }
     writeJSON(META_PATH, withLock(readJSON(META_PATH, {}), lockBefore));
+    for (const dir of DIRS) invalidateCache(dir);
 
-    // Success — remove the pre-restore snapshot (or keep for a bit? we
-    // remove because the backup itself is still on disk as a rollback
-    // option). Failures below prevent removal.
-    fs.rmSync(snapshotDir, { recursive: true, force: true });
-    res.json({ success: true, restored: date });
+    // Success. The pre-restore snapshot is KEPT: it is the only copy of the
+    // data as it was a moment ago (today's daily backup was taken at
+    // start-up, before today's work), and the app promises it can be rolled
+    // back. Only the 5 newest snapshots are kept.
+    try {
+      const snaps = fs.readdirSync(BACKUPS_DIR).filter(n => /^pre-restore-\d+$/.test(n)).sort((x, y) => Number(x.slice(12)) - Number(y.slice(12)));
+      while (snaps.length > 5) fs.rmSync(path.join(BACKUPS_DIR, snaps.shift()), { recursive: true, force: true });
+    } catch { /* pruning is best-effort */ }
+    res.json({ success: true, restored: date, snapshot: path.basename(snapshotDir) });
   } catch (err) {
     // Rollback: put the snapshot back over whatever the restore
     // half-did. This preserves user data at the cost of losing the
@@ -1420,6 +1441,7 @@ app.post('/api/backups/:date/restore', (req, res) => {
         }
       } catch { /* if rollback fails, snapshot stays on disk for manual recovery */ }
     }
+    for (const dir of DIRS) invalidateCache(dir);
     errRes(res, 500, 'server-error', err);
   }
 });
@@ -1467,7 +1489,10 @@ app.post('/api/trash/:id/restore', (req, res) => {
     const trashPath = path.join(BILL_TRASH_DIR, fname);
     const billsPath = path.join(DATA_DIR, 'bills', fname);
     if (!fs.existsSync(trashPath)) return res.status(404).json({ error: 'Not in trash' });
+    // A new bill may have taken this number since: never replace it.
+    if (fs.existsSync(billsPath)) return res.status(409).json({ error: 'An invoice with this number exists again. Rename or delete it first.' });
     fs.renameSync(trashPath, billsPath);
+    invalidateCache('bills');
     res.json({ success: true });
   } catch (err) { errRes(res, 500, 'server-error', err); }
 });
@@ -1495,6 +1520,9 @@ function purgeOldTrash() {
     }
   } catch { /* ignore */ }
 }
+// Also once at start-up: the server usually runs only while the PC is on, so
+// a 24-hour timer alone never fired and the trash was never emptied.
+setTimeout(purgeOldTrash, 10000);
 setInterval(purgeOldTrash, 24 * 60 * 60 * 1000);
 
 // v1.10.0 — Health-check endpoint moved here (was registered AFTER the
@@ -1576,7 +1604,8 @@ function servePlaceholder(req, res) {
 // code — no leaked stack traces or absolute filesystem paths.
 // Preserves upstream status codes from body-parser (413 payload too
 // large, 400 malformed JSON) so clients can differentiate.
-// eslint-disable-next-line no-unused-vars — 4-arg signature is required by Express
+// 4-arg signature is required by Express
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   const status = Number(err && (err.status || err.statusCode)) || 500;
   let code = 'server-error';
@@ -1705,15 +1734,38 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 // Why no Windows scheduled task (yet): the server starts on every Windows
 // login via the Startup-folder shortcut, so booting your PC = a check.
 // Long-uptime users get a daily `setInterval` below as a backstop.
-function advanceDate(dateStr, frequency, interval) {
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
+// Calendar arithmetic on YYYY-MM-DD, done in UTC so the machine's time zone
+// can never move the date. (It used to parse the date as UTC, step it in
+// local time and print it as UTC again: a day off west of Greenwich.)
+const isoDay = (d) => d.toISOString().split('T')[0];
+function parseIsoDay(dateStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateStr || ''));
+  return m ? new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))) : null;
+}
+function addDays(dateStr, days) {
+  const d = parseIsoDay(dateStr);
+  if (!d) return '';
+  d.setUTCDate(d.getUTCDate() + days);
+  return isoDay(d);
+}
+// Monthly / quarterly / yearly steps keep the day of month the schedule
+// started on (`anchorDay`), clamped to short months: 31 Jan -> 28 Feb ->
+// 31 Mar. setMonth() overflowed instead (31 Jan + 1 month = 3 Mar, so
+// February was skipped and every later date drifted).
+function advanceDate(dateStr, frequency, interval, anchorDay) {
+  const d = parseIsoDay(dateStr);
+  if (!d) return dateStr;
   const n = Math.max(1, parseInt(interval, 10) || 1);
-  if (frequency === 'weekly') d.setDate(d.getDate() + 7 * n);
-  else if (frequency === 'quarterly') d.setMonth(d.getMonth() + 3 * n);
-  else if (frequency === 'yearly') d.setFullYear(d.getFullYear() + n);
-  else d.setMonth(d.getMonth() + n); // default: monthly
-  return d.toISOString().split('T')[0];
+  if (frequency === 'weekly') {
+    d.setUTCDate(d.getUTCDate() + 7 * n);
+    return isoDay(d);
+  }
+  const months = frequency === 'quarterly' ? 3 * n : frequency === 'yearly' ? 12 * n : n; // default: monthly
+  const day = Math.min(31, Math.max(1, parseInt(anchorDay, 10) || d.getUTCDate()));
+  const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1));
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(day, lastDay));
+  return isoDay(target);
 }
 
 function nextInvoiceNumber(prefix, invoiceType = 'tax-invoice', businessKey = '') {
@@ -1784,33 +1836,20 @@ function generateFromTemplate(tpl, today) {
       // Prior inline math didn't recognise ANY of those and silently produced
       // wrong tax buckets for recurring bills. All the v1.10.1 audit fixes
       // were being reintroduced here.
-      const client = {
-        name: tpl.clientName,
-        state: tpl.clientState,
-        gstin: tpl.clientGstin,
-        // v1.10.66 (#61) — the client's country decides whether the supply is
-        // an export (IGST). Without it every recurring invoice to a client
-        // abroad was calculated as intrastate.
-        country: tpl.clientCountry,
-        isSEZ: !!tpl.isSEZ,
-      };
-      const details = { placeOfSupply: tpl.placeOfSupply };
+      // v1.10.66 (#61) — the client's country decides whether the supply is
+      // an export (IGST); place of supply and SEZ decide the split as on the
+      // invoice screen. templateTotals (src/utils.js) is shared with the
+      // Recurring screen, so the amount it shows is the amount billed.
       // The client's sales so far this year, for the ₹50L TCS/TDS threshold.
       const ytd = clientYearToDate(readAllFromDir('bills'), tpl.clientName, today);
-      const invoiceOptions = { ...(tpl.invoiceOptions || {}), tcsCumulativeThisYear: ytd, tdsCumulativeThisYear: ytd };
-      const totals = computeInvoiceTotals({
-        items: tpl.items || [],
-        profile,
-        client,
-        details,
-        showGST: invoiceOptions.showGST !== false,
-        taxInclusive: !!tpl.taxInclusive,
-        invoiceOptions,
-      });
+      const totals = templateTotals(tpl, profile, { tcsCumulativeThisYear: ytd, tdsCumulativeThisYear: ytd });
       const totalAmount = totals.total;
       const taxTotal = totals.totalTaxAmount;
-      const subtotal = totals.subtotal;
-      const totalDiscount = totals.totalDiscount;
+      // Due date: the same number of days after the invoice date as on the
+      // invoice the template was made from (none when it had no due date).
+      const dueDays = Number(tpl.dueDays);
+      const dueDate = Number.isFinite(dueDays) && dueDays >= 0 && tpl.dueDays !== '' && tpl.dueDays !== null
+        ? addDays(invoiceDate, dueDays) : '';
 
       const bill = {
         id: invoiceNumber,
@@ -1835,7 +1874,9 @@ function generateFromTemplate(tpl, today) {
             pin: tpl.clientPin, email: tpl.clientEmail, phone: tpl.clientPhone,
             isSEZ: tpl.isSEZ,
           },
-          details: { invoiceNumber, invoiceDate, dueDate: '', placeOfSupply: '' },
+          // The place of supply the totals were worked out with: left blank,
+          // GSTR-1 and the printed invoice fell back to the client's state.
+          details: { invoiceNumber, invoiceDate, dueDate, placeOfSupply: tpl.placeOfSupply || '' },
           // Normalize item.name from legacy description field (v1.6.7-and-earlier
           // templates used `description` — auto-fired bills rendered blank rows).
           items: (tpl.items || []).map(i => ({
@@ -1854,8 +1895,11 @@ function generateFromTemplate(tpl, today) {
 
       writeJSON(path.join(DATA_DIR, 'bills', safeFileName(invoiceNumber) + '.json'), bill);
 
-      // Advance the template
-      tpl.nextDate = advanceDate(tpl.nextDate || today, tpl.frequency, tpl.interval);
+      // Advance the template. The day of month it started on is remembered,
+      // so a schedule on the 31st comes back to the 31st after February.
+      const from = tpl.nextDate || today;
+      if (!tpl.anchorDay && tpl.frequency !== 'weekly') tpl.anchorDay = Number(from.slice(8, 10)) || undefined;
+      tpl.nextDate = advanceDate(from, tpl.frequency, tpl.interval, tpl.anchorDay);
       tpl.lastGenerated = today;
       tpl.occurrencesCreated = (tpl.occurrencesCreated || 0) + 1;
       writeJSON(path.join(DATA_DIR, 'recurring', safeFileName(tpl.id) + '.json'), tpl);
@@ -1913,4 +1957,7 @@ startServer(STARTING_PORT);
 // v1.10.6 — audit L19: async caller. Uncaught rejections logged via
 // the top-level unhandledRejection handler installed above.
 setTimeout(() => { processDueRecurring().catch(err => logFatal(err, 'recurring')); }, 3000);
-setInterval(() => { processDueRecurring().catch(err => logFatal(err, 'recurring')); }, 24 * 60 * 60 * 1000);
+// Hourly: a template only fires once its nextDate has come, so checking more
+// often never makes extra invoices - it just stops a template due today from
+// waiting until the same time tomorrow on a PC that stays on.
+setInterval(() => { processDueRecurring().catch(err => logFatal(err, 'recurring')); }, 60 * 60 * 1000);

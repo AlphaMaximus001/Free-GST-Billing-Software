@@ -21,11 +21,24 @@
  * for the client is unchanged.
  */
 
-// Overpayment on a single bill: paid - total, ignoring the client-credit
+import { amountDue, paymentStatusFor, isCancelledBill, SALES_INVOICE_TYPES, localToday } from '../utils';
+
+// What the client owes on a bill: the total less TDS they deduct. Nothing on
+// a cancelled invoice, or on a quotation / proforma / challan (not a sale), so
+// money received against one - an advance, or a payment before the invoice was
+// cancelled - is the client's credit instead of disappearing.
+const owedOn = (bill) => {
+  if (isCancelledBill(bill)) return 0;
+  const type = bill.invoiceType || 'tax-invoice';
+  if (type !== 'credit-note' && !SALES_INVOICE_TYPES.includes(type)) return 0;
+  return amountDue(bill);
+};
+
+// Overpayment on a single bill: paid - owed, ignoring the client-credit
 // paper trail so we don't double-count our own transfer entries.
 export function getBillOverpayment(bill) {
   if (!bill) return 0;
-  const total = Number(bill.totalAmount) || 0;
+  const total = owedOn(bill);
   const cashPaid = (bill.payments || []).reduce((s, p) => {
     // 'credit-transferred-out' entries reduce the raw paidAmount to show
     // that the excess has been moved off this bill. Skip 'credit-applied'
@@ -88,7 +101,7 @@ export function planCreditApplication(clientName, allBills, amountToApply, newBi
       {
         id: 'credit_out_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         amount: -take,
-        date: new Date().toISOString().split('T')[0],
+        date: localToday(),
         mode: 'credit-transferred-out',
         note: `Transferred to ${newBillId}`,
         recordedAt: new Date().toISOString(),
@@ -96,7 +109,9 @@ export function planCreditApplication(clientName, allBills, amountToApply, newBi
       },
     ];
     const newTotalPaid = newPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-    const newStatus = newTotalPaid >= (Number(srcBill.totalAmount) || 0) - 0.005 ? 'paid' : (newTotalPaid > 0.005 ? 'partial' : 'unpaid');
+    // A source keeps its status when it is cancelled or not a sale.
+    const newStatus = isCancelledBill(srcBill) ? 'cancelled'
+      : (owedOn(srcBill) > 0 ? paymentStatusFor(srcBill, newTotalPaid) : (srcBill.status || 'unpaid'));
     sourcePatches.push({
       billId: src.billId,
       updatedBill: { ...srcBill, payments: newPayments, paidAmount: newTotalPaid, status: newStatus },
@@ -108,7 +123,7 @@ export function planCreditApplication(clientName, allBills, amountToApply, newBi
   const targetEntry = {
     id: 'credit_in_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     amount,
-    date: new Date().toISOString().split('T')[0],
+    date: localToday(),
     mode: 'credit-applied',
     note: `Applied from prior overpayment${consumedFrom.length > 1 ? 's' : ''} (${consumedFrom.map(c => c.invoiceNumber).join(', ')})`,
     recordedAt: new Date().toISOString(),

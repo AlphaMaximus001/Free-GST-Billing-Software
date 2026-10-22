@@ -1,7 +1,7 @@
 // File-based storage via local Express API server
 // All data persists as JSON files in the ./data/ folder
 
-import { getFinancialYearLabel, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, INVOICE_TYPES, savedPdfNameFor } from './utils';
+import { getFinancialYearLabel, parseLocalDate, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, INVOICE_TYPES, savedPdfNameFor } from './utils';
 
 const API = '/api';
 
@@ -161,7 +161,10 @@ export const setEnabledModules = (map) => {
 // v1.10.79 (#95) - pass businessKey: a business with its own numbering counts
 // in its own series, with its own prefix (Print Settings' per-type prefixes
 // belong to the shared series).
-export const getNextInvoiceNumber = async (prefix = 'INV', { peek = false, explicitPrefix = false, invoiceType = null, businessKey = '' } = {}) => {
+// `invoiceDate` (YYYY-MM-DD) picks the financial year printed in the number;
+// without it, today's. A back-dated invoice (31 March, made on 2 April) took
+// the new year's label, so its number disagreed with its own date.
+export const getNextInvoiceNumber = async (prefix = 'INV', { peek = false, explicitPrefix = false, invoiceType = null, businessKey = '', invoiceDate = '' } = {}) => {
   const settings = await getNumberSeries(businessKey);
   const typePrefix = settings.own ? (INVOICE_TYPES[invoiceType]?.prefix || prefix) : prefix;
   const key = counterKeyFor(typePrefix, settings, businessKey);
@@ -186,7 +189,7 @@ export const getNextInvoiceNumber = async (prefix = 'INV', { peek = false, expli
   return formatDocNumber({
     settings, typePrefix, next,
     explicitPrefix: settings.own ? false : explicitPrefix,
-    fyLabel: getFinancialYearLabel(),
+    fyLabel: getFinancialYearLabel(invoiceDate ? parseLocalDate(invoiceDate) : new Date()),
   });
 };
 
@@ -339,6 +342,12 @@ export const saveReceipt = async (receipt) => {
 // original back (Undo). Nothing happens when no PDF was ever saved.
 export const markSavedPdfCancelled = (bill, cancelled) => apiFetch(`${API}/saved-pdf/cancel-mark`, {
   method: 'POST', body: JSON.stringify({ ...savedPdfNameFor(bill), cancelled }),
+});
+
+// A deleted invoice's PDF in Saved Invoices moves to the app's Trash folder
+// with it (the server route existed, but nothing called it).
+export const trashSavedPdf = (bill) => apiFetch(`${API}/trash-pdf`, {
+  method: 'POST', body: JSON.stringify(savedPdfNameFor(bill)),
 });
 
 export const deleteReceipt = async (id) => {

@@ -484,8 +484,11 @@ export default function PurchaseBills() {
               _placeholderId: existing.id,
             });
           } else {
-            // New product — seed stock with the line qty.
-            productsToUpsert.set(`__new__::${it.name.trim().toLowerCase()}`, {
+            // New product — seed stock with the line qty (all its lines: two
+            // lines of the same new item used to keep only the last one's).
+            const newKey = `__new__::${it.name.trim().toLowerCase()}`;
+            const seeded = Number(productsToUpsert.get(newKey)?.stock) || 0;
+            productsToUpsert.set(newKey, {
               name: it.name.trim(),
               hsn: it.hsn || '',
               purchasePrice: it.rate,
@@ -494,7 +497,7 @@ export default function PurchaseBills() {
               taxPercent: it.taxPercent || 0,
               cessPercent: it.cessPercent || 0,
               unit: 'Nos',
-              stock: qty,
+              stock: roundQty(seeded + qty),
               description: '',
             });
           }
@@ -516,7 +519,10 @@ export default function PurchaseBills() {
           if (prod._placeholderId) {
             const existing = byId.get(prod._placeholderId);
             const delta = stockDeltaById.get(prod._placeholderId) || 0;
-            const newStock = Math.max(0, roundQty((Number(existing.stock) || 0) + delta));
+            // Not clamped at 0: sales may take stock below zero, and clamping
+            // here made a purchase edit and its undo leave different stock
+            // (stock 2, reduce a purchase by 5 -> 0, put it back -> 5).
+            const newStock = roundQty((Number(existing.stock) || 0) + delta);
             upserts.push(saveProduct({ ...prod, stock: newStock, _placeholderId: undefined }));
           } else {
             upserts.push(saveProduct(prod));
@@ -555,7 +561,7 @@ export default function PurchaseBills() {
     }
   };
 
-  // Take a deleted bill's quantities back out of product stock (never below 0).
+  // Take a deleted bill's quantities back out of product stock.
   // Matches products the same way saving does: productId, then name.
   const revertPurchaseStock = async (bill) => {
     const lines = (bill?.items || []).filter(it => it.name && Number(it.quantity) > 0);
@@ -570,7 +576,7 @@ export default function PurchaseBills() {
     }
     await Promise.all([...minus].map(([pid, qty]) => {
       const prod = byId.get(pid);
-      return saveProduct({ ...prod, stock: Math.max(0, roundQty((Number(prod.stock) || 0) - qty)) });
+      return saveProduct({ ...prod, stock: roundQty((Number(prod.stock) || 0) - qty) });
     }));
   };
 

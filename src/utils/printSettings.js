@@ -406,23 +406,25 @@ export function formatNumber(n, settings) {
   const fmt = settings.numberFormat || 'indian';
   const abs = Math.abs(num);
   const rounded = abs.toFixed(decimals);
+  // No "-0.00" for an amount that rounds to zero.
+  const neg = num < 0 && Number(rounded) !== 0;
 
   if (fmt === 'western') {
     const [int, dec] = rounded.split('.');
     const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return (num < 0 ? '-' : '') + (dec ? `${grouped}.${dec}` : grouped);
+    return (neg ? '-' : '') + (dec ? `${grouped}.${dec}` : grouped);
   }
   if (fmt === 'european') {
     const [int, dec] = rounded.split('.');
     const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    return (num < 0 ? '-' : '') + (dec ? `${grouped},${dec}` : grouped);
+    return (neg ? '-' : '') + (dec ? `${grouped},${dec}` : grouped);
   }
   // indian (default): 1,00,000 grouping
   const [int, dec] = rounded.split('.');
   const last3 = int.slice(-3);
   const rest = int.slice(0, -3);
   const grouped = rest ? rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3 : last3;
-  return (num < 0 ? '-' : '') + (dec ? `${grouped}.${dec}` : grouped);
+  return (neg ? '-' : '') + (dec ? `${grouped}.${dec}` : grouped);
 }
 
 export function formatCurrencyEx(n, currencyCode, settings) {
@@ -434,7 +436,9 @@ export function formatCurrencyEx(n, currencyCode, settings) {
 
 export function formatDate(dateStr, settings) {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
+  // A YYYY-MM-DD date read as a local date (new Date() takes it as UTC).
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr));
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -445,7 +449,7 @@ export function formatDate(dateStr, settings) {
     case 'dd-mm-yyyy': return `${dd}/${mm}/${yyyy}`;
     case 'mm-dd-yyyy': return `${mm}/${dd}/${yyyy}`;
     case 'yyyy-mm-dd': return `${yyyy}-${mm}-${dd}`;
-    case 'iso': return d.toISOString().slice(0, 10);
+    case 'iso': return `${yyyy}-${mm}-${dd}`; // toISOString() is UTC: a day early in India
     case 'dd-mmm-yyyy': return `${dd}-${mon}-${yyyy}`;
     case 'dd-mon-yyyy':
     default: return `${dd} ${mon} ${yyyy}`;

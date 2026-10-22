@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getRegionMode, setRegionMode, getEnabledModules, setEnabledModules, getStockAlertSettings, saveStockAlertSettings, renameNumberSeries, getInvoiceDisplayOptions, saveInvoiceDisplayOptions } from '../store';
 import { ensureToken, findOrCreateFolder, uploadJSON } from '../services/googleDrive';
-import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, FEATURE_GROUPS, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, findSameBusiness, businessKeyOf } from '../utils';
+import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, FEATURE_GROUPS, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, findSameBusiness, businessKeyOf, stockDelta } from '../utils';
 // v1.10.36 — lucide's `Image` icon was imported as `Image`, which
 // SHADOWED the browser's `HTMLImageElement` constructor. Reported:
 // "Uncaught TypeError: et is not a constructor at onChange" on logo
@@ -17,7 +17,7 @@ import PrintSettings from './PrintSettings';
 import HelpButton from './HelpButton';
 import AppLockSettings from './AppLockSettings';
 import InvoiceNumberSettings from './InvoiceNumberSettings';
-import { getBackupsList, restoreBackup, triggerBackup, deleteBackup, getTrashedBills, restoreTrashedBill, purgeTrashedBill, runUpdateNow } from '../store';
+import { getBackupsList, restoreBackup, triggerBackup, deleteBackup, getTrashedBills, restoreTrashedBill, purgeTrashedBill, runUpdateNow, saveBill, applyStockChanges } from '../store';
 
 // v1.10.36 — Section order for the jump-nav pill bar. Keeping this at
 // module scope so the scroll-spy effect below can reference it without
@@ -1934,14 +1934,14 @@ function BackupAndTrashPanel() {
   const handleRestoreBackup = async (date) => {
     if (!await confirmAction({
       title: `Restore all data from backup ${date}?`,
-      message: 'This OVERWRITES your current data. A snapshot of the current state will be taken first — if the restore looks wrong, you can roll back.',
+      message: 'This OVERWRITES your current data. A copy of your data as it is now is kept first, in data/backups/pre-restore-…, so you can go back to it if the restore looks wrong.',
       confirmLabel: 'Restore backup',
       tone: 'warning',
     })) return;
     try {
-      await triggerBackup();
-      await restoreBackup(date);
-      toast('Backup restored — please reload the page to see the data', 'success');
+      await triggerBackup().catch(() => {}); // today's daily backup, if not made yet
+      const res = await restoreBackup(date);
+      toast(`Backup restored — please reload the page to see the data.${res?.snapshot ? ` Your data from before is in data/backups/${res.snapshot}.` : ''}`, 'success', 10000);
     } catch (err) {
       toast('Restore failed: ' + err.message, 'error');
     }
@@ -1950,6 +1950,16 @@ function BackupAndTrashPanel() {
   const handleRestoreTrash = async (id) => {
     try {
       await restoreTrashedBill(id);
+      // Back in the books, so the stock its delete put back is taken out again.
+      // Only what that delete recorded (stockReturnedOnDelete): invoices
+      // deleted before it was recorded never had their stock put back.
+      const { _trashedAt, ...bill } = trash.find((b) => b.id === id) || {};
+      const back = bill.data?.stockReturnedOnDelete;
+      if (back && Object.keys(back).length) {
+        const { stockReturnedOnDelete: _gone, ...data } = bill.data;
+        await saveBill({ ...bill, data: { ...data, stockApplied: back } }, { overwrite: true });
+        await applyStockChanges(stockDelta({}, back)).catch(() => {});
+      }
       toast('Invoice restored', 'success');
       loadAll();
     } catch (err) {

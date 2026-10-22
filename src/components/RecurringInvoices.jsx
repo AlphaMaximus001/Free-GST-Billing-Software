@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { RefreshCw, Plus, Edit3, Trash2, Play, Pause, X, Save } from 'lucide-react';
 import { getAllRecurring, saveRecurring, deleteRecurring, getAllClients, getProfile, generateRecurringNow } from '../store';
-import { formatCurrency, INVOICE_TYPES, belongsToProfile, isUnassignedToBusiness } from '../utils';
+import { formatCurrency, INVOICE_TYPES, belongsToProfile, isUnassignedToBusiness, templateTotals, localToday, toLocalIsoDate, parseLocalDate } from '../utils';
 import UnassignedBanner from './UnassignedBanner';
 import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
@@ -20,13 +20,6 @@ const emptyForm = {
   items: [{ name: '', hsn: '', quantity: 1, rate: '', taxPercent: 18, discount: 0 }],
   notes: '', nextDate: '', active: true,
   interval: 1, endMode: 'never', endDate: '', maxOccurrences: '',
-};
-
-// Today in the computer's own time zone (toISOString is UTC: "yesterday" in
-// India until 05:30).
-const localToday = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 const UNIT_PLURAL = { weekly: 'weeks', monthly: 'months', quarterly: 'quarters', yearly: 'years' };
@@ -83,10 +76,11 @@ export default function RecurringInvoices() {
   useEffect(() => { load(); }, []);
 
   const openAdd = () => {
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
-    nextMonth.setDate(1);
-    setForm({ ...emptyForm, nextDate: nextMonth.toISOString().split('T')[0] });
+    // The 1st of next month, as a local date. (setMonth on the 31st skipped a
+    // month, and toISOString() gave the last day of THIS month in India.)
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    setForm({ ...emptyForm, nextDate: toLocalIsoDate(nextMonth) });
     setEditingId(null);
     setShowForm(true);
   };
@@ -118,7 +112,7 @@ export default function RecurringInvoices() {
     setShowForm(true);
   };
 
-  const closeForm = () => { setShowForm(false); setEditingId(null); setEditingTpl(null); };
+  const closeForm = () => { setShowForm(false); setEditingId(null); setEditingTpl(null); setClientExtras(null); };
 
   const updateField = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
@@ -142,6 +136,11 @@ export default function RecurringInvoices() {
     setForm(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== idx) }));
   };
 
+  // The client's other details are kept too: country and SEZ decide IGST vs
+  // CGST + SGST on the generated invoices, and the rest prints on them. Only
+  // name, state, GSTIN and address were taken, so a client abroad or in an
+  // SEZ was billed as an ordinary local sale.
+  const [clientExtras, setClientExtras] = useState(null);
   const selectClient = (cli) => {
     setForm(prev => ({
       ...prev,
@@ -150,6 +149,10 @@ export default function RecurringInvoices() {
       clientGstin: cli.gstin || '',
       clientAddress: cli.address || '',
     }));
+    setClientExtras({
+      clientCountry: cli.country || '', clientCity: cli.city || '', clientPin: cli.pin || '',
+      clientEmail: cli.email || '', clientPhone: cli.phone || '', isSEZ: !!cli.isSEZ,
+    });
   };
 
   const handleSave = async () => {
@@ -160,6 +163,10 @@ export default function RecurringInvoices() {
         ...(editingId && editingTpl ? editingTpl : {}),
         ...(editingId ? { id: editingId } : {}),
         ...form,
+        ...(clientExtras || {}),
+        // A new next date restarts the schedule's day of month (see the
+        // server's advanceDate).
+        ...(editingTpl && editingTpl.nextDate !== form.nextDate ? { anchorDay: null } : {}),
         interval: Math.min(12, Math.max(1, parseInt(form.interval, 10) || 1)),
         endDate: form.endMode === 'onDate' ? form.endDate : '',
         maxOccurrences: form.endMode === 'afterN' ? (parseInt(form.maxOccurrences, 10) || null) : null,
@@ -392,19 +399,17 @@ export default function RecurringInvoices() {
               </thead>
               <tbody>
                 {templates.map(tpl => {
-                  const total = (tpl.items || []).reduce((s, i) => {
-                    const base = (parseFloat(i.quantity) || 1) * (parseFloat(i.rate) || 0) - (parseFloat(i.discount) || 0);
-                    return s + base + (base * (parseFloat(i.taxPercent) || 0) / 100);
-                  }, 0);
+                  // The same calculation the server makes the invoice with.
+                  const total = templateTotals(tpl, ownerProfile).total;
                   const isDue = tpl.active !== false && tpl.nextDate && tpl.nextDate <= localToday();
                   return (
                     <tr key={tpl.id} className={isDue ? 'row-warning' : ''}>
                       <td className="font-medium">{tpl.clientName}</td>
                       <td><span className="type-badge">{frequencyLabel(tpl)}</span></td>
                       <td className="text-muted">{INVOICE_TYPES[tpl.invoiceType || 'tax-invoice']?.label}</td>
-                      <td style={{ textAlign: 'right' }} className="font-bold">{formatCurrency(total)}</td>
+                      <td style={{ textAlign: 'right' }} className="font-bold">{formatCurrency(total, tpl.invoiceOptions?.currency || 'INR')}</td>
                       <td className={isDue ? 'font-bold' : 'text-muted'} style={isDue ? { color: '#d97706' } : {}}>
-                        {tpl.nextDate ? new Date(tpl.nextDate).toLocaleDateString('en-IN') : '-'}
+                        {tpl.nextDate ? parseLocalDate(tpl.nextDate).toLocaleDateString('en-IN') : '-'}
                       </td>
                       <td>
                         <span className="status-badge" style={{

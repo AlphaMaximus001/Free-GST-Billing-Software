@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban, Undo2 } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts, markSavedPdfCancelled } from '../store';
-import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES } from '../utils';
+import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES, localToday, amountDue, paymentStatusFor } from '../utils';
 import { openWhatsAppShare } from '../utils/share';
 import PageHeader from './PageHeader';
 import SupportNudge from './SupportNudge';
@@ -250,7 +250,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       if (!byCurrency[cur]) byCurrency[cur] = { total: 0, tax: 0, unpaid: 0 };
       byCurrency[cur].total += sign * (b.totalAmount || 0);
       byCurrency[cur].tax += sign * (b.totalTaxAmount || 0);
-      if (sign > 0 && b.status !== 'paid') byCurrency[cur].unpaid += (b.totalAmount || 0) - (b.paidAmount || 0);
+      if (sign > 0 && b.status !== 'paid') byCurrency[cur].unpaid += Math.max(0, amountDue(b) - (b.paidAmount || 0));
     }
     return { byCurrency, count };
   }, [bills]);
@@ -316,7 +316,8 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
   const loadBills = async () => {
     try {
       const data = await getAllBills();
-      const today = new Date().toISOString().split('T')[0];
+      // Local date (toISOString() is UTC: still yesterday in India until 05:30).
+      const today = localToday();
 
       // v1.10.41 — Orphaned-payment reconciliation. Reported: user
       // recorded a payment in an older version — the receipt file
@@ -361,7 +362,9 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             // Match by receiptNo (post-v1.10.10 payments store the receipt no),
             // OR by amount+date signature for pre-v1.10.10 payments.
             return !currentPayments.some(p =>
-              (r.receiptNo && p.receiptNo === r.receiptNo)
+              // Receipts made from a payment carry the payment's id.
+              (r.id && p.id === r.id)
+              || (r.receiptNo && p.receiptNo === r.receiptNo)
               || (Math.abs((Number(p.amount) || 0) - (Number(r.amount) || 0)) < 0.005
                   && p.date === r.date
                   && (p.mode || '').toLowerCase() === (r.paymentMode || '').toLowerCase().replace(' ', '-'))
@@ -379,10 +382,9 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             receiptNo: r.receiptNo,
           }))];
           const totalPaid = merged.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-          const billTotal = Number(bill.totalAmount) || 0;
-          const nextStatus = totalPaid >= billTotal && billTotal > 0
-            ? 'paid'
-            : (totalPaid > 0 ? 'partial' : 'unpaid');
+          // A cancelled invoice stays cancelled: restoring a payment must not
+          // bring it back into totals and GST returns without its stock.
+          const nextStatus = isCancelledBill(bill) ? 'cancelled' : paymentStatusFor(bill, totalPaid);
           // Mutate the in-memory bill so setBills(data) below shows the
           // reconciled value immediately; also queue the server write.
           bill.payments = merged;
@@ -404,7 +406,10 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       // allSettled so one slow save can't block the rest.
       const dirty = data.filter(bill => {
         const dueDate = bill.data?.details?.dueDate;
-        return dueDate && dueDate < today && bill.status !== 'paid' && bill.status !== 'overdue' && bill.status !== 'cancelled';
+        // Only sales can be overdue: a quotation, proforma, challan or credit
+        // note is not money the client owes.
+        return dueDate && dueDate < today && bill.status !== 'paid' && bill.status !== 'overdue' && bill.status !== 'cancelled'
+          && SALES_INVOICE_TYPES.includes(bill.invoiceType || 'tax-invoice');
       });
       if (dirty.length > 0) {
         const updates = dirty.map(bill => { bill.status = 'overdue'; return saveBill(bill, { overwrite: true }); });
@@ -563,14 +568,13 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     });
     if (!ok) return undefined;
     const paid = (bill.payments || []).reduce((s, p) => s + (Number(p.amount) || 0), 0);
-    const total = Number(bill.totalAmount) || 0;
-    const next = !SALES_INVOICE_TYPES.includes(bill.invoiceType || 'tax-invoice') || paid <= 0.005 ? 'unpaid' : (paid >= total - 0.005 ? 'paid' : 'partial');
+    const next = !SALES_INVOICE_TYPES.includes(bill.invoiceType || 'tax-invoice') ? 'unpaid' : paymentStatusFor(bill, paid);
     return changeStatus(bill, next);
   };
 
   const openPaymentModal = (bill) => {
     setPaymentModal(bill);
-    setPaymentInput({ amount: '', date: new Date().toISOString().split('T')[0], mode: 'bank-transfer', note: '' });
+    setPaymentInput({ amount: '', date: localToday(), mode: 'bank-transfer', note: '' });
   };
 
   const recordPayment = async () => {
@@ -585,9 +589,9 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       toast('Enter a positive payment amount', 'warning'); return;
     }
     const bill = paymentModal;
-    const billTotal = Number(bill.totalAmount) || 0;
     const alreadyPaid = Number(bill.paidAmount) || 0;
-    const outstanding = Math.max(0, billTotal - alreadyPaid);
+    // What is left to receive: the total less TDS the client deducts.
+    const outstanding = Math.max(0, amountDue(bill) - alreadyPaid);
     if (amount > outstanding + 0.01) {
       const proceed = await confirmAction({
         title: 'Record as overpayment?',
@@ -606,7 +610,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const updatedBill = {
       ...bill, payments, paidAmount: totalPaid,
-      status: totalPaid >= billTotal ? 'paid' : 'partial',
+      status: paymentStatusFor(bill, totalPaid),
     };
     await saveBill(updatedBill, { overwrite: true });
     // v1.10.10 — Also persist a Receipt record so this payment shows up
@@ -629,6 +633,10 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         currency: bill.currency || bill.data?.invoiceOptions?.currency || 'INR',
         source: 'auto-from-payment',
         billId: bill.id,
+        // The business that raised the invoice: without it the receipt was
+        // listed under every business on the Receipts page.
+        ownerGstin: bill.data?.profile?.gstin || bill.ownerGstin || '',
+        ownerName: bill.data?.profile?.businessName || bill.ownerName || '',
       });
     } catch { /* non-fatal — receipt is still viewable from the invoice's Payment History */ }
     toast(`Payment of ${formatCurrency(amount, bill.currency)} recorded`, 'success');
@@ -637,7 +645,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     // ₹649 invoice + ₹650 paid was hiding the ₹1 overpayment because the
     // remaining calc used Math.max(0, …). Now: send the signed value so
     // the receipt can show "Overpaid ₹1" instead of silently rounding away.
-    setReceiptTarget({ bill: updatedBill, payment: paymentEntry, remaining: billTotal - totalPaid });
+    setReceiptTarget({ bill: updatedBill, payment: paymentEntry, remaining: amountDue(bill) - totalPaid });
     loadBills();
   };
 
@@ -645,7 +653,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
   const openReceiptFor = (bill, payment) => {
     const totalPaid = (bill.payments || []).reduce((s, p) => s + (Number(p.amount) || 0), 0);
     // v1.10.22 — signed remaining; see setReceiptTarget above for context.
-    setReceiptTarget({ bill, payment, remaining: Number(bill.totalAmount || 0) - totalPaid });
+    setReceiptTarget({ bill, payment, remaining: amountDue(bill) - totalPaid });
   };
 
   // v1.10.10 — Delete/Edit a specific payment BY INDEX.
@@ -665,8 +673,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     const target = (bill.payments || [])[idx];
     const payments = (bill.payments || []).filter((_, i) => i !== idx);
     const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-    const total = Number(bill.totalAmount) || 0;
-    const updated = { ...bill, payments, paidAmount: totalPaid, status: totalPaid >= total && total > 0 ? 'paid' : (totalPaid > 0 ? 'partial' : 'unpaid') };
+    const updated = { ...bill, payments, paidAmount: totalPaid, status: paymentStatusFor(bill, totalPaid) };
     await saveBill(updated, { overwrite: true });
     // v1.10.10 — Also remove the linked Receipt record so the Receipts
     // page stays in sync. Silently skips if this was a legacy payment
@@ -693,7 +700,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       bill, idx,
       form: {
         amount: String(target.amount || ''),
-        date: target.date || new Date().toISOString().split('T')[0],
+        date: target.date || localToday(),
         mode: target.mode || 'bank-transfer',
         note: target.note || '',
       },
@@ -728,7 +735,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       ? { ...p, id: withId, amount: newAmount, date: form.date, mode: form.mode, note: form.note, auto: false }
       : p);
     const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-    const status = totalPaid >= billTotal && billTotal > 0 ? 'paid' : (totalPaid > 0 ? 'partial' : 'unpaid');
+    const status = paymentStatusFor(bill, totalPaid);
     const updated = { ...bill, payments, paidAmount: totalPaid, status };
     await saveBill(updated, { overwrite: true });
     // Also update the linked Receipt record so the Receipts page reflects the edit.
@@ -736,7 +743,8 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       await saveReceipt({
         id: withId,
         date: form.date,
-        receiptNo: `RCPT-${withId.replace('pay_', '').toUpperCase().slice(0, 10)}`,
+        // A receipt made on the Receipts page keeps its own number (RCP/...).
+        receiptNo: target.receiptNo || `RCPT-${withId.replace('pay_', '').toUpperCase().slice(0, 10)}`,
         clientName: bill.data?.client?.name || bill.clientName || '',
         clientAddress: bill.data?.client?.address || '',
         amount: newAmount,
@@ -747,6 +755,10 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         currency: bill.currency || bill.data?.invoiceOptions?.currency || 'INR',
         source: 'auto-from-payment',
         billId: bill.id,
+        // The business that raised the invoice: without it the receipt was
+        // listed under every business on the Receipts page.
+        ownerGstin: bill.data?.profile?.gstin || bill.ownerGstin || '',
+        ownerName: bill.data?.profile?.businessName || bill.ownerName || '',
       });
     } catch { /* non-fatal */ }
     toast('Payment updated', 'success');
@@ -1030,7 +1042,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     const total = Number(bill.totalAmount) || 0;
     const paidFromArr = (bill.payments || []).reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const paid = paidFromArr > 0 ? paidFromArr : (Number(bill.paidAmount) || 0);
-    const outstanding = total - paid;
+    const outstanding = amountDue(bill) - paid;
     const dueDate = bill.data?.details?.dueDate ? new Date(bill.data.details.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
     const invDate = bill.invoiceDate ? new Date(bill.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
     const businessName = profile?.businessName || '';
@@ -1128,7 +1140,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     const clientName = bill.clientName || 'Sir/Madam';
     const dueDate = bill.data?.details?.dueDate ? new Date(bill.data.details.dueDate).toLocaleDateString('en-IN') : 'N/A';
     const businessName = profile?.businessName || 'Our Company';
-    const outstanding = (bill.totalAmount || 0) - (bill.paidAmount || 0);
+    const outstanding = amountDue(bill) - (bill.paidAmount || 0);
     // v1.10.23 — don't send a payment reminder for overpaid or already-paid
     // bills. The old message read "Hi X, kindly arrange the payment of -₹1"
     // which is obviously wrong.
@@ -1165,7 +1177,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     const acc = {};
     for (const b of overdueBills) {
       const cur = b.currency || b.data?.invoiceOptions?.currency || 'INR';
-      acc[cur] = (acc[cur] || 0) + (b.totalAmount || 0) - (b.paidAmount || 0);
+      acc[cur] = (acc[cur] || 0) + amountDue(b) - (b.paidAmount || 0);
     }
     return acc;
   }, [overdueBills]);
@@ -1309,7 +1321,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                           // "Overpaid ₹1" in blue on the reminder card
                           // instead of "-₹1" in red for overpayments.
                           const outCur = bill.currency || bill.data?.invoiceOptions?.currency;
-                          const out = bill.totalAmount - (bill.paidAmount || 0);
+                          const out = amountDue(bill) - (bill.paidAmount || 0);
                           if (out < -0.005) {
                             return <span style={{ marginLeft: 8, fontWeight: 600, color: '#0369a1', fontSize: '0.85rem' }}>
                               Overpaid {formatCurrency(Math.abs(out), outCur)}
@@ -1643,7 +1655,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                                customer should give option to send via
                                whatsapp or email as reminder predefined side
                                of every invoice. also for partial pending too". */}
-                          {!isCancelledBill(bill) && (isOverdue || status === 'overdue' || status === 'unpaid' || status === 'partial') && (bill.totalAmount || 0) - (bill.paidAmount || 0) > 0.01 && (
+                          {!isCancelledBill(bill) && (isOverdue || status === 'overdue' || status === 'unpaid' || status === 'partial') && amountDue(bill) - (bill.paidAmount || 0) > 0.01 && (
                             <button className="icon-btn icon-btn-green"
                               onClick={() => sendReminder({ ...bill, clientPhone: getClientPhone(bill) })}
                               title={status === 'partial' ? 'Send reminder — partial pending' : (status === 'overdue' || isOverdue ? 'Send reminder — overdue' : 'Send reminder — unpaid')}
@@ -1677,7 +1689,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
               {(paymentModal.paidAmount || 0) > 0 && <> | Paid: <strong>{formatCurrency(paymentModal.paidAmount, paymentModal.currency)}</strong></>}
               {' '}| {(() => {
                 // v1.10.23 — signed remaining so overpayments surface here too.
-                const rem = paymentModal.totalAmount - (paymentModal.paidAmount || 0);
+                const rem = amountDue(paymentModal) - (paymentModal.paidAmount || 0);
                 if (rem < -0.005) {
                   return <>Overpaid: <strong style={{ color: '#0369a1' }}>{formatCurrency(Math.abs(rem), paymentModal.currency)}</strong></>;
                 }
@@ -1689,7 +1701,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                 <label className="form-label">Amount Received</label>
                 <input type="number" className="form-input" value={paymentInput.amount}
                   onChange={e => setPaymentInput(prev => ({ ...prev, amount: e.target.value }))}
-                  placeholder={String(paymentModal.totalAmount - (paymentModal.paidAmount || 0))} min="0" />
+                  placeholder={String(Math.max(0, Math.round((amountDue(paymentModal) - (paymentModal.paidAmount || 0)) * 100) / 100))} min="0" />
               </div>
               <div className="form-group">
                 <label className="form-label">Payment Date</label>

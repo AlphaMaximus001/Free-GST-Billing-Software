@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { ArrowLeft, Plus, Trash2, Download, UserPlus, Pencil, Settings, ChevronUp, ChevronDown, MessageCircle, Check, Loader, Truck, Printer, Eye, EyeOff } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { saveBill, applyStockChanges, getNextInvoiceNumber, getTermsTemplates, getAllClients, saveClient, getProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllBills } from '../store';
-import { INVOICE_TYPES, businessKeyOf, GST_DOC_NUMBER, COUNTRIES, printedSubtotal, deliveryChargeLine, stockEffect, appliedStock, stockDelta, generateEWayBillJSON, formatCurrency, getCountryConfig, getStatesForCountry, getAllUnits, addCustomUnit, removeCustomUnit, getCountriesForRegion, TDS_SECTIONS, TCS_SECTIONS, REMOVED_TCS_SECTIONS, TERMS_PRESETS, getActiveAccounts, getDefaultAccount, getAccountById, getDefaultUnitForMode, filterUnitsByMode, PAPER_SIZES, getPaperSize, computeInvoiceTotals, clientYearToDate, htmlHasText, ORDER_DETAIL_FIELDS, invoiceOptionOn, DEFAULT_DECLARATION, decodeGstin, safePageBoundaries } from '../utils';
+import { saveBill, deleteBill, applyStockChanges, getNextInvoiceNumber, getTermsTemplates, getAllClients, saveClient, getProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllRecurring, getAllBills } from '../store';
+import { INVOICE_TYPES, businessKeyOf, GST_DOC_NUMBER, COUNTRIES, printedSubtotal, deliveryChargeLine, stockEffect, appliedStock, stockDelta, generateEWayBillJSON, formatCurrency, getCountryConfig, getStatesForCountry, getAllUnits, addCustomUnit, removeCustomUnit, getCountriesForRegion, TDS_SECTIONS, TCS_SECTIONS, REMOVED_TCS_SECTIONS, TERMS_PRESETS, getActiveAccounts, getDefaultAccount, getAccountById, getDefaultUnitForMode, filterUnitsByMode, PAPER_SIZES, getPaperSize, computeInvoiceTotals, clientYearToDate, htmlHasText, ORDER_DETAIL_FIELDS, invoiceOptionOn, DEFAULT_DECLARATION, decodeGstin, safePageBoundaries, localToday, toLocalIsoDate, parseLocalDate, paymentStatusFor } from '../utils';
 import { getPrintSettings, savePrintSettings } from '../utils/printSettings';
 import { openWhatsAppShare } from '../utils/share';
 import { confirmAction, promptAction } from './ConfirmModal';
@@ -600,7 +600,9 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   }, [previewCollapsed]);
   const [details, setDetails] = useState(draft?.details || {
     invoiceNumber: '',
-    invoiceDate: new Date().toISOString().split('T')[0],
+    // Local date: toISOString() is UTC, so between midnight and 05:30 in
+    // India a new invoice was dated yesterday.
+    invoiceDate: localToday(),
     dueDate: '',
     placeOfSupply: '',
     originalInvoiceRef: '',
@@ -749,6 +751,13 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   // invoice number, otherwise the server 409s).
   // v1.10.79 - a duplicate or conversion has not been saved yet.
   const hasBeenSaved = useRef(!!editingBill && !editingBill._isDuplicate);
+  // The number this bill is stored under on the server (null until the first
+  // save of a new bill). When the Invoice Number field no longer matches it,
+  // the save is a RENAME: the bill moves to the new number, which must be
+  // free, and the old file goes. It used to be saved as a second invoice with
+  // overwrite on - replacing any other invoice that had the typed number - and
+  // the old one stayed, so the sale was counted twice.
+  const savedId = useRef(editingBill && !editingBill._isDuplicate ? editingBill.id : null);
   // The last number the editor filled in by itself (a peek), so it knows which
   // number it may replace when the business turns out to be another (#95).
   const peekedNumber = useRef(null);
@@ -1155,7 +1164,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         getNextInvoiceNumber(prefix, { peek: true, explicitPrefix: !!overridePrefix, invoiceType: type, businessKey: businessKeyOf(profile) }).then(num => {
           if (seq !== peekSeq.current) return;
           peekedNumber.current = num;
-          setDetails({ ...d.details, invoiceNumber: num, invoiceDate: new Date().toISOString().split('T')[0] });
+          setDetails({ ...d.details, invoiceNumber: num, invoiceDate: localToday() });
           numberReserved.current = false;
         });
       } else {
@@ -1646,8 +1655,18 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         const rawOverride = _psForPrefix.customPrefixes?.[invoiceType];
         const overridePrefix = rawOverride && rawOverride.trim();
         const prefix = overridePrefix || INVOICE_TYPES[invoiceType]?.prefix || 'INV';
-        finalInvoiceNumber = await getNextInvoiceNumber(prefix, { explicitPrefix: !!overridePrefix, invoiceType, businessKey: businessKeyOf(profile) });
-        setDetails(prev => ({ ...prev, invoiceNumber: finalInvoiceNumber }));
+        const numOpts = { explicitPrefix: !!overridePrefix, invoiceType, businessKey: businessKeyOf(profile), invoiceDate: details.invoiceDate };
+        // A number typed by hand (a paper bill book's next number) is kept. It
+        // used to be replaced by the next counter number on the first save,
+        // whatever was in the field. Only the number the editor filled in
+        // itself (or none) takes the next counter number.
+        const typed = String(details.invoiceNumber || '').trim();
+        const ownNumber = !!typed && typed !== peekedNumber.current
+          && typed !== await getNextInvoiceNumber(prefix, { ...numOpts, peek: true });
+        if (!ownNumber) {
+          finalInvoiceNumber = await getNextInvoiceNumber(prefix, numOpts);
+          setDetails(prev => ({ ...prev, invoiceNumber: finalInvoiceNumber }));
+        }
         numberReserved.current = true;
       } catch { /* fall back to the peeked value; server will 409 if it collides */ }
     }
@@ -1701,11 +1720,16 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     // below, any paid on the original later), so a converted quotation could
     // come out as Paid.
     const ownBill = !!editingBill && !editingBill._isDuplicate;
+    const priorId = savedId.current;
+    const renameFrom = priorId && priorId !== finalInvoiceNumber ? priorId : null;
     const seedPayments = ownBill && editingBill.payments ? [...editingBill.payments] : [];
-    if (ownBill && editingBill.id) {
+    // Also for a NEW bill once it is saved: its stored copy holds the client
+    // credit applied on the first save (and any payment recorded since). A
+    // later save started from no payments and wiped them.
+    if (priorId) {
       try {
         const serverBills = await getAllBills();
-        const fresh = serverBills.find(b => b.id === editingBill.id);
+        const fresh = serverBills.find(b => b.id === priorId);
         const freshPayments = Array.isArray(fresh?.payments) ? fresh.payments : [];
         for (const fp of freshPayments) {
           const dup = seedPayments.some(p =>
@@ -1732,16 +1756,14 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     const isIssued = !!editingBill && !editingBill._isDuplicate;
     let serverCopy = null;
     if (isIssued || hasBeenSaved.current) {
-      try { serverCopy = (await getAllBills()).find((b) => b.id === finalInvoiceNumber) || null; } catch { /* treated as not saved yet */ }
+      try { serverCopy = (await getAllBills()).find((b) => b.id === (renameFrom || finalInvoiceNumber)) || null; } catch { /* treated as not saved yet */ }
     }
     const stockFrom = serverCopy ? appliedStock(serverCopy) : stockStart.current;
     // v1.10.76 - editing a cancelled invoice keeps it cancelled. It used to come
     // back as Unpaid: into totals and GST returns again, and now stock too.
     const keepCancelled = isIssued && (serverCopy?.status || editingBill.status) === 'cancelled';
-    const billTotalForStatus = Number(totals.total) || 0;
-    const computedStatus = seedPaidAmount >= billTotalForStatus - 0.005 && billTotalForStatus > 0
-      ? 'paid'
-      : (seedPaidAmount > 0.005 ? 'partial' : 'unpaid');
+    // Paid once the payments cover the total less any TDS the client deducts.
+    const computedStatus = paymentStatusFor({ totalAmount: totals.total, data: { totals } }, seedPaidAmount);
     // Preserve 'overdue' when nothing is paid — otherwise trust the
     // freshly computed status.
     const seedStatus = keepCancelled ? 'cancelled' : (computedStatus === 'unpaid' && ownBill && editingBill.status === 'overdue')
@@ -1781,7 +1803,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     // count as "editing", so saving it overwrote whatever invoice already had
     // that number: converting two quotations in a row replaced the first
     // invoice with the second.
-    const shouldOverwrite = !isNewDoc || hasBeenSaved.current;
+    // A rename never overwrites: the new number must be free.
+    const shouldOverwrite = !renameFrom && (!isNewDoc || hasBeenSaved.current);
     // The number this bill actually ended up under: the 409 retry below can
     // move it, and the recurring template + callers must use the real one.
     let savedNumber = bill.id;
@@ -1863,6 +1886,10 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       hasBeenSaved.current = true;
       isDirty.current = false; // v1.10.22 — successful save clears dirty flag
     } catch (err) {
+      if (err?.status === 409 && renameFrom) {
+        toast(`Invoice number ${bill.id} is already used by another invoice. This invoice is still saved as ${renameFrom}.`, 'error');
+        return null;
+      }
       if (err?.status === 409) {
         // v1.10.23 — reported (GH #16): "A bill with this invoice number
         // already exists" on create/update/status-change/add-payment. Root
@@ -1882,7 +1909,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           let success = false;
           for (let i = 0; i < 20; i++) {
             try {
-              nextNum = await getNextInvoiceNumber(prefix, { explicitPrefix: !!overridePrefix, invoiceType, businessKey: businessKeyOf(profile) });
+              nextNum = await getNextInvoiceNumber(prefix, { explicitPrefix: !!overridePrefix, invoiceType, businessKey: businessKeyOf(profile), invoiceDate: details.invoiceDate });
               const retryBill = { ...bill, id: nextNum, invoiceNumber: nextNum };
               retryBill.data = { ...retryBill.data, details: { ...retryBill.data.details, invoiceNumber: nextNum } };
               await saveBill(retryBill, { overwrite: false });
@@ -1915,6 +1942,19 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       }
     }
 
+    savedId.current = savedNumber;
+    // A rename: the bill now lives under its new number, so the old file goes
+    // (to the Trash, from where it can be restored).
+    if (renameFrom && renameFrom !== savedNumber) {
+      // The old copy's stock moved to the new number (stockFrom above), so
+      // the trashed copy records none: restoring it must not move it again.
+      try {
+        if (serverCopy?.data) await saveBill({ ...serverCopy, data: { ...serverCopy.data, stockApplied: {} } }, { overwrite: true });
+        await deleteBill(renameFrom);
+      }
+      catch { toast(`Saved as ${savedNumber}, but the old copy ${renameFrom} could not be removed. Delete it from the Dashboard.`, 'warning', 8000); }
+    }
+
     // If the user ticked "Make this recurring", create/update the recurring
     // template alongside the invoice. We store enough on the template to
     // regenerate identical future invoices: client snapshot + items +
@@ -1922,20 +1962,42 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     if (invoiceOptions.recurring?.enabled) {
       try {
         const rec = invoiceOptions.recurring;
-        const templateId = `tpl_${savedNumber}`; // stable: tied to source invoice number
+        // The template this invoice already has (also under its old number
+        // after a rename). Every save of the invoice used to rewrite it from
+        // scratch - occurrences back to 0 and nextDate back to the first date -
+        // so a template that had already fired fired again.
+        const allTemplates = await getAllRecurring().catch(() => []);
+        const existing = allTemplates.find((t) => t.id === `tpl_${savedNumber}`)
+          || (renameFrom ? allTemplates.find((t) => t.id === `tpl_${renameFrom}`) : null);
+        const templateId = existing?.id || `tpl_${savedNumber}`; // stable: tied to source invoice number
+        // The schedule the server has advanced is kept unless the first date
+        // was changed on this invoice.
+        const keepSchedule = !!existing && existing.requestedNextDate === rec.nextDate;
+        // Days from invoice date to due date, so generated invoices get a due date too.
+        const dueDays = details.dueDate && details.invoiceDate
+          ? Math.round((parseLocalDate(details.dueDate) - parseLocalDate(details.invoiceDate)) / 86400000) : null;
         await saveRecurring({
+          ...(existing || {}),
           id: templateId,
           sourceInvoiceId: savedNumber,
-          active: true,
+          active: existing ? existing.active !== false : true,
           frequency: rec.frequency || 'monthly',
           interval: rec.interval || 1,
-          nextDate: rec.nextDate,
+          nextDate: keepSchedule ? existing.nextDate : rec.nextDate,
+          anchorDay: keepSchedule ? existing.anchorDay ?? null : null,
+          requestedNextDate: rec.nextDate,
           endMode: rec.endMode || 'never',
           endDate: rec.endDate || '',
           maxOccurrences: rec.maxOccurrences || null,
-          occurrencesCreated: 0,
-          createdAt: new Date().toISOString(),
-          lastGenerated: null,
+          occurrencesCreated: existing?.occurrencesCreated || 0,
+          createdAt: existing?.createdAt || new Date().toISOString(),
+          lastGenerated: existing?.lastGenerated || null,
+          // Which business it bills for (the server matches ownerGstin first),
+          // where the supply is, and the payment terms.
+          ownerGstin: profile?.gstin || '',
+          ownerName: profile?.businessName || '',
+          placeOfSupply: details.placeOfSupply || '',
+          dueDays: Number.isFinite(dueDays) && dueDays >= 0 ? dueDays : null,
           // Snapshot the data needed to regenerate. Profile is resolved live at
           // generation time (so business renames flow through), but client,
           // items, invoiceType, customTerms, etc. are frozen as the user wants
@@ -3461,15 +3523,18 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                     if (isOn) {
                       setInvoiceOptions(prev => ({ ...prev, recurring: { ...prev.recurring, enabled: false } }));
                     } else {
-                      const next = new Date(details.invoiceDate || new Date().toISOString());
-                      next.setMonth(next.getMonth() + 1);
+                      // One month after the invoice date, kept inside the
+                      // month (31 Jan -> 28 Feb, not 3 Mar) and as a local date.
+                      const from = parseLocalDate(details.invoiceDate || localToday());
+                      const next = new Date(from.getFullYear(), from.getMonth() + 1, 1);
+                      next.setDate(Math.min(from.getDate(), new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()));
                       setInvoiceOptions(prev => ({
                         ...prev,
                         recurring: {
                           enabled: true,
                           frequency: 'monthly',
                           interval: 1,
-                          nextDate: next.toISOString().split('T')[0],
+                          nextDate: toLocalIsoDate(next),
                           endMode: 'never',
                           endDate: '',
                           maxOccurrences: '',

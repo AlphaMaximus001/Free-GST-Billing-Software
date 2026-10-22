@@ -40,13 +40,14 @@ import {
   effectiveDeductionCap,
   CURRENT_FY as ENGINE_FY,
 } from '../utils/itr.js';
-import { getFinancialYearLabel, belongsToProfile, isCancelledBill, salesSign } from '../utils';
+import { getFinancialYearLabel, belongsToProfile, isCancelledBill, salesSign, localToday, parseLocalDate } from '../utils';
 
 // Business income is counted without GST (GST collected is not income, and GST
 // paid comes back as credit), in rupees only, from real sales: a quote or a
 // challan is not a sale and a credit note reduces sales.
+// TCS on the invoice is collected for the government too, so it is not income.
 const billTurnover = (b) => ((b.currency || 'INR') === 'INR'
-  ? salesSign(b) * ((Number(b.totalAmount) || 0) - (Number(b.totalTaxAmount) || 0)) : 0);
+  ? salesSign(b) * ((Number(b.totalAmount) || 0) - (Number(b.totalTaxAmount) || 0) - (Number(b.data?.totals?.tcsAmount) || 0)) : 0);
 const purchaseCost = (p) => (p.taxableAmount != null ? Number(p.taxableAmount) || 0
   : (Number(p.totalAmount) || 0) - (Number(p.totalTax) || 0));
 const expenseCost = (e) => (Number(e.amount) || 0) - (Number(e.gstAmount) || 0);
@@ -154,9 +155,7 @@ export default function IncomeTax() {
     if (Number(inputs.businessIncome) > 0) return;
     const inFY = (dateStr) => {
       if (!dateStr) return false;
-      const d = new Date(dateStr);
-      const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
-      return `${y}-${String(y + 1).slice(-2)}` === CURRENT_FY;
+      return getFinancialYearLabel(parseLocalDate(dateStr)) === CURRENT_FY; // local date, not UTC
     };
     const sales = bills.filter(b => inFY(b.invoiceDate)).reduce((s, b) => s + billTurnover(b), 0);
     const cogs  = purchases.filter(p => inFY(p.date)).reduce((s, p) => s + purchaseCost(p), 0);
@@ -483,7 +482,7 @@ function AdvanceTaxTab({ advanceInputs, setAdvanceInputs, schedule, totalTax, re
   const set = (patch) => setAdvanceInputs(prev => ({ ...prev, ...patch }));
 
   const addPayment = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = localToday(); // local date, not UTC
     set({ payments: [...(advanceInputs.payments || []), { date: today, amount: 0 }] });
   };
   const updatePayment = (idx, patch) => {
@@ -1002,9 +1001,7 @@ function SummaryTab({ bills, expenses, purchases, profile, comparison, inputs, p
   };
   const inFY = (dateStr) => {
     if (!dateStr) return false;
-    const d = new Date(dateStr);
-    const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
-    return `${y}-${String(y + 1).slice(-2)}` === fy;
+    return getFinancialYearLabel(parseLocalDate(dateStr)) === fy; // local date, not UTC
   };
 
   const fyBills = bills.filter(b => inFY(b.invoiceDate));

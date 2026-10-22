@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import DOMPurify from 'dompurify';
 import { numberToWords, printedSubtotal, formatCurrency, INVOICE_TYPES, getCountryConfig, CURRENCY_NAMES, formatExchangeRateLine, getAccountById, getPaperSize, resolveLineDiscount, htmlHasText, splitNumberedTerms, invoiceOptionOn, DEFAULT_DECLARATION, filledOrderDetails, formatShortDate } from '../utils';
-import { getPrintSettings, getLabel } from '../utils/printSettings';
+import { getPrintSettings, getLabel, formatCurrencyEx, formatDate } from '../utils/printSettings';
 import InvoiceGridLayout, { HsnSummaryTable } from './InvoiceGridLayout';
 
 // v1.10.36 — Optional `previewOnly` prop suppresses the internal
@@ -103,11 +103,6 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   const reverseChargeText = options.reverseCharge ? 'Yes' : 'No';
   const currencySymbol = options.currency || 'INR';
 
-  const fmt = (amount) => {
-    if (currencySymbol === 'INR') return formatCurrency(amount);
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currencySymbol, minimumFractionDigits: 2 }).format(amount || 0);
-  };
-
   // v1.10.4 — Single read of print settings per render. Prior code
   // called getPrintSettings() at 6 different points, each hitting
   // localStorage.getItem + JSON.parse. Multiplied by every keystroke
@@ -115,6 +110,19 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   // measurable hot spot. Now: one lookup + downstream aliases keep
   // JSX shape untouched.
   const _ps = getPrintSettings();
+
+  // Print Settings -> Formatting (number grouping, decimals, symbol position,
+  // date format) was saved but never used on the invoice. The defaults keep
+  // the formatting the invoice always had.
+  const fmt = (amount) => {
+    if ((_ps.numberFormat && _ps.numberFormat !== 'indian') || Number(_ps.decimalPlaces ?? 2) !== 2 || _ps.currencyPosition === 'after') {
+      return formatCurrencyEx(amount, currencySymbol, _ps);
+    }
+    if (currencySymbol === 'INR') return formatCurrency(amount);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currencySymbol, minimumFractionDigits: 2 }).format(amount || 0);
+  };
+  const fmtDate = (value) => formatDate(value, _ps);
+
   // Aliases for the different callsites below; all point to the same
   // object so they stay in sync.
   const _ps_dc = _ps;
@@ -159,16 +167,19 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   // (so switching account swaps both bank block + QR), with fallback to the
   // legacy flat profile.upiId for invoices that pre-date multi-account support.
   const upiId = account?.upiId || profile?.upiId || '';
+  // The QR asks for what the client actually pays: the total less any TDS
+  // they deduct (Net Receivable), not the full total.
+  const upiAmount = Number(totals.netReceivable ?? totals.total) || 0;
   useEffect(() => {
-    if (!showUPI || !upiId || !totals.total || currencySymbol !== 'INR') {
+    if (!showUPI || !upiId || !(upiAmount > 0) || currencySymbol !== 'INR') {
       setQrDataUrl('');
       return;
     }
-    const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(profile?.businessName || '')}&am=${totals.total.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Payment for ${details?.invoiceNumber || 'Invoice'}`)}`;
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(profile?.businessName || '')}&am=${upiAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Payment for ${details?.invoiceNumber || 'Invoice'}`)}`;
     QRCode.toDataURL(upiUrl, { width: 120, margin: 1, errorCorrectionLevel: 'M' })
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(''));
-  }, [showUPI, upiId, profile?.businessName, totals.total, details?.invoiceNumber, currencySymbol]);
+  }, [showUPI, upiId, profile?.businessName, upiAmount, details?.invoiceNumber, currencySymbol]);
 
   const accentColors = {
     'tax-invoice': '#1e40af',
@@ -202,10 +213,10 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   // v1.10.29 - resolveLineDiscount respects discountType + discountBase, as
   // computeInvoiceTotals does for the totals.
   const lineCalc = (item) => {
-    const discount = resolveLineDiscount(item);
+    const inclusive = totals.taxInclusive && showGST;
+    const discount = resolveLineDiscount(item, inclusive || !showGST);
     const grossAfterDiscount = Math.max(0, (Number(item.quantity) || 0) * (Number(item.rate) || 0) - discount);
     const rate = Number(item.taxPercent) || 0;
-    const inclusive = totals.taxInclusive && showGST;
     const taxable = inclusive ? grossAfterDiscount / (1 + rate / 100) : grossAfterDiscount;
     const tax = !showGST ? 0 : (inclusive ? grossAfterDiscount - taxable : taxable * rate / 100);
     return { discount, taxable, tax, rate };
@@ -262,8 +273,8 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 2rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
         <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.78rem' }}>
           {showInvoiceNumber && <span><strong style={{ color: '#64748b' }}>No.</strong> {details?.invoiceNumber}</span>}
-          {showInvoiceDate && <span><strong style={{ color: '#64748b' }}>Date</strong> {details?.invoiceDate ? new Date(details.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</span>}
-          {showDueDate && details?.dueDate && <span><strong style={{ color: '#64748b' }}>Due</strong> {new Date(details.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>}
+          {showInvoiceDate && <span><strong style={{ color: '#64748b' }}>Date</strong> {details?.invoiceDate ? fmtDate(details.invoiceDate) : ''}</span>}
+          {showDueDate && details?.dueDate && <span><strong style={{ color: '#64748b' }}>Due</strong> {fmtDate(details.dueDate)}</span>}
           {showReverseChargeLine && <span><strong style={{ color: '#64748b' }}>Reverse Charge</strong> {reverseChargeText}</span>}
         </div>
         {invoiceType === 'credit-note' && details?.originalInvoiceRef && (
@@ -294,8 +305,8 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
           <h1 style={{ fontSize: '1.1rem', fontWeight: 700, color: accent, margin: '0 0 0.5rem', letterSpacing: '0.05em' }}>{customTitle}</h1>
           <div style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.8 }}>
             {showInvoiceNumber && <p style={{ margin: 0 }}>{details?.invoiceNumber}</p>}
-            {showInvoiceDate && <p style={{ margin: 0 }}>{details?.invoiceDate ? new Date(details.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</p>}
-            {showDueDate && details?.dueDate && <p style={{ margin: 0 }}>Due: {new Date(details.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>}
+            {showInvoiceDate && <p style={{ margin: 0 }}>{details?.invoiceDate ? fmtDate(details.invoiceDate) : ''}</p>}
+            {showDueDate && details?.dueDate && <p style={{ margin: 0 }}>Due: {fmtDate(details.dueDate)}</p>}
             {showReverseChargeLine && <p style={{ margin: 0 }}>Reverse Charge: {reverseChargeText}</p>}
             {/* v1.10.74 - Classic and Modern print the credit note's original invoice; Minimal dropped it. */}
             {invoiceType === 'credit-note' && details?.originalInvoiceRef && <p style={{ margin: 0 }}>Against Invoice: {details.originalInvoiceRef}</p>}
@@ -326,9 +337,9 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
           )}
           <div className="inv-meta">
             {showInvoiceNumber && <div className="inv-meta-row"><span className="inv-meta-label">No.</span><span className="inv-meta-value">{details?.invoiceNumber}</span></div>}
-            {showInvoiceDate && <div className="inv-meta-row"><span className="inv-meta-label">Date</span><span className="inv-meta-value">{details?.invoiceDate ? new Date(details.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</span></div>}
+            {showInvoiceDate && <div className="inv-meta-row"><span className="inv-meta-label">Date</span><span className="inv-meta-value">{details?.invoiceDate ? fmtDate(details.invoiceDate) : ''}</span></div>}
             {showDueDate && details?.dueDate && (
-              <div className="inv-meta-row"><span className="inv-meta-label">Due Date</span><span className="inv-meta-value">{new Date(details.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></div>
+              <div className="inv-meta-row"><span className="inv-meta-label">Due Date</span><span className="inv-meta-value">{fmtDate(details.dueDate)}</span></div>
             )}
             {showReverseChargeLine && (
               <div className="inv-meta-row"><span className="inv-meta-label">Reverse Charge</span><span className="inv-meta-value">{reverseChargeText}</span></div>
@@ -390,7 +401,7 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
             <h4 className="inv-section-label">{getLabel(_ps_labels, 'placeOfSupply')}</h4>
             <p className="inv-party-name">{details?.placeOfSupply || client?.state || '-'}</p>
             {showGST && isIndia && isInterstate && <span className="inv-tax-badge">Interstate (IGST)</span>}
-            {showGST && isIndia && !isInterstate && businessState && clientState && <span className="inv-tax-badge inv-tax-badge-green">Intrastate (CGST + SGST)</span>}
+            {showGST && isIndia && !isInterstate && businessState && clientState && <span className="inv-tax-badge inv-tax-badge-green">{totals.isIntraUT ? 'Intra-UT (CGST + UTGST)' : 'Intrastate (CGST + SGST)'}</span>}
             {showGST && !isIndia && <span className="inv-tax-badge inv-tax-badge-green">{taxLabel}</span>}
           </div>
         )}
@@ -453,7 +464,9 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
     };
 
     const invoiceNum = details?.invoiceNumber || '';
-    const invoiceDate = details?.invoiceDate ? new Date(details.invoiceDate).toLocaleDateString('en-IN') : '';
+    // Receipts keep their short d/m/yyyy unless a date format was chosen.
+    const invoiceDate = !details?.invoiceDate ? ''
+      : ((_ps.dateFormat || 'dd-mon-yyyy') !== 'dd-mon-yyyy' ? fmtDate(details.invoiceDate) : new Date(details.invoiceDate).toLocaleDateString('en-IN'));
     const sellerCurrency = getCountryConfig(profile?.country).currency;
     const currencySymbol = sellerCurrency === 'INR' ? 'Rs.' : sellerCurrency;
     const showRoundOff = opt('showRoundOff', false);
@@ -693,6 +706,14 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
                 <div style={rowStyle}>
                   <span>{cap('SGST')}</span>
                   <span style={{ textAlign: 'right' }}>{amt(totals.sgst)}</span>
+                </div>
+              )}
+              {/* Intra-UT supplies (Chandigarh, Ladakh...): without this row
+                  the receipt's tax lines did not add up to its total. */}
+              {showGST && Number(totals?.utgst) > 0 && (
+                <div style={rowStyle}>
+                  <span>{cap('UTGST')}</span>
+                  <span style={{ textAlign: 'right' }}>{amt(totals.utgst)}</span>
                 </div>
               )}
               {showGST && Number(totals?.igst) > 0 && (
@@ -1094,7 +1115,7 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
                   {showRateColumn && <th className="inv-th inv-th-right" rowSpan="2">Rate</th>}
                   {hasAnyDiscount && <th className="inv-th inv-th-right" rowSpan="2">Disc.</th>}
                   <th className="inv-th inv-th-center" colSpan="2" style={{ borderBottom: '1px solid #cbd5e1' }}>CGST</th>
-                  <th className="inv-th inv-th-center" colSpan="2" style={{ borderBottom: '1px solid #cbd5e1' }}>SGST</th>
+                  <th className="inv-th inv-th-center" colSpan="2" style={{ borderBottom: '1px solid #cbd5e1' }}>{totals.isIntraUT ? 'UTGST' : 'SGST'}</th>
                   <th className="inv-th inv-th-right" rowSpan="2">Amount</th>
                 </tr>
                 <tr>
@@ -1244,9 +1265,11 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
                   <span>CGST</span>
                   <span>{fmt(totals.cgst)}</span>
                 </div>
+                {/* Intra-UT supplies charge UTGST, not SGST: this row read
+                    "SGST 0.00" and the UTGST was missing from the printout. */}
                 <div className="inv-total-row">
-                  <span>SGST</span>
-                  <span>{fmt(totals.sgst)}</span>
+                  <span>{totals.isIntraUT ? 'UTGST' : 'SGST'}</span>
+                  <span>{fmt((totals.sgst || 0) + (totals.utgst || 0))}</span>
                 </div>
               </>
             ) : (
