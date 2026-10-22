@@ -218,6 +218,10 @@ export const triggerBackup = async () => apiFetch(`${API}/backups/now`, { method
 // v1.10.22 — manual delete for a specific backup date.
 export const deleteBackup = async (date) => apiFetch(`${API}/backups/${encodeURIComponent(date)}`, { method: 'DELETE' });
 
+// v1.10.80 (#99) - a second copy of each daily backup in a folder you choose
+// (e.g. on drive D:). setBackupFolder('') turns it off.
+export const getBackupFolder = async () => apiFetch(`${API}/backup-folder`);
+export const setBackupFolder = async (folder) => apiFetch(`${API}/backup-folder`, { method: 'POST', body: JSON.stringify({ path: folder }) });
 export const getTrashedBills = async () => apiFetch(`${API}/trash`);
 export const restoreTrashedBill = async (id) => apiFetch(`${API}/trash/${encodeURIComponent(id)}/restore`, { method: 'POST', body: JSON.stringify({}) });
 export const purgeTrashedBill = async (id) => apiFetch(`${API}/trash/${encodeURIComponent(id)}`, { method: 'DELETE' });

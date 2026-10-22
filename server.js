@@ -1284,12 +1284,59 @@ function todayLocalIso() {
   return new Date().toLocaleDateString('sv-SE');
 }
 
+// v1.10.80 (#99) - a second copy of every daily backup in a folder the user
+// picks (another drive, a USB disk, a synced folder), so a failed C: drive does
+// not take the backups with it. Stored in meta.json as `backupFolder`; the
+// copies go in "<folder>/FreeGSTBill Backups/<date>", 30 days kept, and are
+// listed and restorable like the ones in data/backups.
+const BACKUP_FOLDER_KEY = 'backupFolder';
+const EXTRA_BACKUP_SUBDIR = 'FreeGSTBill Backups';
+const DATE_DIR = /^\d{4}-\d{2}-\d{2}$/;
+const extraBackupsDir = () => {
+  const folder = readJSON(META_PATH, {})[BACKUP_FOLDER_KEY];
+  return typeof folder === 'string' && folder.trim() && path.isAbsolute(folder.trim())
+    ? path.join(folder.trim(), EXTRA_BACKUP_SUBDIR) : null;
+};
+let lastExtraBackupError = '';
+function copyBackupToExtraFolder(date) {
+  const dir = extraBackupsDir();
+  if (!dir) return;
+  try {
+    const src = path.join(BACKUPS_DIR, date);
+    const dst = path.join(dir, date);
+    if (!fs.existsSync(src) || fs.existsSync(dst)) { lastExtraBackupError = ''; return; }
+    ensureDir(dir);
+    // Copied under a temporary name and renamed, so a half-copied folder (disk
+    // removed mid-copy) never looks like a complete backup.
+    const tmp = `${dst}.partial`;
+    fs.rmSync(tmp, { recursive: true, force: true });
+    copyDirRecursive(src, tmp);
+    fs.renameSync(tmp, dst);
+    const all = fs.readdirSync(dir).filter(n => DATE_DIR.test(n)).sort();
+    while (all.length > 30) fs.rmSync(path.join(dir, all.shift()), { recursive: true, force: true });
+    lastExtraBackupError = '';
+    console.log(`[backup] Copy saved: ${dst}`);
+  } catch (err) {
+    lastExtraBackupError = err.message || String(err);
+    console.warn('[backup] Copy to the backup folder failed:', lastExtraBackupError);
+  }
+}
+// Where a dated backup is: data/backups, else the extra folder (e.g. after a
+// reinstall, when only the copy on D: is left).
+function backupSourceDir(date) {
+  const local = path.join(BACKUPS_DIR, date);
+  if (fs.existsSync(local)) return local;
+  const dir = extraBackupsDir();
+  const extra = dir ? path.join(dir, date) : null;
+  return extra && fs.existsSync(extra) ? extra : local;
+}
+
 function runDailyBackup() {
   try {
     ensureDir(BACKUPS_DIR);
     const today = todayLocalIso();
     const target = path.join(BACKUPS_DIR, today);
-    if (fs.existsSync(target)) return;
+    if (fs.existsSync(target)) { copyBackupToExtraFolder(today); return; }
     ensureDir(target);
     const entries = fs.readdirSync(DATA_DIR, { withFileTypes: true });
     for (const entry of entries) {
@@ -1304,6 +1351,7 @@ function runDailyBackup() {
       else fs.copyFileSync(src, dst);
     }
     console.log(`[backup] Daily snapshot saved: ${target}`);
+    copyBackupToExtraFolder(today);
     const all = fs.readdirSync(BACKUPS_DIR).filter(n => /^\d{4}-\d{2}-\d{2}$/.test(n)).sort();
     while (all.length > 30) {
       const oldest = all.shift();
@@ -1325,12 +1373,16 @@ setInterval(runDailyBackup, 60 * 60 * 1000);
 app.get('/api/backups', (req, res) => {
   try {
     ensureDir(BACKUPS_DIR);
-    const list = fs.readdirSync(BACKUPS_DIR)
-      .filter(n => /^\d{4}-\d{2}-\d{2}$/.test(n))
+    const dates = new Set(fs.readdirSync(BACKUPS_DIR).filter(n => DATE_DIR.test(n)));
+    // Backups that exist only in the extra folder are listed too (marked).
+    const extra = extraBackupsDir();
+    const extraDates = new Set();
+    try { if (extra && fs.existsSync(extra)) for (const n of fs.readdirSync(extra)) if (DATE_DIR.test(n)) extraDates.add(n); } catch { /* folder offline */ }
+    const list = [...new Set([...dates, ...extraDates])]
       .sort().reverse()
       .map(name => {
-        const stat = fs.statSync(path.join(BACKUPS_DIR, name));
-        return { date: name, createdAt: stat.mtime.toISOString() };
+        const stat = fs.statSync(backupSourceDir(name));
+        return { date: name, createdAt: stat.mtime.toISOString(), inBackupFolder: extraDates.has(name), onlyInBackupFolder: !dates.has(name) };
       });
     res.json(list);
   } catch (err) { errRes(res, 500, 'server-error', err); }
@@ -1370,8 +1422,8 @@ app.post('/api/backups/:date/restore', (req, res) => {
   try {
     const date = req.params.date;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return errRes(res, 400, 'bad-request');
-    const backupDir = path.join(BACKUPS_DIR, date);
-    if (!isPathInside(backupDir, BACKUPS_DIR)) return errRes(res, 400, 'invalid-path');
+    const backupDir = backupSourceDir(date);
+    if (!isPathInside(path.join(BACKUPS_DIR, date), BACKUPS_DIR)) return errRes(res, 400, 'invalid-path');
     if (!fs.existsSync(backupDir)) return errRes(res, 404, 'not-found');
 
     // Additional date sanity — a directory can exist with an unrealistic
@@ -1381,8 +1433,10 @@ app.post('/api/backups/:date/restore', (req, res) => {
       return errRes(res, 400, 'bad-request');
     }
 
-    // The PIN on this PC survives the restore (see withLock).
+    // The PIN on this PC survives the restore (see withLock), and so does the
+    // backup folder setting (the backup may be older than it).
     const lockBefore = readJSON(META_PATH, {})[LOCK_KEY];
+    const backupFolderBefore = readJSON(META_PATH, {})[BACKUP_FOLDER_KEY];
 
     // Make a snapshot of live data before touching anything.
     snapshotDir = path.join(BACKUPS_DIR, `pre-restore-${Date.now()}`);
@@ -1411,7 +1465,12 @@ app.post('/api/backups/:date/restore', (req, res) => {
       }
       restoredDirs.push(entry.name);
     }
-    writeJSON(META_PATH, withLock(readJSON(META_PATH, {}), lockBefore));
+    {
+      const restoredMeta = withLock(readJSON(META_PATH, {}), lockBefore);
+      if (backupFolderBefore) restoredMeta[BACKUP_FOLDER_KEY] = backupFolderBefore;
+      else delete restoredMeta[BACKUP_FOLDER_KEY];
+      writeJSON(META_PATH, restoredMeta);
+    }
     for (const dir of DIRS) invalidateCache(dir);
 
     // Success. The pre-restore snapshot is KEPT: it is the only copy of the
@@ -1451,6 +1510,39 @@ app.post('/api/backups/:date/restore', (req, res) => {
 // The `if (fs.existsSync(target)) return` inside runDailyBackup makes
 // this idempotent per day, but the fs walks still happen. Now: at most
 // one call per 5 seconds; excess return 429 with a hint.
+// v1.10.80 (#99) - the extra backup folder. GET says where it is and whether
+// the last copy worked; POST { path } sets it ('' turns it off). The folder
+// is created and test-written before it is accepted.
+app.get('/api/backup-folder', (req, res) => {
+  const folder = readJSON(META_PATH, {})[BACKUP_FOLDER_KEY] || '';
+  res.json({ path: folder, copiesIn: extraBackupsDir(), error: lastExtraBackupError });
+});
+app.post('/api/backup-folder', (req, res) => {
+  const raw = String(req.body?.path ?? '').trim();
+  const meta = readJSON(META_PATH, {});
+  if (!raw) {
+    delete meta[BACKUP_FOLDER_KEY];
+    writeJSON(META_PATH, meta);
+    lastExtraBackupError = '';
+    return res.json({ ok: true, path: '' });
+  }
+  if (!path.isAbsolute(raw)) return res.status(400).json({ ok: false, error: 'Give the full folder path, for example D:\\Backups' });
+  const dir = path.join(raw, EXTRA_BACKUP_SUBDIR);
+  if (isPathInside(dir, DATA_DIR)) return res.status(400).json({ ok: false, error: 'Choose a folder outside the app\'s data folder.' });
+  try {
+    ensureDir(dir);
+    const probe = path.join(dir, `.write-test-${Date.now()}`);
+    fs.writeFileSync(probe, 'ok');
+    fs.unlinkSync(probe);
+  } catch (err) {
+    return res.status(400).json({ ok: false, error: `Cannot write to that folder: ${err.code || err.message}` });
+  }
+  meta[BACKUP_FOLDER_KEY] = raw;
+  writeJSON(META_PATH, meta);
+  runDailyBackup(); // copies today's backup there now
+  return res.json({ ok: !lastExtraBackupError, path: raw, copiesIn: dir, error: lastExtraBackupError });
+});
+
 let __lastBackupNowMs = 0;
 app.post('/api/backups/now', (req, res) => {
   const now = Date.now();

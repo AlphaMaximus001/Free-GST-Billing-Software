@@ -1,10 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban, Undo2 } from 'lucide-react';
+import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban, Undo2, Eye } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts, markSavedPdfCancelled } from '../store';
 import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES, localToday, amountDue, paymentStatusFor } from '../utils';
 import { openWhatsAppShare } from '../utils/share';
 import PageHeader from './PageHeader';
+import LockButton from './LockButton';
+import ActionsMenu from './ActionsMenu';
+import BulkCsvImport from './BulkCsvImport';
+import PrintPreviewModal from './PrintPreviewModal';
 import SupportNudge from './SupportNudge';
 import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
@@ -292,6 +296,8 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
   }, [visibleColumns]);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [paymentModal, setPaymentModal] = useState(null);
+  // v1.10.80 (#100) - the invoice shown read-only by the View button.
+  const [viewBill, setViewBill] = useState(null);
   // v1.10.9 — receipt modal state. Opens automatically after
   // recordPayment succeeds; can also be opened via openReceiptFor(...)
   // for reprints.
@@ -1219,13 +1225,15 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
           <ul style={{ paddingLeft: '1.1rem', margin: 0 }}>
             <li><strong>New Invoice</strong> — start a fresh tax invoice / proforma / credit note / bill of supply / delivery challan.</li>
             <li><strong>Filter row</strong> — search by client name or invoice number; filter by financial year, type, status and date range. <strong>Columns</strong> picks what the list shows.</li>
-            <li><strong>Row actions</strong> — Edit, Duplicate, ₹ Payment (records a payment and prints a receipt), WhatsApp, reminder, Email, and Cancel. Cancelling keeps the invoice number but takes it out of totals and GST returns; undo it from the status dropdown.</li>
+            <li><strong>Row actions</strong> — 👁 View shows the invoice as it prints without opening the editor; Edit, ₹ Payment (records a payment and prints a receipt) and Convert sit beside it. The <strong>⋯</strong> menu has Duplicate, Print, WhatsApp, reminder, Email and Cancel. Cancelling keeps the invoice number but takes it out of totals and GST returns; undo it from the status dropdown.</li>
             <li><strong>WhatsApp share — mobile vs. desktop:</strong> on Android / iPhone the PDF attaches automatically via the OS share sheet (works with WhatsApp, Signal, Telegram, anywhere). On desktop, browsers block sending files to WhatsApp Web for security — we fall back to a text-only message with all invoice details. To send the PDF from desktop: open the invoice, click Save &amp; Download, then drag the file into WhatsApp Web.</li>
             <li><strong>Bulk actions</strong> — tick rows to mark them paid / unpaid / overdue, export them, combine them into one PDF, or cancel them. <strong>Quick print</strong> combines the filtered list into one PDF.</li>
             <li><strong>Overdue banner</strong> — click it to jump to overdue invoices with one tap.</li>
             <li><strong>Low-stock alert</strong> — appears when any product is at or below your threshold (Settings → Stock alert).</li>
           </ul>
         </HelpButton>
+        <LockButton />
+        <BulkCsvImport kind="sales" onDone={loadBills} />
         <button className="btn btn-primary" onClick={onNew}><Plus size={18} /> New Invoice</button>
       </PageHeader>
 
@@ -1623,9 +1631,17 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                         </>}
                       </td>}
                       {visibleColumns.actions && <td>
+                        {/* v1.10.80 (#100) - View (read-only preview) and Edit up front,
+                            with Payment, Convert and Undo where they apply; the rest
+                            in the ⋯ menu instead of a long row of icons. */}
                         <div className="table-actions" style={{ justifyContent: 'center' }}>
-                          <button className="icon-btn icon-btn-blue" onClick={() => handleView(bill)} title={readOnly ? 'View' : 'Edit'}><Edit3 size={15} /></button>
-                          <button className="icon-btn icon-btn-blue" onClick={() => onDuplicate(bill)} title="Duplicate"><Copy size={15} /></button>
+                          {bill.data && (
+                            <button className="icon-btn icon-btn-blue" onClick={() => setViewBill(bill)} title="View"
+                              aria-label={`View ${bill.invoiceNumber}`}><Eye size={15} /></button>
+                          )}
+                          {!readOnly && (
+                            <button className="icon-btn icon-btn-blue" onClick={() => handleView(bill)} title="Edit"><Edit3 size={15} /></button>
+                          )}
                           {status === 'cancelled' && (
                             <button className="icon-btn icon-btn-blue" onClick={() => undoCancel(bill)} title="Undo cancel" aria-label={`Undo cancel of ${bill.invoiceNumber}`}>
                               <Undo2 size={15} />
@@ -1637,37 +1653,25 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                             <button className="icon-btn icon-btn-green" onClick={() => openPaymentModal(bill)}
                               title={tracksPayment && !readOnly ? 'Payment' : 'Payment history'}><IndianRupee size={15} /></button>
                           )}
-                          {/* v1.10.77 (#86) - cancelled and converted documents are read-only:
-                              View and Duplicate only (Undo is in the Status column). */}
-                          {!readOnly && <>
-                          <button className="icon-btn icon-btn-blue" onClick={() => onPrint(bill)} title="Print"><Printer size={15} /></button>
                           {/* v1.10.76 (#83) - gone once it has been converted (bill.convertedTo) */}
-                          {['quotation', 'proforma', 'delivery-challan'].includes(bill.invoiceType) && !bill.convertedTo && (
+                          {!readOnly && ['quotation', 'proforma', 'delivery-challan'].includes(bill.invoiceType) && !bill.convertedTo && (
                             <button className="icon-btn icon-btn-green" onClick={() => onConvert(bill)} title="Convert to Tax Invoice"><FileText size={15} /></button>
                           )}
-                          <button className="icon-btn icon-btn-green" onClick={() => shareWhatsApp(bill)}
-                            title="Share via WhatsApp — PDF attaches on mobile Chrome/Safari. On desktop it sends the invoice as text only (browser can't attach files to WhatsApp Web — security limitation, not our app).">
-                            <MessageCircle size={15} />
-                          </button>
-                          {/* v1.10.12 — Payment-reminder button now shows for
-                               UNPAID, PARTIAL, and OVERDUE bills (not just
-                               overdue). Reported: "amount pending towards
-                               customer should give option to send via
-                               whatsapp or email as reminder predefined side
-                               of every invoice. also for partial pending too". */}
-                          {!isCancelledBill(bill) && (isOverdue || status === 'overdue' || status === 'unpaid' || status === 'partial') && amountDue(bill) - (bill.paidAmount || 0) > 0.01 && (
-                            <button className="icon-btn icon-btn-green"
-                              onClick={() => sendReminder({ ...bill, clientPhone: getClientPhone(bill) })}
-                              title={status === 'partial' ? 'Send reminder — partial pending' : (status === 'overdue' || isOverdue ? 'Send reminder — overdue' : 'Send reminder — unpaid')}
-                              style={{ color: status === 'partial' ? '#0284c7' : '#d97706' }}>
-                              <Send size={15} />
-                            </button>
-                          )}
-                          <button className="icon-btn icon-btn-blue" onClick={() => shareEmail(bill)} title="Email"><Mail size={15} /></button>
-                          <button className="icon-btn icon-btn-red" onClick={() => handleCancelInvoice(bill)}
-                            title="Cancel invoice — keeps the number; Undo from the Status column">
-                            <Ban size={15} /></button>
-                          </>}
+                          {/* v1.10.77 (#86) - cancelled and converted documents are read-only:
+                              View and Duplicate only (Undo is in the Status column). */}
+                          <ActionsMenu label={`More actions for ${bill.invoiceNumber}`} items={[
+                            { label: 'Open in editor', icon: Edit3, onClick: () => handleView(bill), hidden: !readOnly },
+                            { label: 'Duplicate', icon: Copy, onClick: () => onDuplicate(bill) },
+                            { label: 'Print', icon: Printer, onClick: () => onPrint(bill), hidden: readOnly },
+                            { label: 'WhatsApp', icon: MessageCircle, tone: 'green', onClick: () => shareWhatsApp(bill), hidden: readOnly,
+                              title: 'Share via WhatsApp — PDF attaches on mobile Chrome/Safari. On desktop it sends the invoice as text only (browser can\'t attach files to WhatsApp Web — security limitation, not our app).' },
+                            // v1.10.12 — reminder for unpaid, partial and overdue bills.
+                            { label: status === 'partial' ? 'Reminder (partial pending)' : 'Send reminder', icon: Send, onClick: () => sendReminder({ ...bill, clientPhone: getClientPhone(bill) }),
+                              hidden: readOnly || isCancelledBill(bill) || !(isOverdue || status === 'overdue' || status === 'unpaid' || status === 'partial') || !(amountDue(bill) - (bill.paidAmount || 0) > 0.01) },
+                            { label: 'Email', icon: Mail, onClick: () => shareEmail(bill), hidden: readOnly },
+                            { label: 'Cancel invoice', icon: Ban, tone: 'danger', onClick: () => handleCancelInvoice(bill), hidden: readOnly,
+                              title: 'Cancel invoice — keeps the number; Undo from the Status column' },
+                          ]} />
                         </div>
                       </td>}
                     </tr>
@@ -1678,6 +1682,26 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
           </div>
         )}
       </div>
+
+      {/* v1.10.80 (#100) - View: the invoice as it prints, without opening the editor. */}
+      {viewBill?.data && (
+        <PrintPreviewModal
+          isOpen
+          onClose={() => setViewBill(null)}
+          onPrint={() => onPrint(viewBill)}
+          cancelled={isCancelledBill(viewBill)}
+          profile={viewBill.data.profile}
+          client={viewBill.data.client || {}}
+          details={viewBill.data.details || {}}
+          items={viewBill.data.items || []}
+          totals={viewBill.data.totals || {}}
+          invoiceType={viewBill.invoiceType || viewBill.data.invoiceType || 'tax-invoice'}
+          customTerms={viewBill.data.customTerms}
+          customNotes={viewBill.data.customNotes}
+          extraSections={viewBill.data.extraSections || []}
+          invoiceOptions={viewBill.data.invoiceOptions || {}}
+        />
+      )}
 
       {/* Payment Modal */}
       {paymentModal && (
