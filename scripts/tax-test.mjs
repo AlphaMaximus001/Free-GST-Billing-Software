@@ -54,6 +54,14 @@ import {
   ownPrefixProblem,
   numberFormatProblem,
   savedPdfNameFor,
+  numberToWords,
+  resolveLineDiscount,
+  getUpcomingFilings,
+  amountDue,
+  paymentStatusFor,
+  templateTotals,
+  parseLocalDate,
+  formatDateGST,
 } from '../src/utils.js';
 import { buildXlsx, colName } from '../src/utils/xlsx.js';
 import { bulkRowToProduct, closingStock, stockValueOf } from '../src/utils/products.js';
@@ -601,13 +609,20 @@ console.log('\n[V71] TDS / TCS threshold only for 194Q and 206C(1H)');
 {
   const base = { items: [{ quantity: 1, rate: 100000, taxPercent: 18 }], profile: { country: 'India', state: 'Punjab' }, client: { state: 'Punjab' }, details: {}, showGST: true };
   const tds194J = computeInvoiceTotals({ ...base, invoiceOptions: { showTDS: true, tdsSection: '194J', tdsRate: 10 } });
-  eq(tds194J.tdsAmount, 11800, '194J at 10% applies from the first rupee (was 0 below ₹50 lakh)');
+  // TDS is on the value WITHOUT GST when GST is shown separately (CBDT
+  // Circular 23/2017): 10% of 1,00,000, not of 1,18,000.
+  eq(tds194J.tdsAmount, 10000, '194J at 10% applies from the first rupee, on the value without GST');
+  eq(tds194J.netReceivable, 108000, 'Net receivable = 1,18,000 - 10,000 TDS');
+  const tds194Q = computeInvoiceTotals({ ...base, invoiceOptions: { showTDS: true, tdsSection: '194Q', tdsRate: 0.1, tdsCumulativeThisYear: 5000000 } });
+  eq(tds194Q.tdsAmount, 100, '194Q above ₹50 lakh: 0.1% of the value without GST (Circular 13/2021)');
   const tcs1H = computeInvoiceTotals({ ...base, invoiceOptions: { showTCS: true, tcsSection: '206C(1H)', tcsRate: 0.1, tcsCumulativeThisYear: 0 } });
   eq(tcs1H.tcsAmount, 0, '206C(1H) still waits for the ₹50 lakh threshold');
   const tcs1Hover = computeInvoiceTotals({ ...base, invoiceOptions: { showTCS: true, tcsSection: '206C(1H)', tcsRate: 0.1, tcsCumulativeThisYear: 4950000 } });
   eq(tcs1Hover.tcsAmount, 68, '206C(1H) charges only the part above ₹50 lakh (68,000 × 0.1%)');
-  const tcs52 = computeInvoiceTotals({ ...base, invoiceOptions: { showTCS: true, tcsSection: 'CGST52', tcsRate: 1 } });
-  eq(tcs52.tcsAmount, 1180, 'CGST section 52 TCS applies from the first rupee');
+  // '52' is the code TCS_SECTIONS stores. Section 52 TCS is on the net
+  // taxable value, without GST.
+  const tcs52 = computeInvoiceTotals({ ...base, invoiceOptions: { showTCS: true, tcsSection: '52', tcsRate: 1 } });
+  eq(tcs52.tcsAmount, 1000, 'CGST section 52 TCS applies from the first rupee, on the taxable value');
 }
 
 console.log("\n[V71] A client's sales so far this financial year");
@@ -924,6 +939,66 @@ console.log('\n[V79] GST 16-character numbers, short year, portal state names, s
   eq([placeOfSupplyLabel('01'), placeOfSupplyLabel('26'), placeOfSupplyLabel('97')], ['01-Jammu & Kashmir', '26-Dadra & Nagar Haveli & Daman & Diu', '97-Other Territory'], 'Places of supply spelt as on the GST portal');
   eq(savedPdfNameFor({ invoiceNumber: 'INV/2026-27/0007', invoiceType: 'tax-invoice', data: { client: { name: 'Meera' } } }), { fileName: 'INV_INV-2026-27-0007.pdf', clientName: 'Meera' }, 'Saved PDF found under the name the editor saves it with');
   eq(savedPdfNameFor({ invoiceNumber: 'CN/2026-27/0002', invoiceType: 'credit-note', data: {} }), { fileName: 'CN_CN-2026-27-0002.pdf', clientName: 'General' }, 'A credit note, no client: the General folder');
+}
+
+console.log('\n[Audit 2026-10] Math and wiring fixes');
+{
+  eq(numberToWords(1500000000), 'One Hundred and Fifty Crore Rupees Only', '₹150 crore in words (was "undefined Crore")');
+  eq(numberToWords(12345678.9), 'One Crore Twenty Three Lakh Forty Five Thousand Six Hundred and Seventy Eight Rupees and Ninety Paise Only', 'Crore, lakh and paise still read as before');
+
+  // A with-tax discount on a line whose price already includes tax comes off as entered.
+  const inclItem = { quantity: 1, rate: 1180, discount: 118, discountType: 'fixed', discountBase: 'with-tax', taxPercent: 18 };
+  approx(resolveLineDiscount(inclItem, true), 118, 'With-tax discount on a tax-inclusive line: ₹118 off');
+  approx(resolveLineDiscount({ ...inclItem, rate: 1000 }), 100, 'With-tax discount on a tax-exclusive line: tax backed out (₹118 -> ₹100)');
+  const inclTotals = computeInvoiceTotals({ items: [inclItem], profile: { country: 'India', state: 'Punjab' }, client: { state: 'Punjab' }, details: {}, showGST: true, taxInclusive: true });
+  approx(inclTotals.total, 1062, 'Inclusive ₹1,180 less ₹118 with-tax discount = ₹1,062');
+  const bos = computeInvoiceTotals({ items: [{ ...inclItem, rate: 1000 }], profile: { country: 'India', state: 'Punjab' }, client: { state: 'Punjab' }, details: {}, showGST: false });
+  approx(bos.total, 882, 'Bill of supply (no tax): a with-tax discount comes off as entered');
+
+  // Filing calendar: local dates, March advance tax, this July's ITR, Q4 TDS/TCS returns.
+  const due = (today, label) => getUpcomingFilings(today).find((f) => f.label.startsWith(label))?.dueDate;
+  eq(due(new Date(2026, 9, 1), 'GSTR-3B'), '2026-10-20', 'GSTR-3B due on the 20th (not the 19th, as toISOString gave in India)');
+  eq(due(new Date(2027, 2, 2), 'Advance Tax Installment 4'), '2027-03-15', 'The 15 March advance-tax instalment shows in early March');
+  eq(due(new Date(2026, 5, 10), 'ITR filing (non-audit)'), '2026-07-31', 'In June the ITR due this 31 July shows (not next year)');
+  eq(due(new Date(2026, 3, 5), 'Form 26Q'), '2026-05-31', 'Form 26Q for January-March is due 31 May');
+  eq(due(new Date(2026, 3, 5), 'Form 27EQ'), '2026-05-15', 'Form 27EQ for January-March is due 15 May');
+
+  eq(parseLocalDate('2026-04-01').getMonth(), 3, 'A YYYY-MM-DD date is read as a local date');
+  eq(formatDateGST('2026-04-01'), '01-04-2026', 'GST date format from a local date');
+
+  // TDS: the client pays Net Receivable, so that settles the bill.
+  const tdsBill = { totalAmount: 118000, data: { totals: { tdsAmount: 10000 } }, payments: [] };
+  eq(amountDue(tdsBill), 108000, 'Amount due = total less TDS');
+  eq([paymentStatusFor(tdsBill, 108000), paymentStatusFor(tdsBill, 50000), paymentStatusFor(tdsBill, 0)], ['paid', 'partial', 'unpaid'], 'Paid once Net Receivable is received');
+  const marked = markPaidPatch({ ...tdsBill, payments: [{ amount: 8000 }] });
+  eq([marked.payments[1].amount, marked.paidAmount], [100000, 108000], 'Mark Paid records the balance of Net Receivable, and paidAmount is what was received');
+
+  // Recurring templates: GST follows the type when the template does not say.
+  const tpl = { invoiceType: 'bill-of-supply', clientName: 'A', clientState: 'Punjab', items: [{ quantity: 2, rate: 500, taxPercent: 18 }] };
+  const prof = { country: 'India', state: 'Punjab' };
+  eq(templateTotals(tpl, prof).total, 1000, 'A bill-of-supply template charges no GST');
+  eq(templateTotals({ ...tpl, invoiceType: 'tax-invoice' }, prof).total, 1180, 'A tax-invoice template charges GST');
+  eq(templateTotals({ ...tpl, invoiceType: 'tax-invoice', placeOfSupply: 'Haryana' }, prof).igst, 180, "A template's place of supply decides IGST");
+
+  // E-Way Bill item rates follow the invoice's own split.
+  const ewbTotals = computeInvoiceTotals({ items: [{ quantity: 1, rate: 100, taxPercent: 18 }], profile: { country: 'India', state: 'Punjab' }, client: { state: 'Punjab' }, details: { placeOfSupply: 'Haryana' }, showGST: true });
+  const ewb = generateEWayBillJSON({ country: 'India', state: 'Punjab', pin: '141001' }, { state: 'Punjab', pin: '141002' }, { invoiceNumber: 'X', invoiceDate: '2026-10-01' }, [{ quantity: 1, rate: 100, taxPercent: 18 }], ewbTotals, 'tax-invoice');
+  eq([ewb.billLists[0].itemList[0].igstRate, ewb.billLists[0].itemList[0].cgstRate, ewb.billLists[0].igstValue], [18, 0, 18], 'E-Way Bill item rates match the IGST the invoice charged');
+}
+
+console.log('\n[Audit 2026-10] Income tax marginal relief');
+{
+  const t = (inc, regime) => computeTax({ businessIncome: inc, regime, fy: '2025-26' });
+  approx(t(1_210_000, 'new').totalTax, 10400, '₹12.1L new regime: tax capped at the ₹10,000 above ₹12L, + 4% cess (was ₹63,960)');
+  approx(t(1_250_000, 'new').totalTax, 52000, '₹12.5L new regime: ₹50,000 + cess');
+  approx(t(1_300_000, 'new').totalTax, 78000, '₹13L: past the relief band, normal slab tax');
+  approx(t(530_000, 'old').rebate87A, 0, 'Old regime has no 87A marginal relief');
+  const base = t(5_000_000, 'old');
+  const over = t(5_010_000, 'old');
+  approx((over.taxAfterRebate + over.surcharge) - (base.taxAfterRebate + base.surcharge), 10000, '₹10,000 over ₹50L: extra tax + surcharge = ₹10,000 (surcharge marginal relief)');
+  // §234B: tax paid after 31 March is not advance tax.
+  const sched = computeAdvanceTaxSchedule(100000, 0, [{ date: '2026-06-10', amount: 100000 }], 'regular', '2025-26');
+  approx(compute234BInterest(sched, '2026-06-10'), 3000, '234B: ₹1L all paid in June -> 1% x 3 months (paying late no longer wipes it out)');
 }
 
 console.log('\n────────────────────────────────────────');

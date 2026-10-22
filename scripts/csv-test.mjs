@@ -11,6 +11,7 @@
 // the fix breaks every sum a user runs over an exported column.
 
 import { toCsvCell, toCsvLine } from '../src/utils.js';
+import { parseCsv, toIsoDate, toNum, salesCsvToBills, billsToSalesCsv, purchaseCsvToRecords, purchasesToCsv, SALES_TEMPLATE, PURCHASE_TEMPLATE } from '../src/utils/bulkCsv.js';
 
 let passed = 0, failed = 0;
 function eq(actual, expected, label) {
@@ -45,6 +46,45 @@ eq(toCsvCell('Mehta, Sons'), '"Mehta, Sons"', 'comma');
 eq(toCsvCell('6" pipe'), '"6"" pipe"', 'double quote');
 eq(toCsvCell('line one\nline two'), '"line one\nline two"', 'a line break cannot split the row');
 eq(toCsvLine(['=1', 'Acme', -20, '']), "'=1,Acme,-20,", 'toCsvLine escapes every cell');
+
+console.log('\n[#101] Bulk CSV import / export of sales and purchase bills');
+{
+  const rows = parseCsv('﻿a,b\r\n"x, ""y""",2\n"multi\nline",3\n\n');
+  eq(JSON.stringify(rows), JSON.stringify([['a', 'b'], ['x, "y"', '2'], ['multi\nline', '3']]), 'parser: BOM, quotes, commas and line breaks in cells, CRLF, blank lines');
+  eq([toIsoDate('2026-10-01'), toIsoDate('01-10-2026'), toIsoDate('1/10/26'), toIsoDate('05-Oct-2026'), toIsoDate('31-02-2026')].join(' '),
+    '2026-10-01 2026-10-01 2026-10-01 2026-10-05 ', 'dates: ISO, DD-MM-YYYY, D/M/YY, DD-Mon-YYYY; 31 Feb refused');
+  eq([toNum('1,234.50'), toNum('₹ 99'), toNum('', 1), Number.isNaN(toNum('abc'))].join(' '), '1234.5 99 1 true', 'numbers: commas, ₹, blank default, text refused');
+
+  const profile = { country: 'India', state: 'Maharashtra', gstin: '27AAAAA0000A1Z5', businessName: 'Acme' };
+  const products = [{ id: 'p1', name: 'Steel rod 8mm', hsn: '7214', unit: 'Kg' }];
+  const res = salesCsvToBills(SALES_TEMPLATE, { profile, products, adjustStock: true });
+  const b = res.bills[0];
+  eq(res.bills.length, 1, 'template: two rows with one number make one invoice');
+  eq(res.errors.length, 0, 'template imports with no errors');
+  eq(b.totalAmount, 1026.6, 'totals worked out like the invoice screen: (720 + 150) + 18% = 1026.60');
+  eq([b.data.totals.cgst, b.data.totals.sgst, b.data.totals.igst].join(','), '78.3,78.3,0', 'same state: CGST + SGST');
+  eq(JSON.stringify(b.data.stockApplied), '{"p1":-10}', 'stock follows the bill only for the product it names');
+  eq(salesCsvToBills(SALES_TEMPLATE, { profile, products }).bills[0].data.stockApplied.p1, undefined, 'without "adjust stock" no product is linked and stock does not move');
+  eq(res.newClients.length, 1, 'a client not in the list is offered as a new client');
+
+  const inter = salesCsvToBills(SALES_TEMPLATE.replace(/Maharashtra/g, 'Gujarat'), { profile });
+  eq(inter.bills[0].data.totals.igst, 156.6, 'client in another state: IGST');
+  eq(salesCsvToBills(SALES_TEMPLATE, { profile, existingIds: new Set(['INV/2026-27/0101']) }).skipped.join(), 'INV/2026-27/0101', 'an invoice number already used is skipped, never overwritten');
+  const bos = salesCsvToBills(SALES_TEMPLATE.replace(/Tax Invoice/g, 'Bill of Supply'), { profile });
+  eq(bos.bills[0].totalAmount, 870, 'a bill of supply charges no GST');
+  const bad = salesCsvToBills('Invoice Number,Date,Client,Item,Qty,Rate\nX1,32-13-2026,A,B,1,5\nX2,2026-10-01,A,B,1,abc\nX3,2026-10-01,,B,1,5', { profile });
+  eq(bad.bills.length + ':' + bad.errors.length, '0:3', 'bad date, bad rate and missing client are each reported, nothing half-imported');
+
+  const again = salesCsvToBills(billsToSalesCsv(res.bills), { profile, products, adjustStock: true });
+  eq(again.bills[0].totalAmount, b.totalAmount, 'export -> import gives the same invoice total');
+
+  const pur = purchaseCsvToRecords(PURCHASE_TEMPLATE, { profile });
+  const p = pur.purchases[0];
+  eq([pur.purchases.length, p.taxableAmount, p.totalTax, p.totalAmount, p.ownerGstin].join(','), '1,6000,1080,7080,27AAAAA0000A1Z5', 'purchase: totals as the purchase form, filed under the business');
+  eq(purchaseCsvToRecords(PURCHASE_TEMPLATE, { profile, existing: [{ supplierGstin: '27AAACG1234K1Z2', invoiceNumber: 'sup/552' }] }).skipped.length, 1, 'a supplier bill already booked is skipped');
+  eq(purchaseCsvToRecords(PURCHASE_TEMPLATE.replace(',No,', ',,'), { profile, inferInterstate: () => true }).purchases[0].interstate, true, 'blank Inter-state is worked out from the GSTIN');
+  eq(purchaseCsvToRecords(purchasesToCsv([p]), { profile }).purchases[0].totalAmount, 7080, 'purchase export -> import round trip');
+}
 
 console.log('\n────────────────────────────────────────');
 console.log(`Passed: ${passed}   Failed: ${failed}`);

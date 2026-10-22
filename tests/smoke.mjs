@@ -993,11 +993,9 @@ try {
 
   // ---- #66 item 12: cancelling keeps the invoice, out of the totals ------
   const beforeCancel = await salesCards();
-  await page.evaluate(() => {
-    const row = [...document.querySelectorAll('tr')].find((r) => r.innerText.includes('SMOKE-CANCEL/9'));
-    const btn = row && [...row.querySelectorAll('button')].find((b) => /Cancel invoice/i.test(b.title || ''));
-    if (btn) btn.click();
-  });
+  // v1.10.80 (#100) - Cancel is in the row's ⋯ menu.
+  await page.locator('tr', { hasText: 'SMOKE-CANCEL/9' }).locator('button[aria-label^="More actions"]').click();
+  await page.locator('[role=menu] [role=menuitem]', { hasText: 'Cancel invoice' }).click();
   await sleep(900);
   const confirmCancel = page.getByRole('button', { name: /^Cancel invoice$/ });
   if (await confirmCancel.count()) await confirmCancel.first().click();
@@ -1107,6 +1105,8 @@ try {
   await page.getByRole('button', { name: /^Short \(/ }).first().click();
   await sleep(500);
   await page.getByRole('button', { name: /Save all changes/i }).click();
+  // v1.10.80 (#99) - shared numbering used by several businesses asks first.
+  await page.getByRole('button', { name: /^Change for all$/ }).click({ timeout: 3000 }).catch(() => {});
   await sleep(2500);
   const savedName = await page.evaluate(async () => (await (await fetch('/api/profile')).json()).businessName);
   const savedPrefix = (await getMeta('invoiceNumberSettings')).brandPrefix;
@@ -1117,6 +1117,8 @@ try {
   await page.locator('input[placeholder^="e.g. ACME"]').fill(numBefore.brandPrefix || '');
   await sleep(500);
   await page.getByRole('button', { name: /Save all changes/i }).click();
+  // v1.10.80 (#99) - shared numbering used by several businesses asks first.
+  await page.getByRole('button', { name: /^Change for all$/ }).click({ timeout: 3000 }).catch(() => {});
   await sleep(2500);
   check('v75 after saving, the bar says everything is saved',
     await page.evaluate(() => /All changes saved/.test(document.querySelector('.settings-savebar')?.innerText || '')));

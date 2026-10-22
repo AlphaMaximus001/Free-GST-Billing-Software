@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Lock } from 'lucide-react';
 import { getLockStatus, setLockPin } from '../store';
 import { toast } from './Toast';
-import { lockNow, UNLOCKED_KEY } from '../utils/appLock';
+import { lockNow, UNLOCKED_KEY, lockSettingsChanged } from '../utils/appLock';
 
 const digits = (v, n) => v.replace(/\D/g, '').slice(0, n);
 
@@ -35,6 +35,7 @@ export default function AppLockSettings() {
       try { sessionStorage.setItem(UNLOCKED_KEY, '1'); } catch { /* storage blocked */ }
       close();
       load();
+      lockSettingsChanged();
     } catch (err) {
       if (err.status === 401) toast('Current PIN is wrong', 'error');
       else if (err.status === 429) toast(`Too many wrong tries. Wait ${err.body?.wait || 30} seconds.`, 'error');

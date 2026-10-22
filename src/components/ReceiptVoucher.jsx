@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Receipt, Plus, Trash2, Search, Printer, Pencil } from 'lucide-react';
 import { getAllReceipts, saveReceipt, deleteReceipt, getAllBills, getProfile, getNextInvoiceNumber, saveBill } from '../store';
-import { formatCurrency, numberToWords, belongsToProfile, isUnassignedToBusiness, countsAsSales, businessKeyOf } from '../utils';
+import { formatCurrency, numberToWords, belongsToProfile, isUnassignedToBusiness, countsAsSales, businessKeyOf, localToday, amountDue, paymentStatusFor, isCancelledBill } from '../utils';
 import UnassignedBanner from './UnassignedBanner';
 import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
@@ -9,8 +9,10 @@ import HelpButton from './HelpButton';
 
 const PAYMENT_MODES = ['Bank Transfer', 'UPI', 'Cash', 'Cheque', 'Card', 'Other'];
 
+// date is filled in when the form opens (localToday): set here it was the
+// day the app was loaded, in UTC.
 const emptyForm = {
-  date: new Date().toISOString().split('T')[0],
+  date: '',
   receiptNo: '',
   clientName: '',
   clientAddress: '',
@@ -81,7 +83,7 @@ export default function ReceiptVoucher() {
   const openAdd = async () => {
     const receiptNo = await getNextReceiptNo();
     previewedNoRef.current = receiptNo;
-    setForm({ ...emptyForm, receiptNo });
+    setForm({ ...emptyForm, date: localToday(), receiptNo });
     setEditingId(null);
     setShowForm(true);
   };
@@ -93,7 +95,7 @@ export default function ReceiptVoucher() {
   // id so the server upserts in place.
   const openEdit = (rcp) => {
     setForm({
-      date: rcp.date || new Date().toISOString().split('T')[0],
+      date: rcp.date || localToday(),
       receiptNo: rcp.receiptNo || '',
       clientName: rcp.clientName || '',
       clientAddress: rcp.clientAddress || '',
@@ -118,7 +120,7 @@ export default function ReceiptVoucher() {
       clientAddress: bill.data?.client?.address || '',
       // v1.10.23 — clamp negative (overpaid) to 0 so the new-receipt
       // amount input doesn't start pre-filled with a negative number.
-      amount: String(Math.max(0, bill.totalAmount - (bill.paidAmount || 0))),
+      amount: String(Math.max(0, Math.round((amountDue(bill) - (bill.paidAmount || 0)) * 100) / 100)),
       againstInvoice: bill.invoiceNumber || '',
     }));
   };
@@ -167,14 +169,17 @@ export default function ReceiptVoucher() {
       // propagation and add a fresh one to the new invoice.
       const modeMap = { 'Bank Transfer': 'bank-transfer', 'UPI': 'upi', 'Cash': 'cash', 'Cheque': 'cheque', 'Card': 'card', 'Other': 'other' };
       const paidAmount = parseFloat(form.amount);
+      // A cancelled invoice stays cancelled (un-cancel it on the Dashboard,
+      // which also fixes its stock); otherwise paid once the payments cover
+      // the total less TDS.
+      const statusFor = (bill, paid) => (isCancelledBill(bill) ? 'cancelled' : paymentStatusFor(bill, paid));
       const stripReceiptFromBill = async (bill) => {
         if (!bill) return;
         const priorPayments = bill.payments || [];
         const kept = priorPayments.filter(p => p.receiptNo !== receiptNo);
         if (kept.length === priorPayments.length) return;
         const newTotal = kept.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-        const nextStatus = newTotal >= (Number(bill.totalAmount) || 0) ? 'paid' : (newTotal > 0 ? 'partial' : 'unpaid');
-        await saveBill({ ...bill, paidAmount: newTotal, status: nextStatus, payments: kept }, { overwrite: true });
+        await saveBill({ ...bill, paidAmount: newTotal, status: statusFor(bill, newTotal), payments: kept }, { overwrite: true });
       };
       // If editing and the linked invoice changed (or was removed), scrub
       // the old link first.
@@ -198,6 +203,10 @@ export default function ReceiptVoucher() {
             const priorPayments = bill.payments || [];
             const priorIdx = priorPayments.findIndex(p => p.receiptNo === receiptNo);
             const nextEntry = {
+              // The receipt's id, as payments recorded on the Dashboard carry
+              // theirs: editing or deleting the payment there then updates this
+              // receipt instead of making a second one.
+              id: receipt.id,
               amount: paidAmount,
               date: form.date,
               mode: modeMap[form.paymentMode] || 'other',
@@ -209,8 +218,7 @@ export default function ReceiptVoucher() {
               ? priorPayments.map((p, i) => i === priorIdx ? nextEntry : p)
               : [...priorPayments, nextEntry];
             const newTotal = nextPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-            const nextStatus = newTotal >= (Number(bill.totalAmount) || 0) ? 'paid' : (newTotal > 0 ? 'partial' : 'unpaid');
-            await saveBill({ ...bill, paidAmount: newTotal, status: nextStatus, payments: nextPayments }, { overwrite: true });
+            await saveBill({ ...bill, paidAmount: newTotal, status: statusFor(bill, newTotal), payments: nextPayments }, { overwrite: true });
           }
         } catch { /* non-fatal: receipt is saved; user can manually update the bill */ }
       }

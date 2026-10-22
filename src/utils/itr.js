@@ -314,6 +314,18 @@ export function computeSurcharge(tax, totalIncome, regime = 'new', opts = {}) {
   })();
 
   const extraIncome = totalIncome - applicableThreshold;
+  // With the tax at the threshold known (opts.taxAt, from computeTax): the
+  // statutory test - tax + surcharge now may exceed tax + surcharge at the
+  // threshold by no more than the extra income. Using today's tax for both
+  // sides ignored the tax on that extra income and gave too much relief.
+  if (typeof opts.taxAt === 'function') {
+    const taxAtT = Math.max(0, Number(opts.taxAt(applicableThreshold)) || 0);
+    const surchargeAtT = applicableThreshold === 5_000_000 ? 0
+      : computeSurchargeInner(taxAtT, applicableThreshold, regime, { specialRateTax: Math.min(specialTax, taxAtT) });
+    const ceiling = taxAtT + surchargeAtT + extraIncome;
+    if (tax + rawSurcharge > ceiling) return round2(Math.max(0, ceiling - tax));
+    return round2(rawSurcharge);
+  }
   const extraTaxBurden = rawSurcharge - surchargeAtThreshold;
   if (extraTaxBurden > extraIncome) {
     // Cap: don't collect more extra tax than the extra income.
@@ -355,9 +367,19 @@ function computeSurchargeInner(tax, totalIncome, regime, opts) {
  *           income + ₹50k LTCG used to get ₹12,500 rebate — statute denies
  *           it because total income (₹5.3L) exceeds ₹5L threshold.
  */
+//
+// New regime: marginal relief just above the threshold. The law caps the tax
+// on slab income at what the income exceeds the threshold by, so ₹12,10,000
+// pays ₹10,000 (FY 25-26), not ₹61,000. It is given as part of the rebate here
+// (the excess over that cap), so every caller sees the right tax. The old
+// regime has no such relief.
 export function computeRebate87A(totalIncome, tax, regime = 'new', fy = CURRENT_FY) {
   const { threshold, cap } = get87AConfig(regime, fy);
   if (totalIncome <= threshold) return Math.min(tax, cap);
+  if (regime === 'new') {
+    const excess = totalIncome - threshold;
+    if (tax > excess) return round2(tax - excess);
+  }
   return 0;
 }
 
@@ -494,7 +516,14 @@ export function computeTax(inputs) {
   // cap on 111A/112A gains actually fires (was dead code before). Total
   // income for surcharge tier also uses gross LTCG (Section 2(45)).
   const totalIncomeForSurcharge = taxableIncome + stcgAtSpecialRate + ltcgAtSpecialRate;
-  const surcharge = computeSurcharge(taxAfterRebate, totalIncomeForSurcharge, regime, { specialRateTax });
+  // Tax if total income were `total` instead (slab income lower by the
+  // difference), for surcharge marginal relief.
+  const taxAt = (total) => {
+    const slabIncome = Math.max(0, taxableIncome - (totalIncomeForSurcharge - total));
+    const t = computeSlabTax(slabIncome, slabs);
+    return Math.max(0, t + specialRateTax - computeRebate87A(total, t, regime, fy));
+  };
+  const surcharge = computeSurcharge(taxAfterRebate, totalIncomeForSurcharge, regime, { specialRateTax, taxAt });
 
   const cess = computeCess(taxAfterRebate + surcharge);
   const totalTax = round2(taxAfterRebate + surcharge + cess);
@@ -1062,10 +1091,14 @@ export function computeAdvanceTaxSchedule(totalTax, tdsAlreadyDeducted = 0, paid
       };
     });
   const totalPaid = paid.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  // Advance tax is what is paid by 31 March; §234B looks only at that.
+  const yearEnd = `${Number(String(fy).split('-')[0]) + 1}-03-31`;
+  const paidByYearEnd = paid.filter(p => p.date && p.date <= yearEnd).reduce((s, p) => s + (Number(p.amount) || 0), 0);
   return {
     applies: true,
     netLiability,
     totalPaid: round2(totalPaid),
+    paidByYearEnd: round2(paidByYearEnd),
     totalOutstanding: round2(Math.max(0, netLiability - totalPaid)),
     schedule: rows,
     mode,
@@ -1193,7 +1226,11 @@ export function compute234AInterest(netTaxPayable, taxPaid, filingDate, dueDate,
  */
 export function compute234BInterest(schedule, assessmentPaymentDate, fy) {
   if (!schedule.applies) return 0;
-  const paidByYearEnd = schedule.totalPaid;
+  // Advance tax paid by 31 March only: tax paid after the year (self-
+  // assessment) does not make the advance tax sufficient, it only stops the
+  // interest running. It used to count every payment, so paying in June
+  // wiped out 234B interest that was owed.
+  const paidByYearEnd = schedule.paidByYearEnd ?? schedule.totalPaid;
   const netLiab = schedule.netLiability;
   if (paidByYearEnd >= 0.9 * netLiab) return 0;
   // v1.10.31 — Rule 119A: round shortfall down to nearest ₹100 before

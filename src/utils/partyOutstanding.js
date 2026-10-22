@@ -12,7 +12,7 @@
  * period that is still unpaid is money still owed, so it goes in an "Earlier"
  * column instead of disappearing.
  */
-import { countsAsSales } from '../utils.js';
+import { countsAsSales, amountDue } from '../utils.js';
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -37,7 +37,8 @@ export function partyOutstanding(bills, months, currency = 'INR') {
   const rows = new Map();
   for (const b of bills) {
     if (!countsAsSales(b) || b.status === 'paid' || billCurrency(b) !== currency) continue;
-    const due = Math.round(((Number(b.totalAmount) || 0) - (Number(b.paidAmount) || 0)) * 100) / 100;
+    // Less TDS the client deducts (they pay Net Receivable), as everywhere else.
+    const due = Math.round((amountDue(b) - (Number(b.paidAmount) || 0)) * 100) / 100;
     const ym = String(b.invoiceDate || '').slice(0, 7);
     if (due <= 0 || !ym || ym > last) continue;
     const name = String(b.clientName || '').trim() || 'Unknown';

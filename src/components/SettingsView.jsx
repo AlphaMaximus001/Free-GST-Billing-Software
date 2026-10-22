@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getRegionMode, setRegionMode, getEnabledModules, setEnabledModules, getStockAlertSettings, saveStockAlertSettings, renameNumberSeries, getInvoiceDisplayOptions, saveInvoiceDisplayOptions } from '../store';
 import { ensureToken, findOrCreateFolder, uploadJSON } from '../services/googleDrive';
-import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, FEATURE_GROUPS, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, findSameBusiness, businessKeyOf } from '../utils';
+import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, FEATURE_GROUPS, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, findSameBusiness, businessKeyOf, stockDelta } from '../utils';
 // v1.10.36 — lucide's `Image` icon was imported as `Image`, which
 // SHADOWED the browser's `HTMLImageElement` constructor. Reported:
 // "Uncaught TypeError: et is not a constructor at onChange" on logo
@@ -17,7 +17,7 @@ import PrintSettings from './PrintSettings';
 import HelpButton from './HelpButton';
 import AppLockSettings from './AppLockSettings';
 import InvoiceNumberSettings from './InvoiceNumberSettings';
-import { getBackupsList, restoreBackup, triggerBackup, deleteBackup, getTrashedBills, restoreTrashedBill, purgeTrashedBill, runUpdateNow } from '../store';
+import { getBackupsList, restoreBackup, triggerBackup, deleteBackup, getTrashedBills, restoreTrashedBill, purgeTrashedBill, runUpdateNow, saveBill, applyStockChanges, getBackupFolder, setBackupFolder } from '../store';
 
 // v1.10.36 — Section order for the jump-nav pill bar. Keeping this at
 // module scope so the scroll-spy effect below can reference it without
@@ -1394,6 +1394,7 @@ export default function SettingsView({ onSaved }) {
         <InvoiceNumberSettings ref={invNumRef}
           businessKey={businessKeyOf(activeBusiness)} businessName={activeBusiness?.businessName}
           showScope={businessProfiles.length > 1}
+          businesses={businessProfiles.map((bp) => ({ key: businessKeyOf(bp), name: bp.businessName || bp.gstin || 'Unnamed business' }))}
           onDirtyChange={setInvNumDirty} onSavingChange={setInvNumSaving} />
 
         {/* Logo & Signature */}
@@ -1915,18 +1916,39 @@ function BackupAndTrashPanel() {
   const [backups, setBackups] = useState([]);
   const [trash, setTrash] = useState([]);
   const [loading, setLoading] = useState(false);
+  // v1.10.80 (#99) - extra backup folder (another drive).
+  const [backupFolder, setBackupFolderState] = useState({ path: '', error: '' });
+  const [folderInput, setFolderInput] = useState('');
+  const [folderBusy, setFolderBusy] = useState(false);
 
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [b, t] = await Promise.all([
+      const [b, t, f] = await Promise.all([
         getBackupsList().catch(() => []),
         getTrashedBills().catch(() => []),
+        getBackupFolder().catch(() => null),
       ]);
       setBackups(b);
       setTrash(t);
+      if (f) { setBackupFolderState(f); setFolderInput(f.path || ''); }
     } catch { /* ignore */ }
     setLoading(false);
+  };
+
+  const saveBackupFolder = async (value) => {
+    setFolderBusy(true);
+    try {
+      const res = await setBackupFolder(value);
+      if (!value) toast('Backups are kept in the app folder only.', 'info');
+      else if (res?.error) toast(`Folder saved, but copying today's backup failed: ${res.error}`, 'warning', 9000);
+      else toast(`Daily backups are now also copied to ${res.copiesIn}`, 'success', 8000);
+      loadAll();
+    } catch (err) {
+      toast(err.body?.error || err.message || 'Could not use that folder', 'error', 9000);
+    } finally {
+      setFolderBusy(false);
+    }
   };
 
   useEffect(() => { loadAll(); }, []);
@@ -1934,14 +1956,14 @@ function BackupAndTrashPanel() {
   const handleRestoreBackup = async (date) => {
     if (!await confirmAction({
       title: `Restore all data from backup ${date}?`,
-      message: 'This OVERWRITES your current data. A snapshot of the current state will be taken first — if the restore looks wrong, you can roll back.',
+      message: 'This OVERWRITES your current data. A copy of your data as it is now is kept first, in data/backups/pre-restore-…, so you can go back to it if the restore looks wrong.',
       confirmLabel: 'Restore backup',
       tone: 'warning',
     })) return;
     try {
-      await triggerBackup();
-      await restoreBackup(date);
-      toast('Backup restored — please reload the page to see the data', 'success');
+      await triggerBackup().catch(() => {}); // today's daily backup, if not made yet
+      const res = await restoreBackup(date);
+      toast(`Backup restored — please reload the page to see the data.${res?.snapshot ? ` Your data from before is in data/backups/${res.snapshot}.` : ''}`, 'success', 10000);
     } catch (err) {
       toast('Restore failed: ' + err.message, 'error');
     }
@@ -1950,6 +1972,16 @@ function BackupAndTrashPanel() {
   const handleRestoreTrash = async (id) => {
     try {
       await restoreTrashedBill(id);
+      // Back in the books, so the stock its delete put back is taken out again.
+      // Only what that delete recorded (stockReturnedOnDelete): invoices
+      // deleted before it was recorded never had their stock put back.
+      const { _trashedAt, ...bill } = trash.find((b) => b.id === id) || {};
+      const back = bill.data?.stockReturnedOnDelete;
+      if (back && Object.keys(back).length) {
+        const { stockReturnedOnDelete: _gone, ...data } = bill.data;
+        await saveBill({ ...bill, data: { ...data, stockApplied: back } }, { overwrite: true });
+        await applyStockChanges(stockDelta({}, back)).catch(() => {});
+      }
       toast('Invoice restored', 'success');
       loadAll();
     } catch (err) {
@@ -2017,6 +2049,27 @@ function BackupAndTrashPanel() {
         </button>
       </div>
 
+      {/* v1.10.80 (#99) - requested: backups only on C: are lost when Windows fails. */}
+      <div style={{ padding: '0.85rem', background: 'var(--bg-secondary)', borderRadius: 8, marginTop: '0.75rem' }}>
+        <label className="form-label" htmlFor="backup-folder">Also keep a copy of every daily backup in this folder</label>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <input id="backup-folder" type="text" className="form-input" style={{ flex: 1, minWidth: 220 }}
+            placeholder={'e.g. D:\\FreeGSTBill or E:\\ (a second drive or USB disk)'}
+            value={folderInput} onChange={(e) => setFolderInput(e.target.value)} />
+          <button type="button" className="btn btn-primary" disabled={folderBusy || folderInput.trim() === (backupFolder.path || '')}
+            onClick={() => saveBackupFolder(folderInput.trim())}>Save folder</button>
+          {backupFolder.path && (
+            <button type="button" className="btn btn-secondary" disabled={folderBusy} onClick={() => saveBackupFolder('')}>Stop copying</button>
+          )}
+        </div>
+        <p className="field-hint" style={{ marginBottom: 0 }}>
+          {backupFolder.path
+            ? <>Copies go to <strong>{backupFolder.copiesIn}</strong> (30 days kept). If this PC fails, install the app again, set the same folder here, and its backups appear in the list below to restore.</>
+            : 'Backups are kept in the app folder on this drive. Choose a folder on another drive (D:, a USB disk) so they survive if this drive fails.'}
+        </p>
+        {backupFolder.error && <p role="alert" style={{ color: 'var(--danger)', fontSize: '0.8rem', margin: '0.35rem 0 0' }}>The last copy failed: {backupFolder.error}. Is the drive connected?</p>}
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
         {/* Backups list */}
         <div style={{ padding: '0.85rem', background: 'var(--bg-secondary)', borderRadius: 8 }}>
@@ -2034,6 +2087,7 @@ function BackupAndTrashPanel() {
                   <strong>{b.date}</strong>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                     {b.createdAt ? new Date(b.createdAt).toLocaleTimeString('en-IN') : ''}
+                    {b.onlyInBackupFolder ? ' · in your backup folder only' : (b.inBackupFolder ? ' · also in your backup folder' : '')}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.25rem' }}>
@@ -2041,10 +2095,12 @@ function BackupAndTrashPanel() {
                     onClick={() => handleRestoreBackup(b.date)}>
                     Restore
                   </button>
-                  <button className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', color: '#dc2626', borderColor: '#fca5a5' }}
-                    onClick={() => handleDeleteBackup(b.date)} title="Delete this backup">
-                    Delete
-                  </button>
+                  {!b.onlyInBackupFolder && (
+                    <button className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', color: '#dc2626', borderColor: '#fca5a5' }}
+                      onClick={() => handleDeleteBackup(b.date)} title="Delete this backup (the copy in your backup folder stays)">
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

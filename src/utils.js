@@ -20,7 +20,11 @@ export const numberToWords = (num) => {
     const hundred = Math.floor(n / 100);
     n -= hundred * 100;
 
-    if (crore > 0) res += convertToWords(crore) + ' Crore ';
+    // 100 crore and above: the crore count is itself a number in words
+    // ("One Hundred and Fifty Crore"). convertToWords only handles 0-99, so
+    // ₹150 crore used to print "undefined Crore".
+    if (crore > 99) res += getIndianFormatString(crore) + ' Crore ';
+    else if (crore > 0) res += convertToWords(crore) + ' Crore ';
     if (lakh > 0) res += convertToWords(lakh) + ' Lakh ';
     if (thousand > 0) res += convertToWords(thousand) + ' Thousand ';
     if (hundred > 0) res += convertToWords(hundred) + ' Hundred ';
@@ -36,7 +40,8 @@ export const numberToWords = (num) => {
   if (paise > 0) {
     result += ' and ' + getIndianFormatString(paise) + ' Paise';
   }
-  return result + ' Only';
+  // The word lists carry trailing spaces, which printed "One  Hundred".
+  return (result + ' Only').replace(/\s+/g, ' ');
 };
 
 export const formatCurrency = (amount, currency = 'INR') => {
@@ -103,7 +108,12 @@ const finiteNonNeg = (n) => {
 //
 // Backward-compat: items without `discountBase` fall through to 'net',
 // so pre-v1.10.25 bills render byte-identically.
-export const resolveLineDiscount = (item = {}) => {
+//
+// `taxIncluded`: the line's qty × rate already includes tax ("Prices include
+// tax") or no tax is charged at all (bill of supply). A with-tax discount is
+// then taken off as entered - backing tax out of it again under-discounted
+// the line (₹118 off an inclusive ₹1,180 line took only ₹100 off).
+export const resolveLineDiscount = (item = {}, taxIncluded = false) => {
   const qty = finiteNonNeg(item.quantity);
   const rate = finiteNonNeg(item.rate);
   const net = qty * rate;
@@ -120,6 +130,7 @@ export const resolveLineDiscount = (item = {}) => {
     return Math.min(net, qty * raw);
   }
   if (base === 'with-tax') {
+    if (taxIncluded) return Math.min(net, raw);
     const taxRate = finiteNonNeg(item.taxPercent);
     const divisor = 1 + taxRate / 100;
     return Math.min(net, divisor > 0 ? raw / divisor : raw);
@@ -131,7 +142,7 @@ export const resolveLineDiscount = (item = {}) => {
 export const calculateLineItemTax = (item = {}, taxInclusive = false) => {
   const qty = finiteNonNeg(item.quantity);
   const rate = finiteNonNeg(item.rate);
-  const discount = resolveLineDiscount(item);
+  const discount = resolveLineDiscount(item, taxInclusive);
   const taxRate = finiteNonNeg(item.taxPercent);
   const amount = qty * rate;
   const grossAfterDiscount = Math.max(0, amount - discount); // discount can't exceed line value
@@ -224,7 +235,7 @@ export function computeInvoiceTotals(opts) {
     const rate = finiteNonNeg(item.rate);
     // v1.10.22 — read discount through resolveLineDiscount so percent-mode
     // items are computed correctly. Fixed-mode items behave identically.
-    const disc = resolveLineDiscount(item);
+    const disc = resolveLineDiscount(item, !showGST || taxInclusive);
     const taxPct = finiteNonNeg(item.taxPercent);
     const cessPct = finiteNonNeg(item.cessPercent);
     const gross = qty * rate;
@@ -343,16 +354,27 @@ export function computeInvoiceTotals(opts) {
 
   // The base at portal-facing gross (including GST).
   const receiptIncludingGst = r2(taxableAmount + taxTotal + cessTotal);
+  // Which amount each section is worked out on:
+  //   • TCS 206C(1H) / 206C(1): the amount received, GST included
+  //     (CBDT Circular 17/2020).
+  //   • TCS under CGST section 52: the net taxable value, without GST.
+  //   • TDS (194C, 194J, 194I, 194H, 194O, 194Q...): the value WITHOUT GST
+  //     when the invoice shows GST separately (CBDT Circular 23/2017; for
+  //     194Q, Circular 13/2021). It used to be worked out on the amount with
+  //     GST, overstating TDS by the GST rate (₹11,800 instead of ₹10,000 on a
+  //     ₹1,00,000 + 18% invoice at 10%).
+  const tcsBase = invoiceOptions.tcsSection === '52' ? taxableAmount : receiptIncludingGst;
+  const tdsBase = taxableAmount;
 
   // Portion of THIS invoice that sits above the ₹50L threshold. If the
   // cumulative was already ≥ threshold, whole invoice is taxable. If
   // it was below, only the excess portion attracts TCS.
   const marginalTcsBase = tcsCumBefore >= TDS_TCS_THRESHOLD
-    ? receiptIncludingGst
-    : Math.max(0, (tcsCumBefore + receiptIncludingGst) - TDS_TCS_THRESHOLD);
+    ? tcsBase
+    : Math.max(0, (tcsCumBefore + tcsBase) - TDS_TCS_THRESHOLD);
   const marginalTdsBase = tdsCumBefore >= TDS_TCS_THRESHOLD
-    ? receiptIncludingGst
-    : Math.max(0, (tdsCumBefore + receiptIncludingGst) - TDS_TCS_THRESHOLD);
+    ? tdsBase
+    : Math.max(0, (tdsCumBefore + tdsBase) - TDS_TCS_THRESHOLD);
 
   const tcsRate = Number(invoiceOptions.tcsRate) || 0;
   const tdsRate = Number(invoiceOptions.tdsRate) || 0;
@@ -436,6 +458,27 @@ export function computeInvoiceTotals(opts) {
 
   return result;
 }
+
+// The totals of an invoice made from a recurring template. Shared by the
+// server (which makes the invoices) and the Recurring screen (which shows
+// their amount), so both always agree. GST follows the template's own
+// showGST when it has one, else its type (as the printed invoice does): a
+// template made on the Recurring screen has no invoiceOptions.showGST, and
+// the server used to charge GST on its bills of supply and challans.
+export const templateTotals = (tpl, profile, extraOptions = {}) => {
+  const t = tpl || {};
+  const invoiceOptions = { ...(t.invoiceOptions || {}), ...extraOptions };
+  const typeShowsGst = (INVOICE_TYPES[t.invoiceType || 'tax-invoice'] || INVOICE_TYPES['tax-invoice']).showGST;
+  return computeInvoiceTotals({
+    items: t.items || [],
+    profile,
+    client: { name: t.clientName, state: t.clientState, gstin: t.clientGstin, country: t.clientCountry, isSEZ: !!t.isSEZ },
+    details: { placeOfSupply: t.placeOfSupply || '' },
+    showGST: typeof invoiceOptions.showGST === 'boolean' ? invoiceOptions.showGST : typeShowsGst,
+    taxInclusive: !!t.taxInclusive,
+    invoiceOptions,
+  });
+};
 
 // Invoice type configuration
 export const INVOICE_TYPES = {
@@ -689,12 +732,12 @@ export const printedSubtotal = (t) => (t?.taxInclusive
 export const clientYearToDate = (bills, clientName, invoiceDate, excludeId = null) => {
   const name = String(clientName || '').trim().toLowerCase();
   if (!name) return 0;
-  const fy = getFinancialYearLabel(invoiceDate ? new Date(invoiceDate) : new Date());
+  const fy = getFinancialYearLabel(invoiceDate ? parseLocalDate(invoiceDate) : new Date());
   return (bills || []).reduce((sum, b) => {
     if (!b || b.id === excludeId || !countsAsSales(b)) return sum;
     if ((b.currency || 'INR') !== 'INR') return sum;
     if (String(b.clientName || '').trim().toLowerCase() !== name) return sum;
-    if (!b.invoiceDate || getFinancialYearLabel(new Date(b.invoiceDate)) !== fy) return sum;
+    if (!b.invoiceDate || getFinancialYearLabel(parseLocalDate(b.invoiceDate)) !== fy) return sum;
     return sum + (Number(b.totalAmount) || 0);
   }, 0);
 };
@@ -706,12 +749,17 @@ export const clientYearToDate = (bills, clientName, invoiceDate, excludeId = nul
 export const markPaidPatch = (bill, note = 'Marked paid') => {
   const payments = Array.isArray(bill.payments) ? bill.payments : [];
   const already = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-  const outstanding = Math.max(0, (Number(bill.totalAmount) || 0) - already);
+  // TDS the client deducts is not paid to us (see amountDue).
+  const outstanding = Math.max(0, amountDue(bill) - already);
   const now = new Date();
+  const amount = Math.round(outstanding * 100) / 100;
+  const add = outstanding > 0.005;
   return {
-    paidAmount: Number(bill.totalAmount) || 0,
-    payments: outstanding > 0.005
-      ? [...payments, { id: `pay_${now.getTime()}`, amount: Math.round(outstanding * 100) / 100, date: now.toISOString().split('T')[0], mode: 'other', note, recordedAt: now.toISOString(), auto: true }]
+    // What the payments add up to (it used to be the invoice total, even
+    // when more had been received or TDS was deducted).
+    paidAmount: Math.round((already + (add ? amount : 0)) * 100) / 100,
+    payments: add
+      ? [...payments, { id: `pay_${now.getTime()}`, amount, date: localToday(), mode: 'other', note, recordedAt: now.toISOString(), auto: true }]
       : payments,
   };
 };
@@ -727,9 +775,7 @@ export const isAutoPaidPayment = (p) => !!p && (p.auto === true
 export const markUnpaidPatch = (bill) => {
   const payments = (Array.isArray(bill.payments) ? bill.payments : []).filter((p) => !isAutoPaidPayment(p));
   const paidAmount = Math.round(payments.reduce((s, p) => s + (Number(p.amount) || 0), 0) * 100) / 100;
-  const total = Number(bill.totalAmount) || 0;
-  const status = paidAmount <= 0.005 ? 'unpaid' : (paidAmount >= total - 0.005 ? 'paid' : 'partial');
-  return { payments, paidAmount, status };
+  return { payments, paidAmount, status: paymentStatusFor(bill, paidAmount) };
 };
 
 // The online documentation. Help buttons link straight to the section for
@@ -985,7 +1031,7 @@ export const isUnionTerritoryWithoutLegislature = (stateCode) => {
 // whose getDate() returns NaN, producing "NaN-NaN-NaN" in GSTR-1 export rows.
 export const formatDateGST = (dateStr) => {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   if (isNaN(d.getTime())) return '';
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1014,7 +1060,13 @@ export const generateEWayBillJSON = (profile, client, details, items, totals, in
   const taxInclusive = !!opts.taxInclusive;
   const fromStateCode = getStateCode(profile.state || profile.gstin);
   const toStateCode = getStateCode(client.state || client.gstin);
-  const isInterstate = fromStateCode && toStateCode && fromStateCode !== toStateCode;
+  // The invoice's own split (computeInvoiceTotals, which follows place of
+  // supply, SEZ and exports) decides the per-item rates. Comparing the client's
+  // state here could disagree with it - IGST rates on items whose header
+  // carried CGST + SGST - and the portal rejects such a bill.
+  const isInterstate = typeof totals?.isInterstate === 'boolean'
+    ? totals.isInterstate
+    : !!(fromStateCode && toStateCode && fromStateCode !== toStateCode);
 
   // Pincodes are mandatory (the portal rejects 0). Try profile.pin / client.pin first,
   // then fall back to extracting digits from address. If still missing, throw — the user
@@ -1034,7 +1086,7 @@ export const generateEWayBillJSON = (profile, client, details, items, totals, in
     // v1.10.1 — back-calculate taxable when the invoice is MRP-inclusive.
     // v1.10.22 — honour discountType (percent | fixed).
     // v1.10.31 — GST-C5: cess rate now populated per item (was 0).
-    const gross = (Number(item.quantity) || 0) * (Number(item.rate) || 0) - resolveLineDiscount(item);
+    const gross = (Number(item.quantity) || 0) * (Number(item.rate) || 0) - resolveLineDiscount(item, taxInclusive);
     const taxRate = Number(item.taxPercent) || 0;
     const cessRate = Number(item.cessPercent) || 0;
     const taxable = taxInclusive && taxRate > 0
@@ -1118,10 +1170,14 @@ export const getUpcomingFilings = (today = new Date()) => {
   const t = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const push = (label, dueDate) => {
     const diff = Math.round((dueDate - t) / 86400000);
-    if (diff >= 0 && diff <= 60) out.push({ label, dueDate: dueDate.toISOString().split('T')[0], daysAway: diff });
+    // Local date: toISOString() is UTC, which in India is the previous day
+    // for a local midnight, so every due date was shown a day early.
+    if (diff >= 0 && diff <= 60) out.push({ label, dueDate: toLocalIsoDate(dueDate), daysAway: diff });
   };
-  // Iterate next 3 months so we catch upcoming month-end deadlines.
-  for (let i = 0; i < 3; i++) {
+  // From LAST month: its returns fall due this month (GSTR-3B for September
+  // is due 20 October) and are the most urgent ones. Starting at this month
+  // left them out of the list entirely.
+  for (let i = -1; i < 3; i++) {
     const nextMonth = new Date(t.getFullYear(), t.getMonth() + i, 1);
     const m = nextMonth.getMonth();
     const y = nextMonth.getFullYear();
@@ -1130,26 +1186,33 @@ export const getUpcomingFilings = (today = new Date()) => {
     // Quarterly TDS / TCS — applies to the quarter the month falls into.
     const quarterEnd = m % 3 === 2; // Mar / Jun / Sep / Dec
     if (quarterEnd) {
-      push(`Form 26Q (TDS Q ending ${nextMonth.toLocaleString('en-IN', { month: 'short' })})`, new Date(y, m + 2, 0)); // last day of next month after quarter
-      push(`Form 27EQ (TCS Q ending ${nextMonth.toLocaleString('en-IN', { month: 'short' })})`, new Date(y, m + 1, 15));
+      // The January-March quarter is due later: 26Q on 31 May, 27EQ on 15 May.
+      const isQ4 = m === 2;
+      push(`Form 26Q (TDS Q ending ${nextMonth.toLocaleString('en-IN', { month: 'short' })})`, isQ4 ? new Date(y, 4, 31) : new Date(y, m + 2, 0)); // last day of next month after quarter
+      push(`Form 27EQ (TCS Q ending ${nextMonth.toLocaleString('en-IN', { month: 'short' })})`, isQ4 ? new Date(y, 4, 15) : new Date(y, m + 1, 15));
     }
   }
 
   // Advance-tax installments — same 60-day lookahead. Users on the presumptive
   // scheme (single 15-Mar payment) still see all four so they can plan cashflow,
   // but the interest calc only fires against the 15-Mar row.
+  // Each date is tried this year and next; push() keeps only the ones 0-60
+  // days away. (The 15 March instalment used to jump to next year from
+  // 1 March, so it never showed in the fortnight it is due.)
   const advDates = [
-    { label: 'Advance Tax Installment 1 (15% cumulative)', date: new Date(t.getFullYear(), 5, 15) },   // 15 Jun
-    { label: 'Advance Tax Installment 2 (45% cumulative)', date: new Date(t.getFullYear(), 8, 15) },   // 15 Sep
-    { label: 'Advance Tax Installment 3 (75% cumulative)', date: new Date(t.getFullYear(), 11, 15) },  // 15 Dec
-    { label: 'Advance Tax Installment 4 (100% — final)',    date: new Date(t.getFullYear() + (t.getMonth() >= 2 ? 1 : 0), 2, 15) }, // 15 Mar
+    { label: 'Advance Tax Installment 1 (15% cumulative)', month: 5 },   // 15 Jun
+    { label: 'Advance Tax Installment 2 (45% cumulative)', month: 8 },   // 15 Sep
+    { label: 'Advance Tax Installment 3 (75% cumulative)', month: 11 },  // 15 Dec
+    { label: 'Advance Tax Installment 4 (100% — final)',    month: 2 },   // 15 Mar
   ];
-  advDates.forEach(a => push(a.label, a.date));
-
-  // ITR filing due dates (annually)
-  const itrYear = t.getMonth() >= 3 ? t.getFullYear() : t.getFullYear() - 1;
-  push('ITR filing (non-audit) — due', new Date(itrYear + 1, 6, 31));  // 31 July
-  push('ITR filing (audit / §44AB) — due', new Date(itrYear + 1, 9, 31)); // 31 Oct
+  for (const y of [t.getFullYear(), t.getFullYear() + 1]) {
+    advDates.forEach(a => push(a.label, new Date(y, a.month, 15)));
+    // ITR for the year that ended on 31 March: 31 July / 31 October. It used
+    // to point at the NEXT year's deadline from April, so the one actually
+    // due that July never appeared.
+    push('ITR filing (non-audit) — due', new Date(y, 6, 31));
+    push('ITR filing (audit / §44AB) — due', new Date(y, 9, 31));
+  }
 
   return out.sort((a, b) => a.daysAway - b.daysAway);
 };
@@ -1528,7 +1591,7 @@ export const getFYOptions = (n = 5, today = new Date()) => {
 // Get filing period as MMYYYY from a date range
 export const getFilingPeriod = (dateStr) => {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   return `${mm}${d.getFullYear()}`;
 };
@@ -2269,7 +2332,29 @@ export const ownPrefixProblem = (prefix, { shared, seriesMap, businessKey, custo
 
 // v1.10.74 - today's LOCAL date as YYYY-MM-DD (toISOString is UTC, so before
 // 05:30 IST it gave yesterday). Call it when needed, not once at load.
-export const localToday = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+export const toLocalIsoDate = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+export const localToday = () => toLocalIsoDate(new Date());
+
+// A YYYY-MM-DD string as a LOCAL date. new Date('2026-04-01') is midnight UTC,
+// which west of Greenwich is still 31 March - the wrong month, quarter and
+// financial year. Anything else is passed to new Date() as before.
+export const parseLocalDate = (value) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || '').trim());
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(value);
+};
+
+// What the client still has to pay to settle a bill: the total less any TDS
+// the client deducts (they pay "Net Receivable" and deposit the TDS with the
+// government). Without this an invoice with TDS could never become Paid.
+export const amountDue = (bill) => {
+  const total = Number(bill?.totalAmount) || 0;
+  const tds = Number(bill?.data?.totals?.tdsAmount) || 0;
+  return Math.round((total - Math.min(Math.max(0, tds), total)) * 100) / 100;
+};
+// Status a bill's payments put it in (cancelled is never decided here).
+export const paymentStatusFor = (bill, paid) => {
+  const due = amountDue(bill);
+  if (due > 0 && paid >= due - 0.005) return 'paid';
+  return paid > 0.005 ? 'partial' : 'unpaid';
 };

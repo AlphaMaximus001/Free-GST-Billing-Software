@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { Home, FileText, Settings, Plus, Users, Package, BarChart3, Wallet, RefreshCw, Receipt, BookOpen, Moon, Sun, Download, X, ShoppingCart, ChevronDown, Building2, Pencil, HelpCircle, Search, Command, Bell, Calculator, HardDrive, Menu, Heart } from 'lucide-react';
-import { getAllProfiles, saveProfile, getEnabledModules, getAllBills, getAllProducts, getStockAlertSettings, getAllClients, runUpdateNow } from './store';
-import { isModuleEnabled, getUpcomingFilings, isCancelledBill, DOCS_URL } from './utils';
+import { getAllProfiles, saveProfile, getEnabledModules, getAllBills, getAllProducts, getStockAlertSettings, getAllClients, runUpdateNow, getLockStatus } from './store';
+import { isModuleEnabled, getUpcomingFilings, countsAsSales, localToday, toLocalIsoDate, DOCS_URL } from './utils';
 // v1.10.4 — Route-level lazy loading. Prior App.jsx synchronously
 // imported all 12 views (~15k LOC combined), so a first-paint on
 // Dashboard downloaded and parsed GSTReturns (1952), InvoiceGenerator
@@ -36,6 +36,8 @@ const ControlPanel = lazy(() => import('./components/ControlPanel'));
 const SupportView = lazy(() => import('./components/SupportView'));
 import StarBanner from './components/StarBanner';
 import AppFooter from './components/AppFooter';
+import LockButton from './components/LockButton';
+import { lockNow } from './utils/appLock';
 import { getPrintSettings } from './utils/printSettings';
 
 const openDocs = () => window.open(DOCS_URL, '_blank', 'noopener,noreferrer');
@@ -199,17 +201,20 @@ function App() {
           getStockAlertSettings().catch(() => ({ enabled: true, threshold: 5 })),
         ]);
         if (cancelled) return;
-        const today = new Date().toISOString().split('T')[0];
+        // Local dates: toISOString() is UTC (yesterday in India until 05:30),
+        // while the server stamps lastRecurringAutoFire with its local date.
+        const today = localToday();
         const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 3);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
-        // v1.10.67 (#66 item 12) — never chase payment for a cancelled invoice.
+        const tomorrowStr = toLocalIsoDate(tomorrow);
+        // v1.10.67 (#66 item 12) — never chase payment for a cancelled invoice;
+        // nor for a quotation, proforma, challan or credit note (countsAsSales).
         const overdue = bills.filter(b => {
           const d = b.data?.details?.dueDate;
-          return d && d < today && b.status !== 'paid' && !isCancelledBill(b);
+          return d && d < today && b.status !== 'paid' && countsAsSales(b);
         });
         const dueSoon = bills.filter(b => {
           const d = b.data?.details?.dueDate;
-          return d && d >= today && d <= tomorrowStr && b.status !== 'paid' && !isCancelledBill(b);
+          return d && d >= today && d <= tomorrowStr && b.status !== 'paid' && countsAsSales(b);
         });
         // Honour the user's stock-alert preferences. When disabled, the filter
         // returns nothing — bell badge drops to 0 for the stock category.
@@ -639,6 +644,10 @@ function App() {
       } else if (e.key === '/') {
         e.preventDefault();
         setShowShortcutsHelp(s => !s);
+      } else if ((e.key === 'l' || e.key === 'L') && e.shiftKey) {
+        // v1.10.80 (#98) - lock now; does nothing when no PIN is set.
+        e.preventDefault();
+        getLockStatus().then((st) => { if (st?.enabled) lockNow(); }).catch(() => {});
       } else if ((e.key === 'n' || e.key === 'N') && !editable) {
         e.preventDefault();
         handleNewInvoice();
@@ -921,6 +930,8 @@ function App() {
                 }}>{notifTotal > 99 ? '99+' : notifTotal}</span>
               )}
             </button>
+            {/* v1.10.80 (#98) - only when a PIN is set. */}
+            <LockButton className="nav-btn" label="Lock app" />
             <button
               className="nav-btn"
               onClick={() => setDarkMode(!darkMode)}
@@ -1187,6 +1198,7 @@ function App() {
                 <tr><td><kbd>Ctrl</kbd>&nbsp;+&nbsp;<kbd>N</kbd></td><td>New invoice</td></tr>
                 <tr><td><kbd>Ctrl</kbd>&nbsp;+&nbsp;<kbd>S</kbd></td><td>Save current invoice (when on the invoice form)</td></tr>
                 <tr><td><kbd>Ctrl</kbd>&nbsp;+&nbsp;<kbd>P</kbd></td><td>Download PDF (when on the invoice form)</td></tr>
+                <tr><td><kbd>Ctrl</kbd>&nbsp;+&nbsp;<kbd>Shift</kbd>&nbsp;+&nbsp;<kbd>L</kbd></td><td>Lock the app (when a PIN is set)</td></tr>
                 <tr><td><kbd>Ctrl</kbd>&nbsp;+&nbsp;<kbd>/</kbd></td><td>Toggle this help</td></tr>
                 <tr><td><kbd>Esc</kbd></td><td>Close any open modal</td></tr>
               </tbody>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package, Boxes } from 'lucide-react';
 import { getAllBills, getAllExpenses, getProfile } from '../store';
-import { formatCurrency, getFYOptions, belongsToProfile, isCancelledBill, salesSign, countsAsSales, calculateLineItemTax, roundQty } from '../utils';
+import { formatCurrency, getFYOptions, belongsToProfile, isCancelledBill, salesSign, countsAsSales, calculateLineItemTax, roundQty, parseLocalDate, amountDue } from '../utils';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
 import PartyOutstandingReport from './PartyOutstandingReport';
@@ -68,7 +68,7 @@ export default function ReportsView() {
       const fy = fyOptions.find(f => f.value === fyFilter);
       return fy ? date >= fy.from && date <= fy.to : true;
     } else {
-      const d = new Date(date);
+      const d = parseLocalDate(date); // local date: UTC midnight is the previous day west of Greenwich
       return d.getFullYear() === parseInt(yearFilter) && d.getMonth() === parseInt(monthFilter);
     }
   };
@@ -104,8 +104,11 @@ export default function ReportsView() {
   const plBills = allFilteredBills.filter(b => getBillCurrency(b) === currencyFilter);
 
   // P&L
+  // TCS on an invoice is collected for the government, like GST: it is in the
+  // invoice total but is not income, so it is counted with the tax.
+  const tcsOf = (b) => Number(b.data?.totals?.tcsAmount) || 0;
   const totalRevenue = plBills.reduce((s, b) => s + salesSign(b) * (b.totalAmount || 0), 0);
-  const totalTaxCollected = plBills.reduce((s, b) => s + salesSign(b) * (b.totalTaxAmount || 0), 0);
+  const totalTaxCollected = plBills.reduce((s, b) => s + salesSign(b) * ((b.totalTaxAmount || 0) + tcsOf(b)), 0);
   const revenueExTax = totalRevenue - totalTaxCollected;
   const totalExpenseAmount = filteredExpenses.reduce((s, e) => s + (e.amount || 0), 0);
   const totalExpenseGST = filteredExpenses.reduce((s, e) => s + (e.gstAmount || 0), 0);
@@ -119,7 +122,7 @@ export default function ReportsView() {
     const key = b.invoiceDate.substring(0, 7);
     if (!monthlyPL[key]) monthlyPL[key] = { revenue: 0, tax: 0, expense: 0, expGst: 0 };
     monthlyPL[key].revenue += salesSign(b) * (b.totalAmount || 0);
-    monthlyPL[key].tax += salesSign(b) * (b.totalTaxAmount || 0);
+    monthlyPL[key].tax += salesSign(b) * ((b.totalTaxAmount || 0) + tcsOf(b));
   });
   filteredExpenses.forEach(e => {
     if (!e.date) return;
@@ -139,11 +142,12 @@ export default function ReportsView() {
     // Guard against missing or invalid dates — `new Date(undefined)` returns Invalid Date
     // which propagates as NaN through the aging math and breaks the chart.
     const dueDate = b.data?.details?.dueDate || b.invoiceDate;
-    const due = dueDate ? new Date(dueDate) : null;
+    const due = dueDate ? parseLocalDate(dueDate) : null;
     const daysOverdue = (due && !isNaN(due.getTime()))
       ? Math.max(0, Math.floor((today - due) / 86400000))
       : 0;
-    const outstanding = (b.totalAmount || 0) - (b.paidAmount || 0);
+    // Less TDS the client deducts: they pay Net Receivable.
+    const outstanding = amountDue(b) - (b.paidAmount || 0);
     let bucket = 'current';
     if (daysOverdue > 90) bucket = '90plus';
     else if (daysOverdue > 60) bucket = '61to90';
@@ -525,7 +529,7 @@ export default function ReportsView() {
           byClient[name].revenue += sign * (b.totalAmount || 0);
           if (sign > 0) {
             byClient[name].paid += (b.paidAmount || 0);
-            byClient[name].outstanding += b.status === 'paid' ? 0 : Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0));
+            byClient[name].outstanding += b.status === 'paid' ? 0 : Math.max(0, amountDue(b) - (b.paidAmount || 0));
             byClient[name].count += 1;
           }
           if (!byClient[name].lastInvoiceDate || b.invoiceDate > byClient[name].lastInvoiceDate) {
@@ -565,7 +569,7 @@ export default function ReportsView() {
                       <tr key={i}>
                         <td className="font-medium">{c.name}</td>
                         <td style={{ textAlign: 'right', color: '#dc2626', fontWeight: 700 }}>{formatCurrency(c.outstanding, currencyFilter)}</td>
-                        <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{Math.round((c.outstanding / c.revenue) * 100)}%</td>
+                        <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{c.revenue > 0 ? `${Math.round((c.outstanding / c.revenue) * 100)}%` : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -628,7 +632,9 @@ export default function ReportsView() {
             const qty = salesSign(b) * (Number(item.quantity) || 0);
             // v1.10.74 - revenue is the line's taxable value (after discount,
             // tax backed out of tax-inclusive prices) so it matches the invoices.
-            const { afterDiscount } = calculateLineItemTax(item, !!b.data?.taxInclusive);
+            // totals.taxInclusive is set only when GST was charged: a bill of
+            // supply's prices have no tax in them to back out.
+            const { afterDiscount } = calculateLineItemTax(item, !!(b.data?.totals?.taxInclusive ?? b.data?.taxInclusive));
             byProduct[name].qty += qty;
             byProduct[name].revenue += salesSign(b) * afterDiscount;
             byProduct[name].txns += 1;

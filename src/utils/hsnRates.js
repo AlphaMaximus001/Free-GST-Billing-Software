@@ -122,13 +122,18 @@ export const SAC_RATES = {
   '9989': { rate: 18,   label: 'Other manufacturing services (job work, misc)' },
   '9991': { rate: 18,   label: 'Public administration services' },
   '9992': { rate: 18,   label: 'Education services (private, non-recognized)' },
-  '9993': { rate: 18,   label: 'Human health services (private)' },
+  // Health care by clinical establishments and doctors is exempt
+  // (Notification 12/2017-CT(Rate), entry 74).
+  '9993': { rate: 0,    label: 'Human health services (exempt)' },
   '9994': { rate: 18,   label: 'Sewage, waste management' },
   '9995': { rate: 18,   label: 'Membership, professional bodies' },
   '9996': { rate: 18,   label: 'Recreational, cultural, sporting (event mgmt, design)' },
   '9997': { rate: 18,   label: 'Other services (personal care, laundry, misc)' },
   '9998': { rate: 18,   label: 'Domestic services' },
-  '9985': { rate: 18,   label: 'Software development / IT services' },
+  // Software development is SAC 998314 (under 9983). It was listed as a
+  // second '9985' key, which silently replaced the support-services entry
+  // above and labelled every 9985xx code as software.
+  '998314': { rate: 18, label: 'Software development / IT services' },
 };
 
 /*

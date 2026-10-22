@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.80] - 2026-10-22
+
+**Bulk CSV import / export, a Lock button, View + a tidier Actions menu,
+per-firm numbering made clear, backups on another drive (issues #98-#101),
+and a full audit of the tax maths: 68 fixes.**
+
+### How to update
+
+**Current version:** 1.10.79  →  **New version:** 1.10.80
+
+Same as for 1.10.79 below: **Update to v1.10.80** in the sidebar (or
+Settings → App Updates → Update Now), or extract the new ZIP over your
+folder.
+
+### Added
+- **CSV import / export of sales invoices and purchase bills (#101).** Dashboard
+  and Purchases → *CSV import / export*: download a template, export what you
+  have, or import a file (one row per item; rows with the same invoice number
+  make one bill). Sales are calculated exactly as on the invoice screen; an
+  invoice number already used, or a supplier bill already entered, is skipped,
+  never overwritten. Problems are listed row by row before anything is saved.
+- **Lock button (#98)** on the Dashboard and in the sidebar, and
+  **Ctrl+Shift+L**, whenever a PIN is set.
+- **View (#100):** an eye button shows an invoice as it prints, without opening
+  the editor. The less-used row actions are now in a **⋯ menu**.
+- **Backup folder on another drive (#99):** Settings → Backup Management →
+  *Also keep a copy of every daily backup in this folder* (for example D:). The
+  copies are listed and restorable in the app, also after a reinstall.
+
+### Changed
+- **Invoice numbering with several firms (#99):** Settings names the firms that
+  share the numbering, and saving a change to it asks first, because it changes
+  every one of them. Choose *Own numbering for this business* to keep a firm
+  separate.
+
+### Fixed
+The audit's 68 fixes are listed in
+[docs/AUDIT_2026-10-22.md](docs/AUDIT_2026-10-22.md). The ones you may notice:
+- TDS is worked out on the value without GST, and an invoice with TDS becomes
+  Paid when the client pays Net Receivable.
+- Changing a saved invoice's number moves it instead of making a second copy;
+  a number you type in yourself is kept.
+- Invoices for Chandigarh, Ladakh and the other UTs without a legislature
+  print UTGST; the GSTR-1 JSON includes it.
+- Recurring bills of supply no longer charge GST; a schedule on the 31st no
+  longer skips February.
+- New-regime income tax gives the marginal relief just above ₹12 lakh.
+- Dates are right between midnight and 05:30 (they were a day behind).
+- Restoring a backup keeps a copy of your data from before it.
+
+---
+
 ## [1.10.79] - 2026-10-19
 
 **Separate invoice numbering for each business, GSTR-1 B2C by state, a

@@ -19,7 +19,7 @@ import { confirmAction } from './ConfirmModal';
 const cleanStart = (v) => (Number.isInteger(Number(v)) && Number(v) >= 1 ? Number(v) : 1);
 
 const InvoiceNumberSettings = forwardRef(function InvoiceNumberSettings(
-  { businessKey, businessName, showScope, onDirtyChange, onSavingChange }, ref,
+  { businessKey, businessName, showScope, businesses = [], onDirtyChange, onSavingChange }, ref,
 ) {
   const [shared, setShared] = useState(null); // saved shared settings
   const [seriesMap, setSeriesMap] = useState({}); // saved own series
@@ -32,6 +32,10 @@ const InvoiceNumberSettings = forwardRef(function InvoiceNumberSettings(
   const savedSettings = savedScope === 'own' ? { ...DEFAULT_NUMBER_SETTINGS, ...seriesMap[businessKey] } : shared;
   const dirty = !!shared && (scope !== savedScope || JSON.stringify(draft) !== JSON.stringify(savedSettings));
   const override = (getPrintSettings().customPrefixes?.['tax-invoice'] || '').trim();
+  // v1.10.80 (#99) - the businesses on the shared numbering. Changing it
+  // changes all of their numbers, which was not said anywhere: editing
+  // "Firm 1" visibly changed "Firm 2".
+  const sharingNames = [...new Set(businesses.filter((b) => b.key && !seriesMap[b.key]).map((b) => b.name))];
 
   const load = async () => {
     const [s, map] = await Promise.all([getInvoiceNumberSettings(), getNumberSeriesMap().catch(() => ({}))]);
@@ -110,6 +114,16 @@ const InvoiceNumberSettings = forwardRef(function InvoiceNumberSettings(
       }
     }
     if (lengthProblem) { toast(lengthProblem, 'warning', 9000); return false; }
+    // Shared numbering used by more than one business: say who else it changes.
+    if (scope === 'shared' && savedScope === 'shared' && sharingNames.length > 1
+      && JSON.stringify(settings) !== JSON.stringify(shared)) {
+      const ok = await confirmAction({
+        title: `Change numbering for all ${sharingNames.length} businesses?`,
+        message: `${sharingNames.join(', ')} all use the shared numbering, so this changes their invoice numbers too.\n\nTo change only ${businessName || 'this business'}, choose Cancel, then "Own numbering for this business".`,
+        confirmLabel: 'Change for all', cancelLabel: 'Cancel',
+      });
+      if (!ok) return false;
+    }
     if (savedScope === 'own' && scope === 'shared') {
       const ok = await confirmAction({
         title: 'Use the shared numbering?',
@@ -182,7 +196,9 @@ const InvoiceNumberSettings = forwardRef(function InvoiceNumberSettings(
           <p className="field-hint">
             {scope === 'own'
               ? 'This business counts on its own, with its own prefix, so its invoice numbers never mix with another business\'s.'
-              : 'Shared by every business that has no numbering of its own.'}
+              : (sharingNames.length > 1
+                ? `Shared by ${sharingNames.join(', ')}: a change here changes all of their numbers. To keep ${businessName || 'this business'} separate, choose "Own numbering for this business".`
+                : 'Shared by every business that has no numbering of its own.')}
           </p>
         </div>
       )}
