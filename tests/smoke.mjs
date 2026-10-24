@@ -1791,6 +1791,18 @@ try {
     for (const id of made79) await page.evaluate(async (id) => fetch('/api/bills/' + encodeURIComponent(id), { method: 'DELETE' }), id);
   }
 
+  // ---- v1.10.80: Support page payment note names the business ------------
+  {
+    const prof80 = await page.evaluate(async () => (await fetch('/api/profile')).json());
+    await page.evaluate(() => { sessionStorage.removeItem('gst_editingBill'); sessionStorage.removeItem('gst_invoiceDraft'); sessionStorage.setItem('gst_currentView', 'support'); });
+    await page.reload({ waitUntil: 'networkidle' });
+    await sleep(2500);
+    await dismissFirstRun(page);
+    const noteText = await page.getByText(/^Payment note:/).first().innerText().catch(() => '');
+    const expected = ('Free GST Billing support - ' + String(prof80.businessName || '').replace(/[^A-Za-z0-9 .-]+/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 50).trim();
+    check('v80 the UPI payment note names the business', !!prof80.businessName && noteText.includes(expected), noteText);
+  }
+
   // Put the real business details back.
   await page.evaluate(async (prof) => {
     await fetch('/api/profile', {

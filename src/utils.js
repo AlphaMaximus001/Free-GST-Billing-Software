@@ -130,7 +130,11 @@ export const resolveLineDiscount = (item = {}, taxIncluded = false) => {
     return Math.min(net, qty * raw);
   }
   if (base === 'with-tax') {
-    if (taxIncluded) return Math.min(net, raw);
+    // v1.10.80: on a price that already includes tax (or carries no tax) the
+    // with-tax amount comes off as entered. Only lines set since then carry
+    // withTaxRule 2: older saved lines keep the old maths (tax backed out),
+    // so their GSTR-1 figures and reprints still match the saved totals.
+    if (taxIncluded && item.withTaxRule === 2) return Math.min(net, raw);
     const taxRate = finiteNonNeg(item.taxPercent);
     const divisor = 1 + taxRate / 100;
     return Math.min(net, divisor > 0 ? raw / divisor : raw);

@@ -5,7 +5,7 @@ import { SITE } from '../site.mjs';
 
 const UPI_ID = 'princeramgarhiaa-1@okaxis';
 const upi = (amount) => `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=DiceCodes&cu=INR`
-  + `&tn=${encodeURIComponent('Support Free GST Billing')}${amount ? `&am=${amount}.00` : ''}`;
+  + `&tn=${encodeURIComponent('Free GST Billing support')}${amount ? `&am=${amount}.00` : ''}`;
 // Drawn at build time: the page needs no script, and the QR works offline once saved.
 const qrSvg = await QRCode.toString(upi(0), { type: 'svg', margin: 1, errorCorrectionLevel: 'M' });
 
@@ -45,6 +45,20 @@ export default [
       <a href="${upi(101)}">₹101</a> <a href="${upi(251)}">₹251</a> <a href="${upi(501)}">₹501</a> <a href="${upi(0)}">Any amount</a></p>
   </div>
 </div>
+<p>The payment note says "Free GST Billing support". Paying from the app's Support &amp; About page adds your business name to it, so DiceCodes can thank you.</p>
+</section>
+
+<section id="supporters" class="supporters" hidden>
+<h2>Supporters</h2>
+<!-- Filled in by docs.js from supporters.json in the GitHub repo, which the
+     maintainer updates; stays hidden when it cannot be read. -->
+<p class="supporters-total"></p>
+<p class="supporters-meta"></p>
+<div class="supporters-goal" hidden>
+  <p class="supporters-goal-text"></p>
+  <div class="supporters-bar" role="progressbar" aria-label="Progress towards the goal" aria-valuemin="0"><span></span></div>
+</div>
+<p class="supporters-thanks" hidden></p>
 </section>
 
 <section id="free-ways">

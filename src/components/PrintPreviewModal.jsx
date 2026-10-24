@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Printer, Download, Loader } from 'lucide-react';
+import { X, Printer, Download, Loader, ZoomIn, ZoomOut } from 'lucide-react';
 import InvoicePreview from './InvoicePreview';
 import { getPaperSize } from '../utils';
 
@@ -32,6 +32,9 @@ export default function PrintPreviewModal({
   customTerms, customNotes, extraSections, invoiceOptions, cancelled = false,
 }) {
   const [printing, setPrinting] = useState(false);
+  // #100: zoom slider, kept between opens. null = the default size for the
+  // paper (see fitZoom below).
+  const [zoom, setZoom] = useState(null);
   const modalRef = useRef(null);
 
   // Esc-to-close keyboard shortcut, matching every other modal in the app.
@@ -86,7 +89,9 @@ export default function PrintPreviewModal({
   // is very narrow (48-104mm) — a 1:1 view would show a strip that's
   // dwarfed by the modal chrome. For A4 we show at ~70% so the whole
   // page fits without scrolling on typical laptop viewports.
-  const previewScale = isThermal ? 1.6 : 0.72;
+  const fitZoom = isThermal ? 160 : 70; // on the slider's 5% steps
+  const zoomPct = zoom ?? fitZoom;
+  const stepZoom = (d) => setZoom(Math.max(30, Math.min(250, zoomPct + d)));
 
   return (
     <div className="modal-overlay print-preview-overlay"
@@ -129,23 +134,24 @@ export default function PrintPreviewModal({
             as the main on-screen preview. React re-uses the render, so
             what the user sees here is bit-for-bit what the print pipeline
             will rasterize. */}
+        {/* CSS zoom (not transform) so the scroll area follows the zoomed
+            size: zoomed in, the page scrolls both ways instead of being cut
+            off. margin auto, not flex centring, keeps the left edge
+            reachable when it is wider than the window. */}
         <div style={{
           flex: 1, minHeight: 0,
           overflow: 'auto',
           padding: '1.25rem 0.75rem',
           background: 'var(--bg-secondary)',
-          display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
         }}>
           <div style={{
             background: '#fff',
             padding: '0.5rem',
             boxShadow: '0 8px 30px rgba(0, 0, 0, 0.18)',
             borderRadius: 4,
-            transform: `scale(${previewScale})`,
-            transformOrigin: 'top center',
-            /* Compensate for the visual shrink of the scaled child so
-               the scrollable area matches the visible receipt height. */
-            marginBottom: `${Math.round((1 - previewScale) * -400)}px`,
+            width: 'fit-content',
+            margin: '0 auto',
+            zoom: zoomPct / 100,
           }}>
             <InvoicePreview
               previewOnly
@@ -165,11 +171,22 @@ export default function PrintPreviewModal({
           display: 'flex', gap: '0.5rem', flexWrap: 'wrap',
           justifyContent: 'flex-end', alignItems: 'center',
         }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginRight: 'auto' }}>
-            {isThermal
-              ? 'Preview is scaled 160% — actual print matches your paper roll width'
-              : 'Preview is scaled — actual print will be full-size on the selected paper'}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginRight: 'auto', flexWrap: 'wrap' }}
+            title="Zoom only changes this preview; the print is always full size on the selected paper">
+            <button type="button" className="icon-btn" onClick={() => stepZoom(-10)} aria-label="Zoom out" title="Zoom out">
+              <ZoomOut size={16} />
+            </button>
+            <input type="range" min={30} max={250} step={5} value={zoomPct}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              aria-label="Preview zoom" aria-valuetext={`${zoomPct}%`} style={{ width: 120 }} />
+            <button type="button" className="icon-btn" onClick={() => stepZoom(10)} aria-label="Zoom in" title="Zoom in">
+              <ZoomIn size={16} />
+            </button>
+            <button type="button" onClick={() => setZoom(null)} title="Back to the default size"
+              style={{ background: 'none', border: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text)', minWidth: 44 }}>
+              {zoomPct}%
+            </button>
+          </div>
           {onDownloadPdf && (
             <button type="button" className="btn btn-secondary"
               onClick={handleDownload} disabled={printing}

@@ -5,8 +5,13 @@
 // and costs the giver nothing.
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { Heart, Star, Share2, Bug, Copy, Check, Mail, Globe, Code, Wrench, Database, LifeBuoy, Bot, Smartphone, Workflow } from 'lucide-react';
+import { Heart, Star, Share2, Bug, Copy, Check, Mail, Globe, Code, Wrench, Database, LifeBuoy, Bot, Smartphone, Workflow, Users } from 'lucide-react';
 import { toast } from './Toast';
+import { getProfile } from '../store';
+import { upiNote } from '../utils/supporters';
+import useSupporters from './useSupporters';
+
+const inr = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
 
 const SUPPORT_UPI_ID = 'princeramgarhiaa-1@okaxis';
 const UPI_NAME = 'DiceCodes';
@@ -25,21 +30,29 @@ const SERVICES = [
   { icon: Smartphone, title: 'Mobile apps', text: 'Android and iPhone apps for your business or customers.' },
 ];
 
-const upiLink = (amount) => `upi://pay?pa=${encodeURIComponent(SUPPORT_UPI_ID)}&pn=${encodeURIComponent(UPI_NAME)}&cu=INR`
-  + `&tn=${encodeURIComponent('Support Free GST Billing')}${amount ? `&am=${amount}.00` : ''}`;
+// v1.10.80 - the note carries the payer's business name (unless they untick
+// it), so the maintainer can see who paid and thank them.
+const upiLink = (amount, note) => `upi://pay?pa=${encodeURIComponent(SUPPORT_UPI_ID)}&pn=${encodeURIComponent(UPI_NAME)}&cu=INR`
+  + `&tn=${encodeURIComponent(note)}${amount ? `&am=${amount}.00` : ''}`;
 
 export default function SupportView() {
   const [amount, setAmount] = useState(0);
   const [qr, setQr] = useState('');
   const [copied, setCopied] = useState(false);
+  const [businessName, setBusinessName] = useState('');
+  const [withName, setWithName] = useState(true);
+  const tracker = useSupporters();
+  const note = upiNote(withName ? businessName : '');
+
+  useEffect(() => { getProfile().then((p) => setBusinessName(p?.businessName || '')).catch(() => {}); }, []);
 
   useEffect(() => {
     let live = true;
-    QRCode.toDataURL(upiLink(amount), { width: 220, margin: 1, errorCorrectionLevel: 'M' })
+    QRCode.toDataURL(upiLink(amount, note), { width: 220, margin: 1, errorCorrectionLevel: 'M' })
       .then((url) => { if (live) setQr(url); })
       .catch(() => { if (live) setQr(''); });
     return () => { live = false; };
-  }, [amount]);
+  }, [amount, note]);
 
   const copyUpi = async () => {
     try {
@@ -105,6 +118,15 @@ export default function SupportView() {
               </button>
             </div>
           </div>
+          <div style={{ marginTop: '0.9rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Payment note: <b style={{ color: 'var(--text-primary)' }}>{note}</b>
+            {businessName && (
+              <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginTop: '0.35rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={withName} onChange={(e) => setWithName(e.target.checked)} />
+                Include my business name, so DiceCodes can thank you
+              </label>
+            )}
+          </div>
         </div>
 
         <div className="glass-panel" style={card}>
@@ -121,6 +143,42 @@ export default function SupportView() {
           ))}
         </div>
       </div>
+
+      {tracker && (
+        <div className="glass-panel" style={{ ...card, marginBottom: '1.25rem' }} aria-label="Supporters">
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <Users size={26} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+              <h3 style={{ margin: '0 0 0.2rem', fontSize: '1rem' }}>
+                {tracker.totalReceived > 0
+                  ? <>{inr(tracker.totalReceived)} received so far{tracker.supporters ? ` from ${tracker.supporters} supporter${tracker.supporters === 1 ? '' : 's'}` : ''}</>
+                  : 'Be the first to support Free GST Billing'}
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Every rupee goes into fixes and new features.{tracker.updated ? ` Updated ${new Date(`${tracker.updated}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.` : ''}
+              </p>
+              {tracker.goal && (
+                <div style={{ marginTop: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8rem', flexWrap: 'wrap' }}>
+                    <span>Goal{tracker.goal.label ? `: ${tracker.goal.label}` : ''}</span>
+                    <span style={{ fontWeight: 600 }}>{inr(tracker.totalReceived)} of {inr(tracker.goal.amount)}</span>
+                  </div>
+                  <div role="progressbar" aria-valuemin={0} aria-valuemax={tracker.goal.amount} aria-valuenow={Math.min(tracker.totalReceived, tracker.goal.amount)}
+                    aria-label="Progress towards the goal"
+                    style={{ height: 8, borderRadius: 4, background: 'var(--bg-secondary)', marginTop: '0.35rem', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, (tracker.totalReceived / tracker.goal.amount) * 100)}%`, height: '100%', background: 'var(--primary)', borderRadius: 4 }} />
+                  </div>
+                </div>
+              )}
+              {tracker.thanks.length > 0 && (
+                <p style={{ margin: '0.85rem 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  <b>Thank you</b> {tracker.thanks.join(', ')}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="glass-panel" style={card}>
         <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Work with DiceCodes</h3>

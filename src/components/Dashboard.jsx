@@ -1660,7 +1660,6 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                           {/* v1.10.77 (#86) - cancelled and converted documents are read-only:
                               View and Duplicate only (Undo is in the Status column). */}
                           <ActionsMenu label={`More actions for ${bill.invoiceNumber}`} items={[
-                            { label: 'Open in editor', icon: Edit3, onClick: () => handleView(bill), hidden: !readOnly },
                             { label: 'Duplicate', icon: Copy, onClick: () => onDuplicate(bill) },
                             { label: 'Print', icon: Printer, onClick: () => onPrint(bill), hidden: readOnly },
                             { label: 'WhatsApp', icon: MessageCircle, tone: 'green', onClick: () => shareWhatsApp(bill), hidden: readOnly,

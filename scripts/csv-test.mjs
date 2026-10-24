@@ -86,6 +86,29 @@ console.log('\n[#101] Bulk CSV import / export of sales and purchase bills');
   eq(purchaseCsvToRecords(purchasesToCsv([p]), { profile }).purchases[0].totalAmount, 7080, 'purchase export -> import round trip');
 }
 
+console.log('\n[Review] Import never merges different invoices or double-books a bill');
+{
+  const head = 'Invoice Number,Invoice Date,Client Name,Client State,Item Name,Quantity,Rate,GST %\n';
+  const r = salesCsvToBills(head + '1,2025-04-02,Alpha Traders,Punjab,Pens,1,1000,18\n1,2026-04-03,Beta Stores,Gujarat,Ink,1,1000,18\n',
+    { profile: { country: 'India', state: 'Punjab' } });
+  eq(r.bills.length, 0, 'Two different invoices sharing a number are not merged into one');
+  eq(/different date or client/.test(r.errors.join(' ')), true, 'and the row is named in the error');
+  const ok = salesCsvToBills(head + '7,2026-04-03,Alpha Traders,Punjab,Pens,1,100,18\n7,,alpha traders,,Ink,2,50,18\n',
+    { profile: { country: 'India', state: 'Punjab' } });
+  eq(ok.bills.length === 1 && ok.bills[0].data.items.length === 2, true, 'Item rows of one invoice (blank or same-name repeats) still make one invoice');
+
+  // Export -> import keeps the bill discount and the round-off (977 came back as 1026.6).
+  const prof = { country: 'India', state: 'Punjab' };
+  const src = salesCsvToBills(head.replace('GST %\n', 'GST %,Bill Discount,Round Off\n') + '9,2026-10-01,Alpha Traders,Punjab,Pens,3,290.3,18,50,Yes\n', { profile: prof });
+  const back = salesCsvToBills(billsToSalesCsv(src.bills), { profile: prof });
+  eq(`${src.bills[0].totalAmount}`, `${Math.round(3 * 290.3 * 1.18 - 50)}`, 'Bill discount and round-off are applied on import');
+  eq(back.bills[0].totalAmount, src.bills[0].totalAmount, 'An exported invoice re-imports to the same total');
+
+  const existing = [{ supplierName: 'Ravi Paper Mart', supplierGstin: '03AAAAA1111A1Z1', invoiceNumber: 'RP-9' }];
+  const p = purchaseCsvToRecords('Invoice Number,Invoice Date,Supplier Name,Item Name,Quantity,Rate\nRP-9,2026-10-01,ravi paper mart,A4 Paper,10,250\n', { existing });
+  eq(`${p.purchases.length}/${p.skipped.length}`, "0/1", 'A bill saved with a GSTIN is found again from a CSV row with only the supplier name');
+}
+
 console.log('\n────────────────────────────────────────');
 console.log(`Passed: ${passed}   Failed: ${failed}`);
 if (failed) process.exit(1);

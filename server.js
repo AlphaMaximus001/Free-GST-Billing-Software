@@ -123,8 +123,10 @@ function safePathSegment(input, fallback = 'Untitled') {
 // Returns true if inside, false otherwise. Callers should reject on
 // false and log server-side.
 function isPathInside(resolved, root) {
-  const r = path.resolve(root);
-  const p = path.resolve(resolved);
+  // Windows paths are case-insensitive: C:\...\DATA is the data folder too.
+  const fold = (s) => (process.platform === 'win32' ? s.toLowerCase() : s);
+  const r = fold(path.resolve(root));
+  const p = fold(path.resolve(resolved));
   return p === r || p.startsWith(r + path.sep);
 }
 
@@ -1058,18 +1060,13 @@ app.get('/api/check-update', async (req, res) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 4000);
     const [pkgRes, relRes] = await Promise.all([
-      fetch('https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/package.json', { signal: ctrl.signal }),
+      fetch('https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/package.json', { signal: ctrl.signal }).catch(() => null),
       fetch('https://api.github.com/repos/IamRamgarhia/Free-GST-Billing-Software/releases/latest', {
         signal: ctrl.signal,
         headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'FreeGSTBill-update-check' },
       }).catch(() => null),
     ]);
     clearTimeout(t);
-
-    if (!pkgRes.ok) throw new Error('GitHub fetch failed');
-    const remote = await pkgRes.json();
-    const cmp = compareSemver(remote.version, pkg.version);
-    const updateAvailable = cmp > 0;
 
     let releaseNotes = null;
     let releaseUrl = null;
@@ -1083,9 +1080,20 @@ app.get('/api/check-update', async (req, res) => {
       releaseTag = rel.tag_name || null;
     }
 
+    // #105: the updater installs the latest RELEASE, so its tag is the version
+    // on offer. main's package.json can be ahead of it (merged, not released
+    // yet) and then offered an update that re-installed the same version.
+    // package.json is only the fallback when the Releases API can't be read.
+    let latest = /^v?\d+\.\d+\.\d+$/.test(releaseTag || '') ? releaseTag.replace(/^v/, '') : null;
+    if (!latest) {
+      if (!pkgRes?.ok) throw new Error('GitHub fetch failed');
+      latest = (await pkgRes.json()).version;
+    }
+    const updateAvailable = compareSemver(latest, pkg.version) > 0;
+
     res.json({
       current: pkg.version,
-      latest: remote.version,
+      latest,
       updateAvailable,
       releaseNotes,
       releaseUrl,

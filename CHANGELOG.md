@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Bulk CSV import / export, a Lock button, View + a tidier Actions menu,
 per-firm numbering made clear, backups on another drive (issues #98-#101),
+zoom in the print preview, the update check fixed (#105), security updates,
 and a full audit of the tax maths: 68 fixes.**
 
 ### How to update
@@ -35,6 +36,16 @@ folder.
 - **Backup folder on another drive (#99):** Settings → Backup Management →
   *Also keep a copy of every daily backup in this folder* (for example D:). The
   copies are listed and restorable in the app, also after a reinstall.
+- **Zoom in the print preview (#100):** a slider with − and + buttons; click the
+  percentage to go back to the default size. Printing is always full size.
+- **Support page:** scanning the UPI QR fills in the payment note "Free GST
+  Billing support - <your business name>" (untick to leave the name out), and
+  the page shows how much users have given so far, with the current goal.
+- **A support card on the Dashboard**, once a day after your first 10
+  invoices: *Not today* hides it until tomorrow, *Hide for 30 days* for a
+  month. It never blocks your work and is never printed on an invoice.
+- **CSV import / export:** *Bill Discount* and *Round Off* columns, so an
+  exported invoice imports back with the same total.
 
 ### Changed
 - **Invoice numbering with several firms (#99):** Settings names the firms that
@@ -56,6 +67,23 @@ The audit's 68 fixes are listed in
 - New-regime income tax gives the marginal relief just above ₹12 lakh.
 - Dates are right between midnight and 05:30 (they were a day behind).
 - Restoring a backup keeps a copy of your data from before it.
+- **Update check (#105):** the app offered "v1.10.80" before it was released,
+  and the update then installed the same version again. It now offers only a
+  version that has been released.
+- **CSV import:** two different invoices with the same number (numbering that
+  restarts each year) are refused instead of being merged into one; a supplier
+  bill already entered with a GSTIN is found again from a row without one.
+- After importing many invoices, the next new invoice finds a free number
+  instead of failing after 20 tries.
+- Invoices saved before this version keep their "with tax" discounts as they
+  were saved, so their GSTR-1 figures and reprints still match.
+- A cancelled or converted invoice no longer offers *Open in editor*.
+- An invoice whose credit paid another invoice can't be renumbered (it left two
+  copies, counting the sale twice).
+
+### Security
+- dompurify 3.4.17 and vite 7.3.7 (Dependabot alerts #72-#79), plus body-parser,
+  fast-uri, serialize-javascript and zod updates: `npm audit` reports 0.
 
 ---
 

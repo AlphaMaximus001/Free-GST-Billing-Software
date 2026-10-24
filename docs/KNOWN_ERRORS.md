@@ -720,6 +720,69 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-059 - A maths fix changed invoices that were already saved
+
+**Version:** broke in the v1.10.80 audit (before release) · fixed in v1.10.80
+**Reported by:** found by the v1.10.80 review
+
+**Symptom** - a "with tax" discount on a price that includes tax was now taken
+off as entered (correct), but GSTR-1 and reprints recalculate old invoices from
+their lines, so an invoice saved at ₹1,080 reported taxable + tax of ₹1,062.
+
+**Cause** - the rule changed inside a shared function with no way to tell an old
+line from a new one; the saved total stayed, the recalculated parts moved.
+
+**Rule** - a change to invoice maths applies to lines saved after it, never to
+ones already issued: mark new lines (here `withTaxRule: 2`) and keep the old
+maths for unmarked ones.
+
+**Guard** - `scripts/tax-test.mjs` "[Audit 2026-10]": an old with-tax line still
+totals ₹1,080.
+
+---
+
+## ERR-058 - CSV import merged two invoices that shared a number
+
+**Version:** broke in v1.10.80 (before release) · fixed in v1.10.80
+**Reported by:** found by the v1.10.80 review
+
+**Symptom** - a file with invoice "1" for Alpha Traders (2025) and invoice "1"
+for Beta Stores (2026) became one invoice for Alpha with both items, no error.
+
+**Cause** - rows were grouped by invoice number alone and only the first row
+gave the client and date.
+
+**Rule** - rows grouped into one bill must agree on everything that identifies
+the bill (date, client); a clash is an error, never a merge.
+
+**Guard** - `scripts/csv-test.mjs` "[Review]".
+
+---
+
+## ERR-057 - "Update to v1.10.80" offered before v1.10.80 was released
+
+**Version:** since the update check was added · fixed in v1.10.80
+**Reported by:** Vim1972, issue #105 ("NEW UPDATE NOT DOWNLOAD")
+
+**Symptom** - the app showed a new version; updating installed the same
+version again.
+
+**Cause** - the check read the version from `package.json` on GitHub `main`,
+but the updater installs the latest **release**. Merging the v1.10.80 work
+into main before releasing it made every copy offer a version that could not
+be downloaded.
+
+**Rule** - the version offered comes from the latest release's tag;
+`package.json` on main is only the fallback when the Releases API can't be read.
+Until the new check reaches everyone, keep `package.json` on main at the last
+released version and bump it in the release commit.
+
+**Guard** - none automated (needs GitHub). By hand: before pushing to main,
+`package.json` "version" must equal the latest release tag unless that push is
+the release.
+
+---
+
 ## ERR-056 - GSTR-1 Table 13 mixed number series and listed quotations
 
 **Version:** since GSTR-1 was added · fixed in v1.10.79

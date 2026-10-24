@@ -418,7 +418,7 @@ const LineItem = memo(function LineItem({
             {item.discountType !== 'percent' && (
               <select className="form-input"
                 value={item.discountBase || 'net'}
-                onChange={(e) => onFieldChange(item.id, 'discountBase', e.target.value)}
+                onChange={(e) => { onFieldChange(item.id, 'discountBase', e.target.value); onFieldChange(item.id, 'withTaxRule', 2); }}
                 style={{ width: 78, padding: '0.4rem 0.3rem', fontSize: '0.75rem' }}
                 title="What the ₹ discount applies to. Net = qty×rate (default). Unit = ₹X off each unit. WithTax = ₹X off tax-inclusive total.">
                 <option value="net">Net</option>
@@ -1722,6 +1722,20 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     const ownBill = !!editingBill && !editingBill._isDuplicate;
     const priorId = savedId.current;
     const renameFrom = priorId && priorId !== finalInvoiceNumber ? priorId : null;
+    // A rename saves under the new number, then removes the old copy. The
+    // server refuses to remove a bill whose credit paid another invoice, which
+    // left two live copies (the sale counted twice). Stop before saving.
+    if (renameFrom) {
+      let usedBy = null;
+      try {
+        usedBy = (await getAllBills()).find((b) => b.id !== renameFrom && (b.payments || b.data?.payments || [])
+          .some((p) => p?.mode === 'credit-applied' && (p.creditSourceBillIds || []).includes(renameFrom)));
+      } catch { /* the server's own check still stands */ }
+      if (usedBy) {
+        toast(`${renameFrom} can't be renumbered: its credit paid ${usedBy.invoiceNumber || usedBy.id}. Keep the number ${renameFrom}.`, 'error', 8000);
+        return null;
+      }
+    }
     const seedPayments = ownBill && editingBill.payments ? [...editingBill.payments] : [];
     // Also for a NEW bill once it is saved: its stored copy holds the client
     // credit applied on the first save (and any payment recorded since). A
@@ -1898,7 +1912,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         // so `peek` returns an id that already exists → 409. Prior code
         // forced the user to hand-fix the number. Now: for a NEW bill,
         // retry with a fresh reservation, incrementing the counter until
-        // we land on a truly unused number (capped at 20 tries so a
+        // we land on a truly unused number (capped at 1000 tries so a
         // pathological data state can't spin forever).
         if (isNewDoc && !shouldOverwrite) {
           const _psForPrefix = getPrintSettings();
@@ -1907,7 +1921,10 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           const prefix = overridePrefix || INVOICE_TYPES[invoiceType]?.prefix || 'INV';
           let nextNum = bill.id;
           let success = false;
-          for (let i = 0; i < 20; i++) {
+          // Each try moves the counter on for good, so this walks past a run of
+          // numbers taken by a CSV import or a restore once, then never again.
+          // ponytail: one local request pair per taken number; fine up to ~1000.
+          for (let i = 0; i < 1000; i++) {
             try {
               nextNum = await getNextInvoiceNumber(prefix, { explicitPrefix: !!overridePrefix, invoiceType, businessKey: businessKeyOf(profile), invoiceDate: details.invoiceDate });
               const retryBill = { ...bill, id: nextNum, invoiceNumber: nextNum };
@@ -1930,7 +1947,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
             }
           }
           if (!success) {
-            toast(`Could not find a free invoice number after 20 attempts. Please change the number manually.`, 'error');
+            toast(`Could not find a free invoice number after 1000 attempts. Please change the number manually.`, 'error');
             return null;
           }
         } else {

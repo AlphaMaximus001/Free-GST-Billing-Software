@@ -112,6 +112,8 @@ export const SALES_COLUMNS = [
   'Invoice Number', 'Invoice Date', 'Invoice Type', 'Due Date',
   'Client Name', 'Client GSTIN', 'Client State', 'Client Address', 'Client Country', 'Place of Supply',
   'Item Name', 'HSN/SAC', 'Quantity', 'Unit', 'Rate', 'Discount', 'GST %', 'Cess %', 'Prices Include Tax', 'Notes',
+  // Per invoice (read from its first row), so an export re-imports to the same total.
+  'Bill Discount', 'Round Off',
 ];
 const SALES_FIELDS = {
   invoiceNumber: ['Invoice Number', 'Invoice No', 'Inv No', 'Bill No', 'Number'],
@@ -134,6 +136,8 @@ const SALES_FIELDS = {
   cessPercent: ['Cess %', 'Cess', 'Cess Rate'],
   taxInclusive: ['Prices Include Tax', 'Tax Inclusive', 'Inclusive'],
   notes: ['Notes', 'Note', 'Remarks'],
+  billDiscount: ['Bill Discount', 'Invoice Discount'],
+  roundOff: ['Round Off', 'Round-off', 'Rounding'],
 };
 
 /**
@@ -166,6 +170,12 @@ export function salesCsvToBills(text, { profile = {}, products = [], adjustStock
     const invoiceType = typeOf(head.invoiceType);
     if (!invoiceType) { fail(`unknown invoice type "${head.invoiceType}".`); continue; }
     if (!head.clientName) { fail('no client name.'); continue; }
+    // Rows are grouped by number, so two different invoices sharing a number
+    // (numbering restarted each year, e.g. a Tally export) would merge into
+    // one bill under the first row's client and date. Refuse instead.
+    const sameName = (s) => String(s || '').trim().toLowerCase() === head.clientName.trim().toLowerCase();
+    const clash = rows.find((r) => (r.invoiceDate && toIsoDate(r.invoiceDate) !== invoiceDate) || (r.clientName && !sameName(r.clientName)));
+    if (clash) { fail(`row ${clash._line} has a different date or client than row ${head._line}. Two invoices can't share a number: give one of them its own number.`); continue; }
     const dueDate = head.dueDate ? toIsoDate(head.dueDate) : '';
     if (head.dueDate && !dueDate) { fail(`due date "${head.dueDate}" is not a date.`); continue; }
 
@@ -209,7 +219,12 @@ export function salesCsvToBills(text, { profile = {}, products = [], adjustStock
       newClients.set(client.name.toLowerCase(), { name: client.name, gstin: client.gstin, state: client.state, address: client.address, country: client.country });
     }
     const details = { invoiceNumber, invoiceDate, dueDate, placeOfSupply: stateName(head.placeOfSupply) };
-    const invoiceOptions = { showGST, showPlaceOfSupply: showGST, currency: 'INR' };
+    const billDiscount = toNum(head.billDiscount, 0);
+    if (!Number.isFinite(billDiscount) || billDiscount < 0) { fail('Bill Discount must be a number, 0 or more.'); continue; }
+    const invoiceOptions = {
+      showGST, showPlaceOfSupply: showGST, currency: 'INR', showRoundOff: yes(head.roundOff),
+      ...(billDiscount > 0 ? { invoiceDiscountType: 'fixed', invoiceDiscountValue: billDiscount } : {}),
+    };
     const totals = computeInvoiceTotals({ items, profile, client, details, showGST, taxInclusive, invoiceOptions });
     bills.push({
       id: invoiceNumber,
@@ -252,6 +267,7 @@ export function billsToSalesCsv(bills) {
         // discount re-imports as the same rupees off the line.
         r2(resolveLineDiscount(it, !showGST || !!d.taxInclusive)),
         Number(it.taxPercent) || 0, Number(it.cessPercent) || 0, d.taxInclusive ? 'Yes' : 'No', d.customNotes || '',
+        r2(d.totals?.invoiceDiscountAmount) || '', Number(d.totals?.roundOff) ? 'Yes' : 'No',
       ]));
     }
   }
@@ -293,7 +309,14 @@ export function purchaseCsvToRecords(text, { profile = {}, existing = [], inferI
   const errors = [];
   if (!records.length) return { purchases: [], errors: ['The file has no rows under the header.'], skipped: [] };
   const keyOf = (gstin, name, num) => `${(gstin || name || '').trim().toUpperCase()}::${String(num || '').trim().toUpperCase()}`;
-  const booked = new Set((existing || []).map((p) => keyOf(p.supplierGstin, p.supplierName, p.invoiceNumber)));
+  // A booked bill is found by GSTIN or by supplier name, so a CSV row that
+  // leaves out the GSTIN still matches a bill saved with one.
+  const booked = new Set((existing || []).flatMap((p) => [
+    p.supplierGstin && keyOf(p.supplierGstin, '', p.invoiceNumber),
+    p.supplierName && keyOf('', p.supplierName, p.invoiceNumber),
+  ].filter(Boolean)));
+  const isBooked = (r) => (r.supplierGstin && booked.has(keyOf(r.supplierGstin, '', r.invoiceNumber)))
+    || (r.supplierName && booked.has(keyOf('', r.supplierName, r.invoiceNumber)));
   const groups = new Map();
   for (const r of records) {
     if (!r.invoiceNumber) { errors.push(`Row ${r._line}: no invoice number.`); continue; }
@@ -304,11 +327,11 @@ export function purchaseCsvToRecords(text, { profile = {}, existing = [], inferI
   }
   const purchases = [];
   const skipped = [];
-  for (const [key, rows] of groups) {
+  for (const rows of groups.values()) {
     const head = rows[0];
     const label = `${head.supplierName || head.supplierGstin} ${head.invoiceNumber}`;
     const fail = (msg) => errors.push(`Bill ${label}: ${msg}`);
-    if (booked.has(key)) { skipped.push(label); continue; }
+    if (isBooked(head)) { skipped.push(label); continue; }
     const date = toIsoDate(head.date);
     if (!date) { fail(`date "${head.date || ''}" is not a date (use YYYY-MM-DD or DD-MM-YYYY).`); continue; }
     const items = [];
@@ -376,8 +399,8 @@ export function purchasesToCsv(purchases) {
 // Templates with one example bill, for the "Download template" buttons.
 export const SALES_TEMPLATE = [
   toCsvLine(SALES_COLUMNS),
-  toCsvLine(['INV/2026-27/0101', '2026-10-01', 'Tax Invoice', '2026-10-31', 'Sharma Traders', '27ABCDE1234F1Z5', 'Maharashtra', 'Shop 4, MG Road, Pune', 'India', '', 'Steel rod 8mm', '7214', 10, 'Kg', 72, 0, 18, 0, 'No', '']),
-  toCsvLine(['INV/2026-27/0101', '2026-10-01', 'Tax Invoice', '2026-10-31', 'Sharma Traders', '27ABCDE1234F1Z5', 'Maharashtra', 'Shop 4, MG Road, Pune', 'India', '', 'Cutting charges', '998898', 1, 'Nos', 150, 0, 18, 0, 'No', '']),
+  toCsvLine(['INV/2026-27/0101', '2026-10-01', 'Tax Invoice', '2026-10-31', 'Sharma Traders', '27ABCDE1234F1Z5', 'Maharashtra', 'Shop 4, MG Road, Pune', 'India', '', 'Steel rod 8mm', '7214', 10, 'Kg', 72, 0, 18, 0, 'No', '', '', 'No']),
+  toCsvLine(['INV/2026-27/0101', '2026-10-01', 'Tax Invoice', '2026-10-31', 'Sharma Traders', '27ABCDE1234F1Z5', 'Maharashtra', 'Shop 4, MG Road, Pune', 'India', '', 'Cutting charges', '998898', 1, 'Nos', 150, 0, 18, 0, 'No', '', '', 'No']),
 ].join('\n');
 export const PURCHASE_TEMPLATE = [
   toCsvLine(PURCHASE_COLUMNS),
