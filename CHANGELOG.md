@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.10.80] - 2026-10-22
+## [1.10.80] - 2026-10-24
 
 **Bulk CSV import / export, a Lock button, View + a tidier Actions menu,
 per-firm numbering made clear, backups on another drive (issues #98-#101),
@@ -18,9 +18,35 @@ and a full audit of the tax maths: 68 fixes.**
 
 **Current version:** 1.10.79  →  **New version:** 1.10.80
 
-Same as for 1.10.79 below: **Update to v1.10.80** in the sidebar (or
-Settings → App Updates → Update Now), or extract the new ZIP over your
-folder.
+> If the app offered you "v1.10.80" in the last few days and the update put
+> back v1.10.79 (#105): that was our mistake, nothing is wrong on your PC.
+> v1.10.80 is out now and the Update button installs it.
+
+#### If the in-app Update button works for you (1.10.73 and later)
+1. Open the app and click **Update to v1.10.80** in the sidebar, or
+   **Settings → App Updates → Update Now**.
+2. Wait about a minute, then reload the page.
+
+#### On 1.10.72 or older
+Use the launcher: **More options → Update to the latest version**, then
+**Open App**.
+
+#### If that does not work (or you are unsure)
+1. Download `Free-GST-Billing.zip` from the
+   [Releases page](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest).
+2. Close the app (click **Stop the app** in the launcher if it is running).
+3. **Right-click the ZIP → Extract All.** Do not open anything while still inside the ZIP.
+4. Extract over your existing Free GST Billing folder, replacing files when asked.
+   (Extracted it somewhere else? Its launcher offers **Update the installed
+   copy**, which works without internet.)
+5. Double-click **Free GST Billing - WINDOWS**.
+
+#### Linux / NAS
+Run `update-unix.sh` from the `_system` folder, or extract the new ZIP over
+the old folder. Restart the app afterwards.
+
+Your invoices, clients, products and settings are kept, and the Update
+button backs up your data first.
 
 ### Added
 - **CSV import / export of sales invoices and purchase bills (#101).** Dashboard
@@ -48,6 +74,9 @@ folder.
   exported invoice imports back with the same total.
 
 ### Changed
+- **Sidebar:** *Auto-hide menu* is now a **☰ button** next to the app name
+  (highlighted while the menu auto-hides), and **Support & About** has its own
+  rose colour so it is easy to find.
 - **Invoice numbering with several firms (#99):** Settings names the firms that
   share the numbering, and saving a change to it asks first, because it changes
   every one of them. Choose *Own numbering for this business* to keep a firm

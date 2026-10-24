@@ -824,11 +824,15 @@ function App() {
             <h2 className="sidebar-title">GST Billing</h2>
             <p className="sidebar-subtitle">by DiceCodes</p>
           </div>
+          {/* Auto-hide as a ☰ button (was a text checkbox): pressed = the menu
+              shrinks to icons and opens when pointed at. */}
+          <button type="button" className={`sidebar-autohide-toggle${sidebarAutoHide ? ' on' : ''}`}
+            aria-pressed={sidebarAutoHide} aria-label="Auto-hide menu"
+            title={sidebarAutoHide ? 'Keep this menu open' : 'Auto-hide this menu: icons only, it opens when you point at it'}
+            onClick={(e) => { e.stopPropagation(); toggleSidebarAutoHide(!sidebarAutoHide); }}>
+            <Menu size={18} />
+          </button>
         </div>
-        <label className="sidebar-autohide-toggle" title="Shrink this menu to icons; it opens when you point at it">
-          <input type="checkbox" checked={sidebarAutoHide} onChange={(e) => toggleSidebarAutoHide(e.target.checked)} />
-          Auto-hide menu
-        </label>
 
         <div className="profile-switcher" ref={profileMenuRef} style={{ position: 'relative' }}>
           <div className="profile-switcher-row">
@@ -941,11 +945,11 @@ function App() {
               {darkMode ? 'Light Mode' : 'Dark Mode'}
             </button>
             <button
-              className={`nav-btn ${currentView === 'support' ? 'nav-btn-active' : ''}`}
+              className={`nav-btn nav-btn-support${currentView === 'support' ? ' nav-btn-support-active' : ''}`}
               onClick={() => setCurrentView('support')}
               title="Who makes this app, and how to help"
             >
-              <Heart size={18} style={{ color: '#e11d48' }} /> Support &amp; About
+              <Heart size={18} /> Support &amp; About
             </button>
             <button
               className={`nav-btn ${currentView === 'controlpanel' ? 'nav-btn-active' : ''}`}
