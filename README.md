@@ -16,6 +16,8 @@
 
 Your data never leaves your computer. No cloud. No signup. No tracking. No limits. Open-source and offline-first.
 
+**A free invoice builder and invoice maker** for shop owners, freelancers, consultants, traders and small businesses in India: make a GST invoice, quotation (proforma / estimate), bill of supply, credit note or delivery challan in minutes and save it as a PDF. Free billing software and a free, open-source alternative to Tally, Vyapar, Zoho and myBillBook.
+
 <a href="https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip"><img src="https://img.shields.io/github/v/release/IamRamgarhia/Free-GST-Billing-Software?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20Download&color=16a34a&labelColor=15803d" alt="Download the latest version" height="48"></a>&nbsp;&nbsp;<a href="https://dicecodes.com/free-gst-software-documentation/"><img src="https://img.shields.io/badge/%F0%9F%93%96%20Documentation-Read%20the%20guide-2563eb?style=for-the-badge&labelColor=1d4ed8" alt="Read the documentation" height="48"></a>
 
 <sub>Always the newest version · about 16 MB · Windows, macOS and Linux in one ZIP · <a href="https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest">release notes</a></sub>
@@ -873,6 +875,9 @@ Find the message you see. **None of these touch your invoices**: they stay in th
 
 ### Is Free GST Billing Software really free?
 Yes — MIT licensed open-source software. No subscription, no premium tier, no "free trial" that expires, no usage limits. The full feature set is available to every user forever. We make zero rupees from this directly.
+
+### Can I use it as a simple free invoice maker?
+Yes. It works as a free invoice builder even if you only need a clean invoice: add your business once, pick a client and items, and save the invoice as a PDF or print it. Not GST-registered? Use **Bill of Supply** (no GST on the invoice). Billing clients abroad? Choose **Outside India** or **Both** in the first-run setup and bill in their currency. Quotations are the **Proforma / Estimate** type and turn into an invoice in one click.
 
 ### Will my data be sent to the cloud?
 No. All your invoices, clients, products, and settings are stored as plain JSON files in a `data/` folder next to the app on your computer. Nothing leaves your machine unless you explicitly turn on the optional Google Drive backup feature (in which case it goes to *your own* Google Drive, not ours).
