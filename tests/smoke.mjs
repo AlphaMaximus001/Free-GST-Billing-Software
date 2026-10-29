@@ -362,6 +362,8 @@ try {
   // so "editing" changes nothing and no bar should appear — the test would
   // fail while the app behaved correctly. Original is restored below so the
   // suite leaves the user's business name untouched.
+  // v1.10.83 - Settings opens on the Business type tab; the name is on Company.
+  await page.locator('.settings-jumpnav a[href="#section-company"]').click();
   const nameField = page.locator('#section-company input[name="businessName"]');
   // The form unlocks once the saved profile has loaded (v1.10.75).
   await page.waitForFunction(() => document.querySelector('#section-company fieldset')?.disabled === false, null, { timeout: 30000 });
@@ -1095,6 +1097,7 @@ try {
 
   // One click saves two different sections.
   const getMeta = (key) => page.evaluate(async (k) => ((await (await fetch('/api/meta/' + k)).json()).value || {}), key);
+  await page.locator('.settings-jumpnav a[href="#section-company"]').click();
   const nameBefore = await page.locator('#section-company input[name="businessName"]').inputValue();
   const numBefore = await getMeta('invoiceNumberSettings');
   await page.locator('#section-company input[name="businessName"]').fill(`Smoke SaveAll ${Date.now() % 100000}`);
@@ -1125,7 +1128,7 @@ try {
 
   // ---- v1.10.75: the app-wide round-off switch saves the invoice default --
   // v1.10.83 - Settings is tabbed; the switch lives on the Print & PDF tab.
-  await page.getByRole('button', { name: 'Print & PDF', exact: true }).click();
+  await page.locator('.settings-jumpnav a[href="#section-print"]').click();
   const roundOffBox = page.locator('label', { hasText: 'Round off invoice totals' }).locator('input[type="checkbox"]');
   const roundOffBefore = await roundOffBox.isChecked();
   await roundOffBox.click();
