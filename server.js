@@ -1971,6 +1971,13 @@ app.get('/api/health', (req, res) => {
 
 app.get('{*path}', (req, res) => {
   if (req.path.startsWith('/api')) return res.status(404).json({ error: 'No such endpoint' });
+  // v1.10.83 - a code or style file that is not here (an old version's, still
+  // asked for by a page from before an update) is a 404, not the app's page:
+  // the page sent as "JavaScript" broke the app with a blank screen, and the
+  // offline cache could keep that page under the code file's name.
+  if (req.path.startsWith('/assets/') || /\.(m?js|css|map|wasm|json|png|svg|ico|woff2?)$/i.test(req.path)) {
+    return res.status(404).type('text/plain').send('Not found');
+  }
   if (fs.existsSync(indexPath)) {
     return res.sendFile(indexPath);
   }

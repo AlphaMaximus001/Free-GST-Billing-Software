@@ -96,6 +96,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once the rest arrives. You can also record the TDS on its own.
 
 ### Changed
+- **Dark mode, Notifications, User Guide and Lock moved to the top right** of
+  every screen as small buttons (on a phone, into the top bar), so the
+  sidebar holds only the screens. Settings → Features can hide or reorder
+  them.
 - **Settings opens as tabs**: one page per tab (Business type, Company,
   Profiles, Print & PDF, Features...) instead of one very long page.
 - **Every ? opens its guide at the right place**: the ? on each screen, each
@@ -135,7 +139,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The NIL-by-SMS hint left out the return type.** It now gives the GST
   portal's exact formats: `NIL R1`, `NIL 3B` or `NIL C8`, then the GSTIN and
   the period, sent to 14409.
-
+- **The GST rate suggested for an HSN code was the old, pre-September-2025
+  rate**, and the invoice filled it in for you: chocolates, biscuits and
+  mineral water came up at 18% instead of 5%, soft drinks at 28% instead of
+  40%, TVs and cement at 28% instead of 18%, medicines at 12% instead of 5%.
+  Suggestions now follow the rates in force since 22 September 2025. Where the
+  rate depends on the price, size or packing (clothes and shoes up to or above
+  ₹2,500, cars and bikes by engine size, loose or packed food), the hint shows
+  every possible rate and leaves your GST % alone. The hint is still a guide:
+  check the rate for your item.
 
 ---
 

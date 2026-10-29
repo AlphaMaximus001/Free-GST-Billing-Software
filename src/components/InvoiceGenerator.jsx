@@ -15,7 +15,7 @@ import PrintPreviewModal from './PrintPreviewModal';
 import { ensureToken, findOrCreateFolder, uploadPDF } from '../services/googleDrive';
 import DOMPurify from 'dompurify';
 import InvoicePreview from './InvoicePreview';
-import { suggestGstRate } from '../utils/hsnRates';
+import { suggestGstRate, autoFillRate, rateText } from '../utils/hsnRates';
 import HelpButton from './HelpButton';
 import { getClientCredit, planCreditApplication } from '../utils/clientCredit';
 import ClientModal from './ClientModal';
@@ -352,9 +352,10 @@ const LineItem = memo(function LineItem({
               // v1.10.22 — Suggest GST rate from a curated HSN/SAC table.
               // Only overwrites the tax rate when the user has NOT already
               // typed a custom rate (default 18 is treated as "unset").
-              const suggested = suggestGstRate(val);
-              if (suggested && (item.taxPercent === undefined || item.taxPercent === 18 || item.taxPercent === 0)) {
-                onFieldChange(item.id, 'taxPercent', suggested.rate);
+              // Codes whose rate depends on price/size/packing never auto-fill.
+              const suggested = autoFillRate(val);
+              if (suggested !== null && (item.taxPercent === undefined || item.taxPercent === 18 || item.taxPercent === 0)) {
+                onFieldChange(item.id, 'taxPercent', suggested);
               }
             }} />
           {/* Show the label of the matched HSN inline so the user can
@@ -364,8 +365,8 @@ const LineItem = memo(function LineItem({
             if (!s || !item.hsn || String(item.hsn).length < 4) return null;
             return (
               <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 2, padding: '3px 6px', fontSize: '0.68rem', color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', zIndex: 1 }}
-                title={`${s.label} — suggested ${s.rate}% GST`}>
-                → {s.rate}% · {s.label}
+                title={`${s.label} — ${rateText(s)} is the usual rate since 22 Sep 2025 - check yours`}>
+                → {rateText(s)} usual rate since 22 Sep 2025 - check yours · {s.label}
               </div>
             );
           })()}

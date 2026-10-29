@@ -557,6 +557,34 @@ function App() {
   };
   const navItems = menu.filter(m => m.section === 'main').map(m => ({ id: m.id, ...NAV_EXTRAS[m.id] }));
   const bottomIds = menu.filter(m => m.section === 'bottom').map(m => m.id);
+  // v1.10.83 - small buttons at the top right of every screen (asked for:
+  // "dark mode button should be on top, not in the sidebar").
+  const topIds = menu.filter(m => m.section === 'top').map(m => m.id);
+  const topActions = topIds.map(id => ({
+    guide: (
+      <button key={id} type="button" className="topbar-btn" onClick={openDocs}
+        title="User guide (opens in your browser)" aria-label="User guide">
+        <HelpCircle size={18} />
+      </button>
+    ),
+    /* Opens the list of overdue / due-soon invoices, GST filing deadlines and
+       low-stock items, each a click away from the page that fixes it. */
+    notifications: (
+      <button key={id} type="button" className="topbar-btn" onClick={() => setShowNotifs(s => !s)}
+        title="Notifications" aria-label={notifTotal > 0 ? `Notifications: ${notifTotal}` : 'Notifications'}>
+        <Bell size={18} />
+        {notifTotal > 0 && <span className="topbar-badge">{notifTotal > 99 ? '99+' : notifTotal}</span>}
+      </button>
+    ),
+    /* v1.10.80 (#98) - only when a PIN is set. */
+    lock: <LockButton key={id} className="topbar-btn" label={null} />,
+    darkMode: (
+      <button key={id} type="button" className="topbar-btn" onClick={() => setDarkMode(d => !d)}
+        title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={darkMode ? 'Light mode' : 'Dark mode'}>
+        {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
+    ),
+  })[id]);
 
   // Command palette actions — declared here (not earlier) because the deps
   // array references `navItems` and `handleNewInvoice`, which are consts.
@@ -575,6 +603,7 @@ function App() {
     // v1.10.83 - and, like every menu item, not when it is switched off.
     if (bottomIds.includes('controlpanel')) acts.push({ label: 'Go to Control Panel', hint: '', category: 'nav', run: () => setCurrentView('controlpanel') });
     acts.push({ label: 'Go to Support & About', hint: '', category: 'nav', run: () => setCurrentView('support') });
+    if (topIds.includes('guide')) acts.push({ label: 'Open the User Guide', hint: '', category: 'help', run: openDocs });
     acts.push({ label: 'Toggle dark mode', hint: '', category: 'action', run: () => setDarkMode(d => !d) });
     acts.push({ label: 'Show keyboard shortcuts', hint: 'Ctrl+/', category: 'help', run: () => setShowShortcutsHelp(true) });
     if (updateInfo?.updateAvailable) {
@@ -640,7 +669,7 @@ function App() {
       acts.push({ label: `⚙️ Settings → ${s}`, hint: '', category: 'settings', run: () => openSettingsAt(sectionId) });
     });
     return acts;
-  }, [navItems, bottomIds, updateInfo, handleNewInvoice, searchCorpus]);
+  }, [navItems, bottomIds, topIds, updateInfo, handleNewInvoice, searchCorpus]);
 
   const filteredPalette = paletteActions.filter(a =>
     !paletteQuery.trim() || a.label.toLowerCase().includes(paletteQuery.toLowerCase())
@@ -831,6 +860,7 @@ function App() {
         </button>
         <span className="mobile-topbar-title">GST Billing</span>
         <span className="mobile-topbar-business">{profile?.businessName || ''}</span>
+        {topActions}
       </div>
       {navOpen && <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" />}
       <div className={`sidebar${navOpen ? ' sidebar-open' : ''}`} onClick={closeNavAfterPick}>
@@ -934,41 +964,6 @@ function App() {
             {/* v1.10.83 - in the order chosen in Settings → Features; switched-off
                 ones are already left out of bottomIds. */}
             {bottomIds.map(id => ({
-              /* Notification bell — opens a popover listing overdue / due-soon
-                 invoices, GST filing deadlines, and low-stock items. Each row
-                 is a single click away from the page that fixes it. */
-              notifications: (
-                <button key={id}
-                  className="nav-btn"
-                  onClick={() => setShowNotifs(s => !s)}
-                  title="Notifications"
-                  style={{ position: 'relative' }}
-                >
-                  <Bell size={18} />
-                  Notifications
-                  {notifTotal > 0 && (
-                    <span className="nav-badge" style={{
-                      position: 'absolute', top: '8px', right: '12px',
-                      minWidth: 18, height: 18, padding: '0 5px', borderRadius: '9px',
-                      background: 'var(--danger)', color: '#fff',
-                      fontSize: '0.65rem', fontWeight: 700,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>{notifTotal > 99 ? '99+' : notifTotal}</span>
-                  )}
-                </button>
-              ),
-              /* v1.10.80 (#98) - only when a PIN is set. */
-              lock: <LockButton key={id} className="nav-btn" label="Lock app" />,
-              darkMode: (
-                <button key={id}
-                  className="nav-btn"
-                  onClick={() => setDarkMode(!darkMode)}
-                  title={darkMode ? 'Light Mode' : 'Dark Mode'}
-                >
-                  {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                  {darkMode ? 'Light Mode' : 'Dark Mode'}
-                </button>
-              ),
               support: (
                 <button key={id}
                   className={`nav-btn nav-btn-support${currentView === 'support' ? ' nav-btn-support-active' : ''}`}
@@ -1023,6 +1018,7 @@ function App() {
         </div>
       )}
       <div className="main-content">
+        {topActions.length > 0 && <div className="app-topbar">{topActions}</div>}
         {/* v1.10.83 - a screen that throws shows "ran into a problem" here
             instead of blanking the app; keyed by screen so the sidebar works
             and opening another screen starts clean. */}

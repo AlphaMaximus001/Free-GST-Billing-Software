@@ -1038,8 +1038,9 @@ try {
     return (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
   });
   const toggleTheme = async (label) => {
+    // v1.10.83 - the moon / sun button is at the top right, not in the sidebar.
     await page.evaluate((label) => {
-      const b = [...document.querySelectorAll('.sidebar .nav-btn')].find((x) => x.innerText.trim() === label);
+      const b = document.querySelector(`.app-topbar button[aria-label="${label.replace(' Mode', ' mode')}"]`);
       if (b) b.click();
     }, label);
     await sleep(900);

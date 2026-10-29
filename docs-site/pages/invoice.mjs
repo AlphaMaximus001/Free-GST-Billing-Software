@@ -220,7 +220,7 @@ export default [
 <div class="table-wrap"><table>
   <tr><th>Field</th><th>What to know</th></tr>
   <tr><td>Item</td><td>The item name. Typing searches your <a href="products.html">products</a> by name or HSN and shows up to five, with their HSN and price. Pick one with the mouse, or with <kbd>↓</kbd> <kbd>↑</kbd> and <kbd>Enter</kbd>. Picking fills in the HSN, selling price, unit and GST rate, and links the row to the product so its stock is counted. You can also type any name that is not a product.</td></tr>
-  <tr><td>HSN/SAC</td><td>The goods (HSN) or services (SAC) code. GST returns need it. For common codes the app knows the usual GST rate: from the fourth digit it shows the rate and the item type in green under the box, and if the row's GST is still 18% or 0% it is changed to match. Always check it. Finding your code: see <a href="gst-basics.html#hsn-search">GST basics: HSN and SAC</a>.</td></tr>
+  <tr><td>HSN/SAC</td><td>The goods (HSN) or services (SAC) code. GST returns need it. For common codes the app knows the usual GST rate since 22 September 2025: from the fourth digit it shows the rate and the item type in green under the box, and if the row's GST is still 18% or 0% it is changed to match. Where the rate depends on the price, size or packing (clothes and shoes up to or above ₹2,500, cars and bikes by engine size, loose or packed food) it shows every possible rate and leaves your GST % alone. Always check it: see <a href="gst-basics.html#which-rate">GST basics: what rate do I charge?</a> Finding your code: see <a href="gst-basics.html#hsn-search">GST basics: HSN and SAC</a>.</td></tr>
   <tr><td>Qty</td><td>1 to start. Clicking the box selects the number, so typing replaces it. Decimals are fine, such as 2.5 kg.</td></tr>
   <tr><td>Unit</td><td>From the list for Goods, Services or Mixed. A new row starts with the unit of the row above. ${ui('＋ Add custom…')} adds your own unit (up to 20 characters), marked ★ and kept in this browser for later invoices; ${ui('− Remove "unit"')} takes one away again. Invoices already made keep the unit they used.</td></tr>
   <tr><td>Rate</td><td>Price for one unit. Without GST, unless <a href="#tax-inclusive">Prices include tax</a> is ticked.</td></tr>
@@ -245,6 +245,7 @@ export default [
 <div class="note tip"><strong>Something wrong?</strong>
 <p><b>No product list appears while typing.</b> The product is not saved yet, or its name is spelt differently. Add it on the <a href="products.html#add-product">Products</a> screen, or just type the row by hand.</p>
 <p><b>The GST rate changed by itself.</b> You typed an HSN/SAC code the app knows, and the row was still on 18% or 0%. Pick the right rate from the list.</p>
+<p><b>The green hint shows two or three rates.</b> That item's rate depends on its price, size or packing, so the app does not pick one. Choose the rate that fits your item.</p>
 <p><b>A column such as HSN or Discount is missing.</b> It is turned off under ${ui('Customize')}, in <a href="invoice-options.html#show-items">Items table</a>.</p></div>
 </section>
 

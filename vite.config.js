@@ -179,6 +179,9 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        // v1.10.83 - a new version reloads open windows of the old one, which
+        // can be stuck blank after an update (public/sw-reload.js).
+        importScripts: ['sw-reload.js'],
         runtimeCaching: [
           // v1.10.2 — /api/* runtime cache. Missing this rule meant the
           // "offline billing counter" promise was broken: fetch() throws

@@ -10,6 +10,11 @@ import { isChunkLoadError } from './utils/errorReport'
 import { restorePrefs, startMirroring } from './utils/prefsMirror'
 import './index.css'
 
+// v1.10.83 - the app's code loaded: tell public/boot-guard.js, and let it
+// try again next time something goes wrong.
+window.__fgsbBooted = true;
+try { sessionStorage.removeItem('fgsb-boot-retry'); } catch { /* storage blocked */ }
+
 // v1.10.2 — Deferred SW update. Prior code called `updateSW(true)`
 // inside `onNeedRefresh` which triggers `location.reload()` immediately.
 // If the user was mid-invoice (typing line items, editing terms), that
