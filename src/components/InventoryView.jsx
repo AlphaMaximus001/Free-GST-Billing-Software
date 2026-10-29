@@ -282,7 +282,7 @@ export default function InventoryView() {
       {showForm && (
         <div className="modal-overlay" onClick={closeForm}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3 className="section-title">{editingId ? 'Edit Product' : 'Add Product'}</h3>
+            <h3 className="section-title">{editingId ? 'Edit Product' : 'Add Product'} <HelpButton title="Adding a product or service" doc="products#add-product" size={16} /></h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Product / Service Name *</label>
@@ -355,7 +355,7 @@ export default function InventoryView() {
       {/* Product Table */}
       <div className="glass-panel">
         <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h3>Products & Services</h3>
+          <h3>Products & Services <HelpButton title="The product list" doc="products#product-list" size={16} /></h3>
           {!bulkEdit && (
             <TableExport title="Products" filename="Products"
               headers={['Name', 'HSN/SAC', 'Purchase price', 'Selling price', 'GST %', 'Unit', 'Stock']}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { getCountryConfig, getStatesForCountry, validateTaxId, detectCountryFromBrowser, getCountriesForRegion, PAPER_SIZES, decodeGstin } from '../utils';
 import { getRegionMode } from '../store';
+import HelpButton from './HelpButton';
 
 export default function ClientModal({ show, onClose, onSave, client, isEditing, defaultCountry }) {
   // Country defaults: explicit prop (active business profile) → browser locale → 'India'.
@@ -73,7 +74,7 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
     <div className="modal-overlay">
       <div className="modal-content" style={{ maxWidth: '520px' }}>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="section-title" style={{ margin: 0 }}>{isEditing ? 'Edit Client' : 'Add New Client'}</h3>
+          <h3 className="section-title" style={{ margin: 0 }}>{isEditing ? 'Edit Client' : 'Add New Client'} <HelpButton title="Adding and editing a client" doc="clients#client-form" size={16} /></h3>
           <button type="button" className="icon-btn" onClick={onClose} title="Close"><X size={18} /></button>
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -151,7 +152,7 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
               auto-apply the next time an invoice is created for this client. */}
           <div className="form-group" style={{ gridColumn: 'span 2', paddingTop: '0.5rem', borderTop: '1px solid var(--border)', marginTop: '0.5rem' }}>
             <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
-              Print preferences (optional)
+              Print preferences (optional) <HelpButton title="Client print preferences" doc="clients#client-print-prefs" size={16} />
             </div>
             <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
               Auto-applied when you create a new invoice for this client. Leave blank to use app-wide defaults.

@@ -27,11 +27,14 @@ export function BomEditor({ productId, madeHere, bom, products, currency, onChan
   const cost = unitCost({ id: productId || '_new', madeHere: true, bom }, products);
   return (
     <div className="form-group" style={{ gridColumn: 'span 2' }}>
-      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}>
-        <input type="checkbox" checked={madeHere} style={{ width: 15, height: 15, accentColor: 'var(--primary)' }}
-          onChange={(e) => onChange({ madeHere: e.target.checked, bom: bom.length ? bom : [{ productId: '', qty: '' }] })} />
-        Made here (from raw materials)
-      </label>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}>
+          <input type="checkbox" checked={madeHere} style={{ width: 15, height: 15, accentColor: 'var(--primary)' }}
+            onChange={(e) => onChange({ madeHere: e.target.checked, bom: bom.length ? bom : [{ productId: '', qty: '' }] })} />
+          Made here (from raw materials)
+        </label>
+        <HelpButton title="Bill of materials" doc="products#bill-of-materials" size={16} />
+      </div>
       {madeHere && (
         <div className="surface-card" style={{ marginTop: '0.5rem' }}>
           <div style={{ ...muted, marginBottom: '0.5rem' }}>Raw materials used to make 1 unit of this product</div>
@@ -103,7 +106,7 @@ export function MakeModal({ products, currency, onClose, onSaved }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 720 }}>
-        <h3 className="section-title"><Factory size={18} style={{ verticalAlign: '-3px' }} /> Make (record production) <HelpButton title="Manufacturing" doc="products#manufacturing" size={16} style={{ marginLeft: 6 }} /></h3>
+        <h3 className="section-title"><Factory size={18} style={{ verticalAlign: '-3px' }} /> Make (record production) <HelpButton title="Make: record what you made" doc="products#make-production" size={16} style={{ marginLeft: 6 }} /></h3>
         {madeHere.length === 0 ? (
           <div className="notice notice-note">No product has a raw materials list yet. Edit a product, tick <strong>Made here</strong> and add its raw materials first.</div>
         ) : (
@@ -215,7 +218,7 @@ export function ProductionList({ products, currency, reloadKey, onChanged }) {
   return (
     <div className="glass-panel" style={{ marginTop: '1.5rem' }}>
       <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-        <h3>Production <HelpButton title="Manufacturing" doc="products#manufacturing" size={16} style={{ marginLeft: 6 }} /></h3>
+        <h3>Production <HelpButton title="The production list" doc="products#production-list" size={16} style={{ marginLeft: 6 }} /></h3>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <label style={muted} htmlFor="mfg-from">From</label>
           <input id="mfg-from" type="date" className="form-input" style={{ width: 'auto' }} value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -259,7 +262,7 @@ export function ProductionList({ products, currency, reloadKey, onChanged }) {
       {viewing && (
         <div className="modal-overlay" onClick={() => setViewing(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
-            <h3 className="section-title">Made {qtyText(viewing.qty, viewing.unit)} of {viewing.productName}</h3>
+            <h3 className="section-title">Made {qtyText(viewing.qty, viewing.unit)} of {viewing.productName} <HelpButton title="Viewing a production entry" doc="products#production-entry" size={16} /></h3>
             <p style={muted}>{formatDateGST(viewing.date)}{viewing.note ? ` · ${viewing.note}` : ''}</p>
             <div className="table-scroll">
               <table className="data-table" style={{ minWidth: 460 }}>
