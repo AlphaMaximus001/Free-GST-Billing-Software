@@ -20,6 +20,7 @@ import { fileURLToPath } from 'url';
 import sharp from 'sharp';
 import { NAV, SITE, SEO } from './site.mjs';
 import start from './pages/start.mjs';
+import gstBasics from './pages/gst-basics.mjs';
 import install from './pages/install.mjs';
 import daily from './pages/daily.mjs';
 import money from './pages/money.mjs';
@@ -32,7 +33,7 @@ import about from './pages/about.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, 'out', SITE.folder);
 const IMG_SRC = join(HERE, 'assets', 'img');
-const PAGES = [...start, ...install, ...invoice, ...daily, ...money, ...setup, ...print, ...help, ...about];
+const PAGES = [...start, ...gstBasics, ...install, ...invoice, ...daily, ...money, ...setup, ...print, ...help, ...about];
 const TODAY = new Date().toISOString().slice(0, 10);
 const BRAND = 'Free GST Billing Software';
 
