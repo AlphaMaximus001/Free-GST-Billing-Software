@@ -5,8 +5,10 @@
  * notes". Two kinds of lines:
  *   - the user's own entries (data/cash-book), each Money in or Money out;
  *   - cash already recorded elsewhere in the app, shown read-only so nothing
- *     is typed twice: invoice payments, payment receipts and expenses paid in
- *     cash. Purchase bills record no payment mode, so they are not included.
+ *     is typed twice: invoice payments, payment receipts, expenses paid in
+ *     cash and (v1.10.83, #123) cash payments to suppliers on purchase bills.
+ *     A supplier payment has no other record (no receipt or expense is made
+ *     for it), so it is one line as it stands.
  *
  * An invoice payment and its receipt are usually the SAME money (recording a
  * payment on the Dashboard saves a receipt; a receipt against an invoice adds
@@ -86,7 +88,7 @@ const weakMatch = (p, r, bill) => linkedTo(r, bill)
 
 // Cash recorded elsewhere, as read-only lines. Pass this business's records.
 // `view` is the screen the line was made on (to open it from the cash book).
-export function linkedCashLines({ bills = [], receipts = [], expenses = [] } = {}) {
+export function linkedCashLines({ bills = [], receipts = [], expenses = [], purchases = [] } = {}) {
   const paired = new Set(); // receipts that are the record of a payment
   // Pairs a payment with a receipt not yet taken; false when there is none.
   const pair = (match) => ([bill, p]) => {
@@ -132,6 +134,18 @@ export function linkedCashLines({ bills = [], receipts = [], expenses = [] } = {
       note: [e.vendorName ? e.description : '', e.note].filter(Boolean).join(' · '),
       category: e.category || '', at: '',
     });
+  }
+  for (const p of purchases) {
+    for (const x of (Array.isArray(p?.payments) ? p.payments : [])) {
+      if (!isCash(x?.mode) || !(Number(x.amount) > 0)) continue;
+      lines.push({
+        key: `purchase:${p.id}:${x.id || `${x.date}:${x.amount}`}`,
+        source: 'purchase', view: 'purchases', label: `Purchase bill ${p.invoiceNumber || p.id} payment`,
+        type: 'out', date: x.date || p.date || '', amount: r2(x.amount),
+        name: p.supplierName || '', note: [x.reference, x.note].filter(Boolean).join(' · '),
+        category: '', at: x.recordedAt || '',
+      });
+    }
   }
   return lines;
 }

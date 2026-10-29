@@ -182,10 +182,11 @@ export default [
   <tr><td>Invoice CN-2 payment</td><td>A refund recorded on a credit note</td><td>The payment mode is Cash (money out)</td></tr>
   <tr><td>Receipt RCP/26-27/0012</td><td>A <a href="receipts.html">payment receipt</a>; the invoice number follows if it was against one</td><td>The payment mode is Cash (money in)</td></tr>
   <tr><td>Expense</td><td>An <a href="expenses.html#add-expense">expense</a>; its category shows too</td><td>The payment mode is Cash (money out)</td></tr>
+  <tr><td>Purchase bill GS/0457 payment</td><td>A <a href="purchases.html#record-payment">payment to a supplier</a> recorded on a purchase bill, with the supplier's name and the reference</td><td>The payment mode is Cash (money out)</td></tr>
 </table></div>
 <p>These lines cannot be edited or deleted in the cash book (they have no pencil or bin). Click the label to go to the screen it was made on, and change it there; the cash book follows.</p>
 <p><strong>Counted once.</strong> Recording a payment on the Dashboard also makes a receipt, and a receipt against an invoice also records a payment on it. It is the same money, so the cash book shows it once, as the receipt.</p>
-<p><strong>Purchase bills</strong> do not record how they were paid. When you pay a supplier in cash, add it here as ${ui('Money out')} with the supplier's name.</p>
+<p><strong>Paying suppliers.</strong> Record a cash payment to a supplier on the purchase bill (green ${ui('₹')} button in Purchases), not here: it then shows here once, and the bill's balance goes down too. A bill marked Paid from the Status dropdown is not counted as cash (how it was paid is not known). If you added supplier payments here by hand before, and now record them on the bill as well, delete your own entry. See <a href="purchases.html#payments-cash-book">Cash payments and the Cash book</a>.</p>
 <p>Invoices and receipts in another currency (export invoices in dollars, for example) are left out: the cash book is in rupees.</p>
 </section>
 

@@ -173,6 +173,18 @@ export default [
 <div class="note tip"><strong>Something wrong?</strong><p>"Nobody owes you anything for FY ..." while money is owed: the invoices may be from after that year (pick a later year) or in another currency (pick it in the currency box). The same customer shows twice: the client name is spelt differently on the invoices (capital letters and spaces at the start or end are ignored, other differences are not).</p></div>
 </section>
 
+<section id="supplier-outstanding">
+<h3>What you owe suppliers</h3>
+<p>The same table the other way round. In the first box of the card, pick <b>You owe suppliers</b> (it starts on <b>Clients owe you</b>). The card is then titled <b>Owed to suppliers by month</b>: one row per supplier, A to Z, with what you still have to pay them in the month of their bill, an <b>Earlier</b> column for older unpaid bills, and totals.</p>
+<ul>
+  <li>What is owed on a bill is its total, less TDS you keep back, less the <a href="purchases.html#record-payment">payments recorded on it</a>. A Paid bill is left out.</li>
+  <li>A bill marked Paid before payments could be recorded owes nothing. A bill marked Partial then, with no payments recorded, shows its whole amount.</li>
+  <li>Purchase bills are in rupees, so there is no currency box.</li>
+  <li>${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} save it, titled "Owed to suppliers".</li>
+</ul>
+<div class="note tip"><strong>Something wrong?</strong><p>"You owe no supplier anything for FY ..." while you do: the bills may be dated after that year, or marked Paid. The same supplier shows twice: their name is spelt differently on the bills.</p></div>
+</section>
+
 <section id="clients">
 <h2>Client Analytics</h2>
 <p>Who buys the most, and who owes the most, in the period chosen at the top. Revenue here includes GST (it is what the client was billed), less their credit notes.</p>
