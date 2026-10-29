@@ -47,7 +47,7 @@ export default [
 
 <section id="is-it-free">
 <h2>Is it really free?</h2>
-<p>Yes. It is open source under the MIT licence. There is no trial, no invoice limit, no feature that unlocks for money, and no advertising. The code is public on <a href="${SITE.repo}">GitHub</a>, so anyone can check what it does.</p>
+<p>Yes. It is open source under the MIT licence. There is no trial, no invoice limit, no feature that unlocks for money, and no advertising. The code is public on <a href="${SITE.repo}">GitHub</a>, so anyone can check what it does. Is it safe? See <a href="security.html">Security and privacy</a>.</p>
 </section>
 
 <section id="get-help">
@@ -67,6 +67,7 @@ export default [
 <section id="welcome">
 <h2>Step 1 of the welcome: where you invoice from</h2>
 <p>The first screen explains what the app does, and asks <b>Where will you be invoicing from?</b></p>
+<p>A small <b>Safe and private</b> box on it sums up how your data is kept: on this computer, with no account, working offline, in open-source code anyone can check. Its ${ui('How we keep it safe')} link opens <a href="security.html">Is it safe? Security and privacy</a>.</p>
 <table>
   <tr><td>🇮🇳 India</td><td>GST, GSTR-1 and 3B, UPI. The default.</td></tr>
   <tr><td>🌍 Outside India</td><td>VAT and other local taxes</td></tr>

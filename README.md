@@ -26,6 +26,19 @@ Your data never leaves your computer. No cloud. No signup. No tracking. No limit
 
 ---
 
+## 🔒 Is it safe? Yes — here is why
+
+- **Your data never leaves your computer.** Invoices, clients and settings are plain files in the app's own folder. No cloud server of ours, nothing to leak.
+- **No account, no login, no ads, no tracking.** No analytics, and none of your business data is ever sent to us.
+- **Other computers cannot open it.** The app's server listens only on `127.0.0.1`, this computer itself, and refuses requests from other websites.
+- **Open source — check every line.** The full code is right here under the MIT licence; the release ZIP is built from it with `npm run release:zip`.
+- **No admin rights needed.** It installs into your own user folder, and your data is backed up automatically every day.
+- **Works offline, and says what it connects to.** On its own it contacts only GitHub (the update check and the public supporters list) and Google Fonts (its text font) — plus your own Google Drive, only if you connect it.
+
+**[Read the full answer: every address the app connects to, and how to check it yourself →](https://dicecodes.com/free-gst-software-documentation/security.html)**
+
+---
+
 ## ⚡ Install in 60 Seconds — one launcher per platform
 
 The download ZIP holds a **launcher for each system**, a plain-English **`READ ME FIRST.txt`**, and a `_system/` folder with everything else. Extract the ZIP, double-click the launcher for your computer, click **Install** — it sets itself up, needs no administrator rights, and opens the app in your browser when it is done.

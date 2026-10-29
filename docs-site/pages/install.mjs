@@ -22,7 +22,8 @@ const which = `
 <p><b>Windows</b> (most PCs and laptops): <a href="install.html">Install on Windows</a>.
 <b>Mac</b> (Apple logo top left): <a href="install-mac.html">Install on a Mac</a>.
 <b>Linux or a NAS</b>: <a href="install-linux.html">Install on Linux or a NAS</a>.
-Already installed? <a href="update.html">Updating</a>.</p></div>`;
+Already installed? <a href="update.html">Updating</a>.
+Wondering whether it is safe? <a href="security.html">Is it safe? Security and privacy</a>.</p></div>`;
 
 export default [
 // =============================================================================
@@ -114,7 +115,7 @@ ${which}
 
 <section id="windows-protected">
 <h2>"Windows protected your PC"</h2>
-<p>This blue box appears the first time for any program that is not signed with a paid certificate (a few hundred dollars a year, which would make a free app not free). It does not mean anything is wrong.</p>
+<p>This blue box appears the first time for any program that is not signed with a paid certificate (a few hundred dollars a year, which would make a free app not free). It does not mean anything is wrong. More in <a href="security.html#install-safety">Is the install safe?</a></p>
 <ol>
   <li>Click the small link ${ui('More info')}.</li>
   <li>Click the button ${ui('Run anyway')}.</li>

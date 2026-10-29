@@ -4,6 +4,7 @@ import { saveProfile, setRegionMode } from '../store';
 import { getStatesForCountry, getCountryConfig, detectCountryFromBrowser, createEmptyAccount } from '../utils';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
+import SafePrivateNote from './SafePrivateNote';
 
 const STEPS = [
   { id: 'welcome', title: 'Welcome', icon: FileText },
@@ -134,6 +135,8 @@ export default function WelcomeGuide({ onComplete }) {
                   </div>
                 ))}
               </div>
+
+              <SafePrivateNote style={{ marginBottom: '1.5rem' }} />
 
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
                 Let's set up your business profile so your invoices look professional. Takes about 2 minutes.
