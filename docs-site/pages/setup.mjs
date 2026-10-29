@@ -73,6 +73,7 @@ export default [
 <p><strong>Start numbering from</strong> lets tax invoices carry on from your paper bill book: enter 1001 and the next tax invoice is <code>.../1001</code>, then 1002 and so on. When you save, the app shows the new next number and asks you to confirm, because numbers never go back down. If you have already gone past it, numbering simply continues; a number already used is never given again. Quotations, challans, credit notes, other types and receipts keep their own count. The preview at the top shows the real next tax invoice number.</p>
 <p><strong>16 characters at most.</strong> GST allows invoice and credit note numbers of up to 16 characters (letters, digits, <code>-</code> and <code>/</code>), and GSTR-1 refuses longer ones. If a prefix, year and number together would be longer, Settings says so in red and will not save; use a shorter prefix, the short year, or fewer digits.</p>
 <p><strong>More than one business?</strong> Each can number on its own. With the business selected in the sidebar, choose ${ui('Own numbering for this business')}, give it a prefix of its own (such as its initials, <code>KS</code>) and, if you like, a start number, then ${ui('Save Number Format')}. Its invoices then run <code>KS/26-27/0502</code>, <code>0503</code>... whatever the other businesses do (it starts with the short year, so its credit notes, <code>KS-CN/26-27/0001</code>, fit the 16 characters). Its receipts follow its numbering too, and it keeps its numbering when you change its name or add its GSTIN. The prefix must differ from every other business's, because two invoices can never share a number. ${ui('Shared numbering')} puts a business back on the shared series; invoices it already made keep their numbers.</p>
+<p><strong>Shared numbering</strong> is used by every business that has no numbering of its own, so changing it changes all of them. Settings names those businesses (<i>"Shared by Firm 1, Firm 2…"</i>), and saving a change asks first: <b>Change numbering for all 2 businesses?</b></p>
 <p>Under ${ui('⚙ Customize prefix, separator &amp; padding')}:</p>
 <ul>
   <li><strong>Brand Prefix</strong>: up to 10 capital letters and digits, such as ACME. Tax invoices print it alone (<code>ACME/2026-27/0001</code>); every other document adds its type (<code>ACME-QUO/...</code>, <code>ACME-DC/...</code>, <code>ACME-CN/...</code>), because each type keeps its own count. Leave it empty to use each type's own prefix: INV, QUO, EST, BOS, COMP, CN and DC.</li>
@@ -153,7 +154,7 @@ export default [
 <h2>App lock (PIN)</h2>
 <p>For a computer other people also use. ${ui('Turn on PIN lock')}, choose 6 or 8 digits, type the PIN twice and click ${ui('Save PIN')}. From then on the app asks for it each time it is opened. It is off to start.</p>
 <ul>
-  <li>${ui('Lock now')} locks the app straight away, when you step away.</li>
+  <li>${ui('Lock now')} locks the app straight away, when you step away. So do ${ui('Lock')} on the Dashboard, ${ui('Lock app')} in the sidebar and <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd> anywhere. Anything you were typing is still there after you unlock.</li>
   <li>${ui('Change PIN')} and ${ui('Turn off')} need the current PIN.</li>
   <li>After five wrong tries in a row, wait 30 seconds before the next.</li>
 </ul>
@@ -211,6 +212,9 @@ export default [
 
 <section id="backup-copy">
 <h2>Keeping a copy somewhere else</h2>
+<p><strong>Every day, automatically, on another drive.</strong> In <b>Settings, Backup Management</b>, type a folder such as <code>D:\\FreeGSTBill</code> (another drive, a USB disk or a synced folder) under <b>Also keep a copy of every daily backup in this folder</b>, and click ${ui('Save folder')}. The app checks it can write there, then copies each daily backup into <code>FreeGSTBill Backups\\<i>date</i></code> inside it, keeping 30 days. If a copy fails (a USB disk not plugged in), Settings says so. ${ui('Stop copying')} turns it off.</p>
+<p>If the computer fails: install the app again, set the same folder, and its backups appear in the list with ${ui('Restore')}.</p>
+<p>Or by hand:</p>
 <ul>
   <li><strong>One click</strong>: ${ui('Create Backup')} in the <a href="control-panel.html">Control Panel</a>, or ${ui('Back up my data')} in the launcher under ${ui('More options')}, saves a ZIP in <code>Documents\\FreeGSTBill Backups</code>. Copy it to a pen drive or cloud storage.</li>
   <li><strong>One file you choose</strong>: see <a href="#export-import">Export everything to one file</a>.</li>

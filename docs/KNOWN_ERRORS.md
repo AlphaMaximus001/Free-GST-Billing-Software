@@ -720,6 +720,31 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-060 - An old Node.js on the PC broke the update, which still said "complete"
+
+**Version:** since the Windows scripts were written · fixed in v1.10.81
+**Reported by:** fzkhan731, issue #109
+
+**Symptom** - `npm ERR! code ENOTDIR ... node_modules\.staging\@types\babel__template...`,
+then `[OK] Update complete!`, then "Still starting..." and "The server has not
+answered in 90 seconds." npm reported Node.js v6.10.1 and npm 3.10.10.
+
+**Cause** - install, update and start used whatever `node` was on PATH, of any
+version. Node 6 cannot run the server, and its npm 3 ignores `--omit=dev`, so
+it tried to install the build tools too and broke `node_modules`. The updater
+never checked npm's exit code.
+
+**Rule** - never trust a runtime by its name: check its version against
+`engines` before using it, and treat a failed install step as a failed update.
+
+**Guard** - `_system-scripts/ensure-node.ps1` (shared by install, update and
+start) accepts Node.js 18+ only, else fetches the portable Node.js into
+`_system\node`; start reinstalls the packages when it had to. Verified by hand
+with a fake `node.cmd` printing v6.10.1 first on PATH and an empty
+`node_modules`: Open App fetched Node 20, reinstalled and started.
+
+---
+
 ## ERR-059 - A maths fix changed invoices that were already saved
 
 **Version:** broke in the v1.10.80 audit (before release) · fixed in v1.10.80

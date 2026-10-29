@@ -2067,7 +2067,7 @@ function BackupAndTrashPanel() {
             ? <>Copies go to <strong>{backupFolder.copiesIn}</strong> (30 days kept). If this PC fails, install the app again, set the same folder here, and its backups appear in the list below to restore.</>
             : 'Backups are kept in the app folder on this drive. Choose a folder on another drive (D:, a USB disk) so they survive if this drive fails.'}
         </p>
-        {backupFolder.error && <p role="alert" style={{ color: 'var(--danger)', fontSize: '0.8rem', margin: '0.35rem 0 0' }}>The last copy failed: {backupFolder.error}. Is the drive connected?</p>}
+        {backupFolder.error && <p role="alert" style={{ color: 'var(--danger)', fontSize: '0.8rem', margin: '0.35rem 0 0' }}>{backupFolder.error}</p>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem', marginTop: '1rem' }}>

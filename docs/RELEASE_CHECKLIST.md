@@ -121,7 +121,8 @@ the wrong version number.
 - [ ] Affected buttons/screens named in plain language
 - [ ] If the updater itself was broken — the ⚠️ manual-download warning is
       at the top
-- [ ] `npm run release:zip` succeeded. It now refuses to hand you a ZIP
+- [ ] `npm run release:zip` succeeded. It runs `npm run lint` (0 errors) and
+      the unit tests first, and stops if either fails. It also refuses to hand you a ZIP
       unless that ZIP **extracts, installs, boots and passes the full smoke
       suite** (see `scripts/verify-release.mjs`). A failing build deletes
       the ZIP rather than leaving something shippable lying about.

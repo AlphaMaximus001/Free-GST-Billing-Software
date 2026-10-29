@@ -7,6 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.81] - 2026-10-29
+
+**The app now checks your PC has what it needs, and fixes it or tells you how
+(#109, #116): no more "server has not answered in 90 seconds" from an old
+Node.js. Plus a new update every Saturday, What's new in the app, and a
+welcome for new users.**
+
+### How to update
+
+**Current version:** 1.10.80  →  **New version:** 1.10.81
+
+> **If the app does not start since the last update (#109):** download
+> `Free-GST-Billing.zip` from the
+> [Releases page](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest),
+> extract it over your Free GST Billing folder (replace files when asked) and
+> click **Open App**. It sets itself up; your data is kept.
+
+#### If the in-app Update button works for you (1.10.73 and later)
+1. Open the app and click **Update to v1.10.81** in the sidebar, or
+   **Settings → App Updates → Update Now**.
+2. Wait about a minute, then reload the page.
+
+#### On 1.10.72 or older
+Use the launcher: **More options → Update to the latest version**, then
+**Open App**.
+
+#### If that does not work (or you are unsure)
+1. Download `Free-GST-Billing.zip` from the
+   [Releases page](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest).
+2. Close the app (click **Stop the app** in the launcher if it is running).
+3. **Right-click the ZIP → Extract All.** Do not open anything while still inside the ZIP.
+4. Extract over your existing Free GST Billing folder, replacing files when asked.
+5. Double-click **Free GST Billing - WINDOWS**.
+
+#### Linux / NAS
+Run `update-unix.sh` from the `_system` folder, or extract the new ZIP over
+the old folder. Restart the app afterwards.
+
+### Added
+- **A new update every Saturday.** From now on, one update each week with that
+  week's fixes and new features (anything urgent straight away). **Support &
+  About** explains it and has **Report a problem** and **Ask for a feature**
+  buttons that open short forms on GitHub.
+- **What's new** on Support & About: the latest updates and what each one
+  changed, readable offline, with a link to the full changelog.
+- **Supporters list:** the latest 10 supporters, newest first, and
+  **Show all** with a search to find any name.
+- **A welcome note for new users** on the Dashboard: thank you to you, and to
+  whoever told you about the app. It's free for good, and support of any
+  amount is welcome but never needed. Shown until you close it.
+- **Fix it yourself:** `READ ME FIRST.txt` in the download, the README and the
+  online guide list each error message with what to do.
+
+### Fixed
+- **The app would not start, or an update broke it, on a PC with an old
+  Node.js** (#109, thanks @fzkhan731; also #116, thanks @proactivebizs). Installing, updating and **Open App**
+  now check what the app needs before using it:
+  - **Node.js 18 or newer with npm 7 or newer.** If the one on the PC is older
+    or missing, a current Node.js is set up inside the app folder (no admin
+    rights; your other programs keep their Node.js). If that download fails,
+    the app offers to install Node.js with Windows' own package manager
+    (winget), and otherwise opens the download page with the steps.
+  - **Windows 10 or 11, a writable app folder, enough free disk space, and a
+    working internet connection** before packages are downloaded, each with a
+    plain message saying what to do.
+  - An update whose packages did not install no longer says "Update
+    complete"; **Open App** finishes the install.
+  - Linux / Mac / NAS: the same Node.js check, with the command to run for
+    your system, and the start waits up to 90 seconds as on Windows.
+- **WhatsApp from the invoice list** (#117, thanks @CamClinic): the chat now
+  opens with the client's saved phone number (the reminder already did; the
+  share did not). On a computer the PDF is also downloaded, ready to drag
+  into the chat (browsers can't attach it for you).
+- **CSV import dates:** a file with US-style dates (10/25/2026) is refused
+  with a message instead of having its other dates read the wrong way round;
+  a file whose dates could be either way says how it read them.
+- **CSV import:** if an import stops part-way, the invoices and bills already
+  imported still get their stock.
+- **Backup folder:** two computers saving to the same folder are now told so
+  (their backups used to mix silently), and an unplugged drive no longer
+  makes the app hang.
+- **⋯ actions menu:** works with the arrow keys, Home and End, and Esc
+  returns to the button.
+
+---
+
 ## [1.10.80] - 2026-10-24
 
 **Bulk CSV import / export, a Lock button, View + a tidier Actions menu,

@@ -10,7 +10,7 @@ export default [
   body: `
 <section id="header">
 <h2>At the top</h2>
-<p>The count beside the title is every document for the business selected in the sidebar, including estimates, challans and cancelled invoices. ${ui('New Invoice')} starts a blank invoice.</p>
+<p>The count beside the title is every document for the business selected in the sidebar, including estimates, challans and cancelled invoices. ${ui('New Invoice')} starts a blank invoice, and ${ui('CSV import / export')} brings in or saves many invoices at once (see <a href="#csv">below</a>). When a <a href="settings.html#lock">PIN</a> is set, ${ui('Lock')} locks the app straight away.</p>
 <figure><img src="assets/img/app-dashboard.png" alt="The Dashboard with an overdue invoice, the four totals and low stock." loading="lazy"><figcaption>The Dashboard with an overdue invoice, the four totals and low stock.</figcaption></figure>
 </section>
 
@@ -26,6 +26,11 @@ export default [
 </table>
 <p>It disappears when all four are done, or when you close it with ${ui('✕')}. <b>Read the 5-minute guide</b> opens this documentation in your browser.</p>
 <figure><img src="${img('getting-started.png')}" alt="The Getting started list with three of four steps done"></figure>
+</section>
+
+<section id="support-card">
+<h2>The support card</h2>
+<p>Once you have made 10 invoices, a small card at the top asks, once a day, whether you would like to support the app, with how much users have given so far. ${ui('Support with UPI')} opens <a href="shortcuts.html#support">Support &amp; About</a>. ${ui('Not today')} hides it until tomorrow and ${ui('Hide for 30 days')} for a month. It never blocks your work and is never printed on an invoice.</p>
 </section>
 
 <section id="overdue">
@@ -96,13 +101,15 @@ export default [
 
 <section id="row-actions">
 <h2>What you can do with an invoice</h2>
+<p>The row shows the actions you use most. The rest are in the ${ui('⋯')} menu at the end of the row; it closes with <kbd>Esc</kbd> or a click elsewhere.</p>
 <table>
+  <tr><td>👁 View</td><td>Shows the invoice exactly as it prints, without opening the editor. ${ui('Print')} prints it, <kbd>Esc</kbd> closes it. The slider at the bottom zooms the preview from 30% to 250% (${ui('−')} and ${ui('+')} step 10%); click the percentage to go back to the normal size. Zoom only changes the preview; the print is always full size.</td></tr>
   <tr><td>Edit</td><td>Opens it on the invoice screen.</td></tr>
   <tr><td>Duplicate</td><td>A new invoice with the same client and items, a new number and today's date. It starts Unpaid, with no payments.</td></tr>
   <tr><td>Print</td><td>Prints the invoice straight away, without opening it, then returns to the Dashboard.</td></tr>
   <tr><td>Convert to Tax Invoice</td><td>Quotations, proformas and delivery challans only, until they have been converted. See <a href="invoices.html#proforma-to-invoice">Turning a quote into an invoice</a>.</td></tr>
   <tr><td>₹ Payment</td><td>Record a payment, as above.</td></tr>
-  <tr><td>WhatsApp</td><td>On a phone, attaches the PDF through your phone's share menu. On a computer, WhatsApp does not let websites attach files, so it sends the details as text; download the PDF and drop it into the chat.</td></tr>
+  <tr><td>WhatsApp</td><td>On a phone, attaches the PDF through your phone's share menu. On a computer, WhatsApp does not let websites attach files, so the chat with the client opens (using the phone number saved for them) with the invoice details, and the PDF is downloaded for you to drag into the chat.</td></tr>
   <tr><td>Send reminder</td><td>Shown for unpaid, part-paid and overdue invoices. Opens WhatsApp with a reminder suited to the situation.</td></tr>
   <tr><td>Email</td><td>Opens your email program with the subject and a short message. Add the address and attach the PDF yourself.</td></tr>
   <tr><td>Cancel</td><td>See <a href="#cancel">Cancelling an invoice</a>.</td></tr>
@@ -114,6 +121,34 @@ export default [
 <h2>Cancelling an invoice</h2>
 <p>${ui('Cancel')} asks first, then marks the invoice cancelled. It keeps its number, which GST requires, but no longer counts in totals, reports or GST returns, and any stock it used goes back. If you saved or printed its PDF, the copy in the <code>Saved Invoices</code> folder gets <b>CANCELLED</b> across every page.</p>
 <p>To undo it, click the ${ui('Undo cancel')} arrow among the row's actions and answer <b>Yes, undo</b>. It goes back to Unpaid, Partial or Paid, from its payments, the stock is taken out again, and its saved PDF is put back exactly as it was. A cancelled invoice is never shown as overdue.</p>
+</section>
+
+<section id="csv">
+<h2>Importing and exporting invoices as CSV</h2>
+<p>For moving invoices in from Excel, Tally or another program, or out to your CA.</p>
+<ol class="steps">
+  <li><strong>Open it</strong>Click ${ui('CSV import / export')} at the top of the Dashboard.</li>
+  <li><strong>Start from the template</strong>${ui('Template')} downloads a CSV with the right columns and an example. Fill it in with Excel or Google Sheets and save it as CSV. ${ui('Export all as CSV')} gives what you already have, in the same columns.</li>
+  <li><strong>Choose the file</strong>${ui('Choose CSV file')} shows what will happen <b>before</b> anything is saved: how many are ready, which already exist and are skipped, and every row with a problem (a bad date, a missing rate). Rows with problems are not imported; fix the file and choose it again.</li>
+  <li><strong>Import</strong>Click ${ui('Import')}. A message says how many were imported and skipped.</li>
+</ol>
+<p>One row per item. Rows with the same invoice number make one invoice; give the client, date and other invoice details on the first row (later rows may leave them blank). Column names are matched loosely, so <b>Qty</b> or <b>Quantity</b>, <b>GSTIN</b> or <b>Client GSTIN</b> both work. Dates can be <code>2026-10-01</code>, <code>01-10-2026</code> or <code>01/10/2026</code> (day first).</p>
+<table>
+  <tr><th>Column</th><th>What to put</th></tr>
+  <tr><td>Invoice Number, Invoice Date</td><td>Required.</td></tr>
+  <tr><td>Invoice Type</td><td>Tax Invoice (if blank), Bill of Supply, Composition, Quotation, Proforma, Delivery Challan or Credit Note.</td></tr>
+  <tr><td>Due Date</td><td>Optional.</td></tr>
+  <tr><td>Client Name, Client GSTIN, Client State, Client Address, Client Country</td><td>The name is required. A client already in Clients fills in the rest. The state can be a name, a 2-digit code, or left to the GSTIN.</td></tr>
+  <tr><td>Place of Supply</td><td>Only if it differs from the client's state.</td></tr>
+  <tr><td>Item Name, HSN/SAC, Quantity, Unit, Rate</td><td>Rate is required. A product of the same name fills in a missing HSN or unit.</td></tr>
+  <tr><td>Discount</td><td>Rupees off that line.</td></tr>
+  <tr><td>GST %, Cess %</td><td>Such as 18 and 0.</td></tr>
+  <tr><td>Prices Include Tax</td><td>Yes if the rates already include GST.</td></tr>
+  <tr><td>Notes</td><td>Printed on the invoice.</td></tr>
+  <tr><td>Bill Discount, Round Off</td><td>For the whole invoice: rupees off after tax, and Yes to round the total to the rupee.</td></tr>
+</table>
+<p>GST, CGST + SGST or IGST and the totals are worked out exactly as on the invoice screen. An invoice number that already exists is <b>skipped, never overwritten</b>. Two different invoices with the same number (for example, numbering that restarts each year) are refused: give one of them its own number.</p>
+<p>Two choices before importing: <b>Add new clients to Clients</b>, and <b>Take sold quantities out of product stock</b>. Leave stock off when importing old invoices whose stock you have already counted.</p>
 </section>
 
 <section id="quick-print">
@@ -358,6 +393,18 @@ Website Maintenance,998314,5000,18,Month,0</code></pre>
 <section id="export">
 <h2>For your accountant</h2>
 <p>${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} above the list give the purchase register for the current search and year, oldest first, with a total row: date, supplier, GSTIN, invoice number, taxable amount, tax, cess, inter-state, round-off, total, status and note.</p>
+</section>
+
+<section id="csv-purchases">
+<h2>Importing purchase bills from CSV</h2>
+<ol class="steps">
+  <li><strong>Open it</strong>Click ${ui('CSV import / export')} at the top of Purchases.</li>
+  <li><strong>Start from the template</strong>${ui('Template')} downloads a CSV with the right columns and an example. Fill it in with Excel or Google Sheets and save it as CSV. ${ui('Export all as CSV')} gives what you already have, in the same columns.</li>
+  <li><strong>Choose the file</strong>${ui('Choose CSV file')} shows what will happen <b>before</b> anything is saved: how many are ready, which already exist and are skipped, and every row with a problem (a bad date, a missing rate). Rows with problems are not imported; fix the file and choose it again.</li>
+  <li><strong>Import</strong>Click ${ui('Import')}. A message says how many were imported and skipped.</li>
+</ol>
+<p>One row per item. Rows with the same supplier and invoice number make one bill. Columns: Invoice Number, Invoice Date, Supplier Name, Supplier GSTIN, Supplier Address, Item Name, HSN/SAC, Quantity, Rate, GST %, Cess %, Inter-state, Payment Status (Unpaid, Partial or Paid) and Note.</p>
+<p>A bill already entered (same supplier and number, matched by GSTIN or by name) is skipped. If <b>Inter-state</b> is blank, it is worked out from the supplier's GSTIN. Quantities are added to product stock, as when you type a bill in.</p>
 </section>
 
 <section id="unassigned">

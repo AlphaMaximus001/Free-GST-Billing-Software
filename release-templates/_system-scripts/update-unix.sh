@@ -99,8 +99,14 @@ if [ ! -f "$SYSTEM_DIR/server.js" ] || [ ! -f "$SYSTEM_DIR/package.json" ]; then
   fi
   fail "The app was not found next to this script ($SYSTEM_DIR). Download the release ZIP again."
 fi
-command -v node >/dev/null 2>&1 || fail 'Node.js is not on PATH.'
-command -v npm  >/dev/null 2>&1 || fail 'npm is not on PATH.'
+# v1.10.81 (#109) - and new enough (check-node.sh says what to install).
+if [ -f "$SYSTEM_DIR/check-node.sh" ]; then
+  . "$SYSTEM_DIR/check-node.sh"
+  node_ok || fail 'Update Node.js as shown above, then run the update again. Nothing was changed.'
+else
+  command -v node >/dev/null 2>&1 || fail 'Node.js is not on PATH.'
+  command -v npm  >/dev/null 2>&1 || fail 'npm is not on PATH.'
+fi
 
 if command -v unzip >/dev/null 2>&1; then
   EXTRACTOR=unzip

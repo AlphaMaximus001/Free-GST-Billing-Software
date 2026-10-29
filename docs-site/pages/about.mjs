@@ -67,8 +67,18 @@ export default [
 <ul>
   <li><strong><a href="${SITE.repo}">Star it on GitHub</a></strong>: helps other businesses find it.</li>
   <li><strong><a href="https://wa.me/?text=${share}">Tell another business</a></strong>: send it to a friend on WhatsApp.</li>
-  <li><strong><a href="${SITE.repo}/issues">Report a bug or ask for a feature</a></strong>: many features started as a request.</li>
+  <li><strong><a href="${SITE.repo}/issues/new/choose">Report a bug or ask for a feature</a></strong>: many features started as a request.</li>
 </ul>
+</section>
+
+<section id="weekly">
+<h2>A new update every Saturday</h2>
+<p>Every Saturday we release one update with that week's fixes and new features. The app tells you when it is ready: click <b>Update</b> in the sidebar, and your invoices and settings are kept. Anything urgent, such as the app not opening, is fixed straight away.</p>
+<ul>
+  <li><strong><a href="${SITE.repo}/issues/new?template=bug_report.yml">Report a problem</a></strong>: say which version, which computer, and what you did. That lets us fix it the same week.</li>
+  <li><strong><a href="${SITE.repo}/issues/new?template=feature_request.yml">Ask for a feature</a></strong>: we read every request each week, and the ones most people ask for come first. Add a 👍 to an <a href="${SITE.repo}/issues">open request</a> to vote for it.</li>
+</ul>
+<p>You get a reply on GitHub when it ships. What each update changed is in the app under <b>Support &amp; About → What's new</b>, in the <a href="${SITE.repo}/blob/main/CHANGELOG.md">full changelog</a>, and on <a href="${SITE.repo}/releases">GitHub Releases</a>.</p>
 </section>
 
 <section id="services">

@@ -75,65 +75,30 @@ if (-not $env:FREEGSTBILL_DIR) {
 # The official portable ZIP needs no rights at all: unpack it next to the app
 # and point PATH at it. Nothing is written outside this folder, no UAC prompt
 # appears, and a Node.js the user already has is left completely alone.
-$NodeDir = Join-Path $SystemDir 'node'
-$NodeExe = Join-Path $NodeDir 'node.exe'
-
-if (Test-Path $NodeExe) { $env:Path = "$NodeDir;$env:Path" }
-$node = Get-Command node -ErrorAction SilentlyContinue
-
-if (-not $node) {
-  Write-Host '  Node.js is not on this PC - fetching it (about 30 MB, one time)...'
-  $ver = 'v20.19.0'
-  $arch = if ([Environment]::Is64BitOperatingSystem) { 'x64' } else { 'x86' }
-  $name = "node-$ver-win-$arch"
-  $tmpZip = Join-Path $env:TEMP "$name.zip"
-  $tmpDir = Join-Path $env:TEMP "fgstbill-node-$([Guid]::NewGuid().ToString('N'))"
-  try {
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest -Uri "https://nodejs.org/dist/$ver/$name.zip" -OutFile $tmpZip -UseBasicParsing
-    Write-Host '  Unpacking...'
-    Expand-Archive -Path $tmpZip -DestinationPath $tmpDir -Force
-    if (Test-Path $NodeDir) { Remove-Item $NodeDir -Recurse -Force -ErrorAction SilentlyContinue }
-    Move-Item (Join-Path $tmpDir $name) $NodeDir
-    Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue
-    Remove-Item $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
-    $env:Path = "$NodeDir;$env:Path"
-  } catch {
-    Write-Host ''
-    Write-Host "  Could not download Node.js: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host '  Check your internet connection and run this again, or install Node.js'
-    Write-Host '  yourself from https://nodejs.org (pick LTS) and then run this again.'
-    Read-Host '  Press Enter to close'
-    exit 1
-  }
-
-  # Never carry on assuming it worked - that is what produced the unhelpful
-  # "npm install failed" before.
-  $node = Get-Command node -ErrorAction SilentlyContinue
-  if (-not $node) {
-    Write-Host ''
-    Write-Host "  Node.js was downloaded but will not run from $NodeDir." -ForegroundColor Red
-    Write-Host '  Your antivirus may have removed it. Add this folder to its exclusions,'
-    Write-Host '  or install Node.js from https://nodejs.org and run this again.'
-    Read-Host '  Press Enter to close'
-    exit 1
-  }
-  Write-Host "  Node.js $(& node -v) is ready (inside the app folder - nothing else on your PC was changed)."
+# v1.10.81 (#109) - and only a Node.js new enough: see ensure-node.ps1.
+. (Join-Path $SystemDir 'ensure-node.ps1')
+if (-not (Use-GoodNode)) {
+  Read-Host '  Press Enter to close'
+  exit 1
 }
+if ($script:NodeWasFetched -or (Test-PackagesBroken)) { Reset-Packages }
 
 # --- Step 2: npm install inside _system/ ---
 Write-Host ''
 Write-Host '  Installing app dependencies (npm install)...'
+if (-not (Test-InstallReady)) {
+  Read-Host '  Press Enter to close'
+  exit 1
+}
 Push-Location $SystemDir
 try {
   npm install --omit=dev --no-audit --no-fund --loglevel=error
   if ($LASTEXITCODE -ne 0) { throw "npm install exited $LASTEXITCODE" }
 } catch {
   Write-Host ''
-  Write-Host "  ERROR: could not install the app's dependencies." -ForegroundColor Red
-  Write-Host '  This is almost always no internet, or a proxy blocking npm.'
-  Write-Host '  Check the connection and run this again - it carries on where it stopped.'
   Pop-Location
+  Show-InstallHelp
+  Write-Host '  Then run this again - it carries on where it stopped.'
   Read-Host '  Press Enter to close'
   exit 1
 }

@@ -21,14 +21,16 @@ export default [
   <li>At the bottom, <b>App Ready</b> when all is well.</li>
 </ul>
 <p>At the end of the Dashboard, below the invoices, a small line shows the app's version, a link to DiceCodes and <a href="#support">Support</a>. It is never printed.</p>
-<p>Tick <b>Auto-hide menu</b>, under the app name, to shrink the sidebar to a slim strip of icons and give the page more room. Point at it to open it (the checkbox and your business name are there again). Untick it to keep it open.</p>
+<p>The ☰ button beside the app name shrinks the sidebar to a slim strip of icons and gives the page more room; it is highlighted while the menu hides itself. Point at the strip to open it. Click ☰ again to keep the menu open.</p>
+<p>When a <a href="settings.html#lock">PIN</a> is set, <b>Lock app</b> in the sidebar locks the app.</p>
 <p>On a narrow screen, the sidebar folds away behind the ☰ menu button.</p>
 </section>
 
 <section id="support">
 <h2>Support &amp; About</h2>
 <p>Who makes the app, and how to help it grow. Free ways come first: star it on GitHub, tell another business, report a bug or ask for a feature. If you want to give money, scan the UPI QR with any UPI app, for any amount. The page also lists what DiceCodes builds for businesses: custom software and web apps, changes to this app, setup and data migration, support plans, AI integration and automation, and mobile apps.</p>
-<p>The app stays free whatever you choose. Nothing is locked, and nothing is ever printed on your invoices. After your 50th invoice, the Dashboard shows one small thank-you card; ${ui('Maybe later')} hides it for a few months and ${ui("Don't show again")} hides it for good.</p>
+<p>The app stays free whatever you choose. Nothing is locked, and nothing is ever printed on your invoices. Once you have made 10 invoices, the Dashboard shows a small <a href="dashboard.html#support-card">support card</a> once a day; ${ui('Not today')} hides it until tomorrow and ${ui('Hide for 30 days')} for a month.</p>
+<p>Scanning the QR fills in the payment note "Free GST Billing support - <i>your business name</i>", so DiceCodes can thank you; untick <b>Include my business name</b> to leave it out. The page also shows how much users have given so far and what it is going towards.</p>
 <p>Once a month at most, a one-line note at the top of the app asks for a star on GitHub. ${ui('✕')} hides it for 30 days; ${ui('Star on GitHub')} or ${ui('Already starred')} hides it for good. It never appears while you are making an invoice.</p>
 </section>
 
@@ -68,6 +70,7 @@ export default [
 <table>
   <tr><td><kbd>Ctrl</kbd> + <kbd>K</kbd></td><td>Quick search</td></tr>
   <tr><td><kbd>Ctrl</kbd> + <kbd>N</kbd></td><td>New invoice</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd></td><td>Lock the app (when a PIN is set)</td></tr>
   <tr><td><kbd>Ctrl</kbd> + <kbd>/</kbd></td><td>Show all shortcuts</td></tr>
   <tr><td><kbd>Esc</kbd></td><td>Close a dialog</td></tr>
   <tr><td><kbd>Enter</kbd></td><td>Confirm a dialog</td></tr>
@@ -114,7 +117,17 @@ export default [
 <ul>
   <li><strong>"Could not download Node.js"</strong> or <strong>"could not install the app's dependencies"</strong>: the first install needs the internet. Check the connection, or a work proxy or firewall, and click ${ui('Install')} again. It carries on where it stopped.</li>
   <li><strong>"Node.js was downloaded but will not run"</strong>: antivirus probably removed it. Add the app's folder to your antivirus exclusions, or install Node.js yourself from <a href="https://nodejs.org">nodejs.org</a>, then click ${ui('Install')} again.</li>
+  <li><strong>"The Node.js on this PC (v6...) is too old"</strong>, <strong><code>npm ERR!</code></strong>, or a file named <code>npm-debug.log</code> in the <code>_system</code> folder: the PC has an old Node.js. From v1.10.81 the app sets up a current one in its own folder by itself. On an older version: install Node.js LTS from <a href="https://nodejs.org">nodejs.org</a>, delete the <code>_system\node_modules</code> folder (the <code>_system</code> folder is hidden: in File Explorer, <b>View → Show → Hidden items</b>), and click ${ui('Install')} again. Never delete the <code>data</code> folder.</li>
+  <li><strong>"Free GST Billing is already installed on this computer, in: ..."</strong>: you extracted a new ZIP into a new folder. Your invoices are in the folder it names. Open that copy from your Desktop shortcut and use ${ui('More options')} → ${ui('Update to the latest version')}; the new folder can be deleted.</li>
+  <li><strong>"The app cannot write to its own folder"</strong>: it is inside <code>C:\Program Files</code>, on a read-only drive, or blocked by antivirus. Move the Free-GST-Billing folder to Documents or <code>D:\</code> and open it from there.</li>
+  <li><strong>"Drive ... is almost full"</strong>: the install needs about 400 MB free. Empty the Recycle Bin or delete old downloads, then try again.</li>
+  <li><strong>"Windows can install Node.js LTS for this PC ... Install Node.js LTS now?"</strong>: the app could not download Node.js itself, so it offers Windows' own installer. Type <b>Y</b> to accept (Windows may ask for permission), or anything else to install it yourself from the page it opens.</li>
 </ul>
+</section>
+
+<section id="not-answered">
+<h2>"Still starting..." or "The server has not answered in 90 seconds"</h2>
+<p>The first start after an install or update is slow, because antivirus checks every new file. Wait a minute, then open <code>http://localhost:47371</code> in your browser. If it still does not open, close the black window and click ${ui('Open App')} again; from v1.10.81 it also repairs an install that an update left half done. If the window shows an error above that line, the entries under <a href="#install-failed">The install stopped with an error</a> say what to do.</p>
 </section>
 
 <section id="cannot-connect">
@@ -185,7 +198,8 @@ export default [
 
 <section id="report-problem">
 <h2>Reporting a problem</h2>
-<p>Open an issue on <a href="${SITE.repo}/issues">GitHub</a> with a screenshot, the version from <b>Settings, App Updates</b>, and what you did just before it happened. Fixes and new versions come from these reports.</p>
+<p>Use the <a href="${SITE.repo}/issues/new?template=bug_report.yml">Report a problem</a> form on GitHub. It asks for the version (<b>Settings, App Updates</b>), your computer, what you did and what you saw, and a screenshot (hide your GSTIN and bank details). If the app does not start, add what <code>node -v</code> and <code>npm -v</code> show in Command Prompt.</p>
+<p>Problems are fixed in the <a href="support.html#weekly">Saturday update</a>, and anything urgent, such as the app not opening, straight away. For a new feature use <a href="${SITE.repo}/issues/new?template=feature_request.yml">Ask for a feature</a>.</p>
 </section>
 `,
 },

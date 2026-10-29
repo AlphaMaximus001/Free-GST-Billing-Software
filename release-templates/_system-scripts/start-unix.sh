@@ -26,18 +26,30 @@ fi
 if curl -fsS --max-time 1 "http://localhost:$PORT/api/profile" >/dev/null 2>&1; then
   echo "  Server already running on port $PORT — opening browser…"
 else
+  # v1.10.81 (#109) - an old Node.js was started here and never answered.
+  if [ -f "$SYSTEM_DIR/check-node.sh" ]; then
+    . "$SYSTEM_DIR/check-node.sh"
+    node_ok || exit 1
+  fi
   echo "  Starting server on port $PORT…"
   # Detach so the script can exit while node keeps running.
   cd "$SYSTEM_DIR"
   nohup node server.js >/dev/null 2>&1 &
-  # Poll for readiness up to 15s.
-  deadline=$(($(date +%s) + 15))
+  # Poll for readiness. 15s was too short for a first start after an install
+  # (the Windows launcher waits 90s for the same reason).
+  deadline=$(($(date +%s) + 90))
+  up=0
   while [ $(date +%s) -lt $deadline ]; do
     sleep 0.4
     if curl -fsS --max-time 1 "http://localhost:$PORT/api/profile" >/dev/null 2>&1; then
+      up=1
       break
     fi
   done
+  if [ "$up" != 1 ]; then
+    echo "  The server has not answered in 90 seconds. Try http://localhost:$PORT/ in your"
+    echo "  browser in a minute; if it still does not open, run the launcher again."
+  fi
 fi
 
 # Open browser — macOS uses `open`, Linux uses `xdg-open`.

@@ -121,6 +121,8 @@ From then on, click the Desktop shortcut. To update / backup / restore / move to
 - [Who Is This For?](#who-is-this-for)
 - [Why Is This Free?](#why-is-this-free)
 - [Data Privacy & Security](#data-privacy--security)
+- [Troubleshooting: fix it yourself](#troubleshooting-fix-it-yourself) — *find the message you see*
+- [Updates every Saturday](#calendar-a-new-update-every-saturday)
 - [Contributing](#contributing)
 - [Contact & Support](#contact--support)
 
@@ -642,11 +644,20 @@ The app includes a **step-by-step interactive filing guide** with screenshots an
 - [ ] More industry-specific *invoice templates* (separate from the 13 Terms presets we already ship)
 - [ ] Branch-wise reporting
 
-> **Want a feature?** [Open an issue](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues) and let us know.
+> **Want a feature?** [Ask for it here](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=feature_request.yml) and let us know.
+
+### :calendar: A new update every Saturday
+
+Every **Saturday** we release one update with that week's fixes and new features. The app tells you when it is ready (**Update** in the sidebar) and keeps your data. Anything urgent, such as the app not opening, is fixed straight away.
+
+- 🐛 **[Report a problem](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=bug_report.yml)**: the version, your computer and the steps help us fix it the same week.
+- 💡 **[Ask for a feature](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=feature_request.yml)**: we read every request each week, and the ones most people ask for come first. Add a 👍 to an [open request](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues) to vote for it.
+
+You get a reply on the issue when it ships. How the week runs: [docs/WEEKLY_RELEASES.md](./docs/WEEKLY_RELEASES.md).
 
 ### :scroll: Changelog
 
-See **[CHANGELOG.md](./CHANGELOG.md)** for a detailed history of every release.
+See **[CHANGELOG.md](./CHANGELOG.md)** for a detailed history of every release. The latest updates are also in the app, under **Support & About → What's new**.
 
 ---
 
@@ -693,7 +704,7 @@ If the app saves you time, you can help keep it going:
 
 - ⭐ **Star this repo**, so other businesses find it
 - 💬 **Tell another business** about it
-- 🐛 **[Report a bug or ask for a feature](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues)**
+- 🐛 **[Report a bug](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=bug_report.yml) or [ask for a feature](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=feature_request.yml)**: fixes and features ship every Saturday
 - 💛 **UPI, any amount:** `princeramgarhiaa-1@okaxis` (also as a QR code in the app, under **Support & About**)
 
 **Work with DiceCodes:** custom software and web apps, customising this app for your business, setup and data migration, support plans, AI integration and automation, and mobile apps. [contact@dicecodes.com](mailto:contact@dicecodes.com)
@@ -796,6 +807,33 @@ Free-GST-Billing-Software/
 
 ---
 
+## Troubleshooting: fix it yourself
+
+Find the message you see. **None of these touch your invoices**: they stay in the `_system\data` folder inside the app folder, and every update backs them up first to `Documents\FreeGSTBill Backups`.
+
+> The `_system` folder is hidden. To see it in File Explorer: **View → Show → Hidden items**.
+
+| You see | What to do |
+|---|---|
+| **"Some files are missing"** or **"extract the ZIP first"** | The app can't run from inside the ZIP. Right-click the ZIP → **Extract All**, open the new folder, then double-click **Free GST Billing - WINDOWS**. |
+| **"Windows protected your PC"** | The app isn't code-signed (a certificate costs about $300 a year). Click **More info → Run anyway**. |
+| **"Node.js … is too old"**, **`npm ERR!`**, or a file named **`npm-debug.log`** in `_system` | The PC has an old Node.js. **v1.10.81 and later fix this themselves**: click **Install** or **Open App** again. On an older version: install **Node.js LTS** from [nodejs.org](https://nodejs.org), delete **only** `_system\node_modules`, then click **Install**. Never delete `_system\data`. |
+| **"could not install the app's dependencies"** / **"cannot reach the internet"** | The first install needs the internet. Check the connection; in an office, a proxy or firewall may block `registry.npmjs.org`. Click **Install** again: it carries on where it stopped. |
+| **"Still starting…"** / **"The server has not answered in 90 seconds"** | The first start after an install or update is slow while antivirus checks the new files. Wait a minute and open <http://localhost:47371>. Still nothing? Close the black window and click **Open App** again. |
+| **"Free GST Billing is already installed on this computer, in: …"** | You extracted a new ZIP into a new folder. Your invoices are in the folder it names: open that copy from your Desktop shortcut and use **More options → Update to the latest version**. Delete the new folder. |
+| **"The app cannot write to its own folder"** | Don't keep it in `C:\Program Files`. Move the whole Free-GST-Billing folder to Documents or `D:\` and open it from there. |
+| **"Drive … is almost full"** | The install needs about 400 MB free. Empty the Recycle Bin or delete old downloads. |
+| **"Node.js was downloaded but will not run"** | Antivirus removed it. Add the app folder to its exclusions and click **Install** again. |
+| **"Install Node.js LTS now?"** (winget) | The app couldn't download Node.js itself and offers Windows' own installer. Type **Y** to accept (Windows may ask permission), or install it yourself from the page it opens. |
+| **"Cannot connect to server"**, **"This site can't be reached"**, or a blank page | The app isn't running. Open the Desktop shortcut and click **Open App**. |
+| The update finished but nothing changed | Reload the page with **Ctrl + F5**. |
+| Forgot the app PIN | In the app folder (next to the launcher), create an empty text file named `RESET-PIN` and reload the app. The PIN is removed; invoices aren't touched. |
+| Linux / Mac / NAS: **"Node.js … is too old"** or **"not installed"** | The message lists the command for your system (`apt`, `dnf`, `pacman`, `apk`, `brew` or nvm). Install Node.js 20, then open the launcher again. |
+
+**Still stuck?** [Report a problem](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=bug_report.yml) with the message you see and a screenshot (hide your GSTIN and bank details). If the app doesn't start, add what `node -v` and `npm -v` show in Command Prompt. More answers: [troubleshooting guide](https://dicecodes.com/free-gst-software-documentation/troubleshooting.html).
+
+---
+
 ## Frequently Asked Questions
 
 ### Is Free GST Billing Software really free?
@@ -817,13 +855,13 @@ Yes. Free GST Billing Software supports **22 countries** with locale-correct cur
 **Tax Invoice**, **Proforma / Estimate**, **Bill of Supply** (for exempt goods or non-GST sellers), **Composition scheme invoice** (with Rule 46A declaration), **Credit Note**, **Delivery Challan**.
 
 ### Does it support multiple businesses?
-Yes. You can add unlimited business profiles (each with its own GSTIN, bank accounts, logo, signature, and country setting). Switch between them with one click in the header.
+Yes. You can add unlimited business profiles (each with its own GSTIN, bank accounts, logo, signature, and country setting) under **Settings → Business Profile → Add New Profile**, and switch between them from the business name at the top of the sidebar. Each one can have its own invoice numbering.
 
 ### Does it run on Mac or Linux?
 The `.hta` launcher is Windows-only, but the app itself works on macOS and Linux — a NAS included — from the release ZIP (`Free GST Billing - LINUX.sh`) or via `npm install` + `npm start`. See the [Quick Start](#quick-start--installation) section. From v1.10.66, **Control Panel → Update Now** also works on Linux / NAS installs made from the release ZIP (it needs `unzip` or python3); restart the app, or its container, afterwards.
 
 ### What happens to my data when the app updates?
-Updates only refresh the app code and dependencies. Your `data/` folder (invoices, clients, products, settings) and `Saved Invoices/` PDF archive are **never touched**. The updater also backs them up to `%TEMP%` as a third safety net before pulling new code.
+Updates only refresh the app code and dependencies. Your `data/` folder (invoices, clients, products, settings) and `Saved Invoices/` PDF archive are **never touched**. The updater also saves a backup ZIP to `Documents\FreeGSTBill Backups` before it changes anything.
 
 ### Is there a mobile app?
 Not yet — the PWA installs as a desktop app today. A native Android app is on the v2.x roadmap.
@@ -836,7 +874,7 @@ CSV import is supported today for clients and products. Direct Tally XML import 
 ## Contact & Support
 
 - **Email:** [Contact@dicecodes.com](mailto:Contact@dicecodes.com)
-- **Issues / bugs / feature requests:** [GitHub Issues](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues)
+- **Report a problem:** [bug report form](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=bug_report.yml) · **Ask for a feature:** [feature form](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=feature_request.yml) (fixes and features ship every Saturday)
 - **Releases:** [GitHub Releases](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases)
 - **Discussions:** *(coming soon)*
 

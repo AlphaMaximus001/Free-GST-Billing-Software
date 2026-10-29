@@ -5,7 +5,9 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // Build output and generated / copied files, as in .gitignore: linting them
+  // buried the real problems under ~2,000 errors from minified code.
+  globalIgnores(['dist', 'release-build', 'public/tesseract', 'docs-site/out', '.claude', 'data']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -24,6 +26,17 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // These flag what the React Compiler cannot optimise. The app does not
+      // use the compiler, and the patterns work as written, so they are shown
+      // as warnings to clean up over time, not errors that block a release.
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/preserve-manual-memoization': 'warn',
+      'react-hooks/purity': 'warn',
+      'react-hooks/use-memo': 'warn',
+      'react-hooks/refs': 'warn',
+      // Fast refresh in development only.
+      'react-refresh/only-export-components': 'warn',
     },
   },
   // The server and the build / test scripts run in Node, not the browser.

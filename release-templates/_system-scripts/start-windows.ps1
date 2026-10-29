@@ -153,11 +153,32 @@ if (TestServerUp -p $port) {
 # v1.10.69 - the installer may have put Node.js inside the app folder rather
 # than on the PC (it needs no admin rights that way), so look there before
 # trusting PATH. 'node.exe' alone would be resolved by PATH only.
-$NodeDir = Join-Path $SystemDir 'node'
-$NodeExe = Join-Path $NodeDir 'node.exe'
-if (-not (Test-Path $NodeExe)) {
-  $onPath = Get-Command node -ErrorAction SilentlyContinue
-  if ($onPath) { $NodeExe = $onPath.Source } else { $NodeExe = 'node.exe' }
+# v1.10.81 (#109) - only a Node.js new enough (see ensure-node.ps1): Node 6
+# on PATH was started here and never answered.
+. (Join-Path $SystemDir 'ensure-node.ps1')
+$NodeExe = Use-GoodNode
+if (-not $NodeExe) {
+  Read-Host '  Press Enter to close'
+  exit 1
+}
+if ($script:NodeWasFetched -or -not (Test-Path -LiteralPath (Join-Path $SystemDir 'node_modules\express\package.json'))) {
+  # The packages were installed by the old Node.js (or not at all): again.
+  Write-Host '  Installing the app packages for this Node.js (one time)...'
+  Reset-Packages
+  if (-not (Test-InstallReady)) {
+    Read-Host '  Press Enter to close'
+    exit 1
+  }
+  Push-Location $SystemDir
+  npm install --omit=dev --no-audit --no-fund --loglevel=error
+  $npmCode = $LASTEXITCODE
+  Pop-Location
+  if ($npmCode -ne 0) {
+    Show-InstallHelp
+    Write-Host '  Then click Open App again.'
+    Read-Host '  Press Enter to close'
+    exit 1
+  }
 }
 Write-Host "  Starting server on port $port..."
 Push-Location $SystemDir

@@ -36,7 +36,7 @@ export const parseSupporters = (raw) => {
     totalReceived: Math.round(total),
     supporters: supporters === null ? null : Math.floor(supporters),
     goal: goalAmount ? { amount: Math.round(goalAmount), label: text(raw.goal.label, 80) } : null,
-    thanks: (Array.isArray(raw.thanks) ? raw.thanks : []).map((n) => text(n, 60)).filter(Boolean).slice(0, 100),
+    thanks: (Array.isArray(raw.thanks) ? raw.thanks : []).map((n) => text(n, 60)).filter(Boolean).slice(-2000), // newest are last
     updated,
   };
 };

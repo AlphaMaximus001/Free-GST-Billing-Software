@@ -124,10 +124,26 @@ Get-ChildItem -Path $sourceRoot -File | Where-Object { $_.Extension -match '\.(h
 Write-Host '  Re-installing dependencies...'
 Push-Location $SystemDir
 # v1.10.69 - Node.js may live inside the app folder (see install-windows.ps1).
-$updNodeDir = Join-Path $SystemDir 'node'
-if (Test-Path (Join-Path $updNodeDir 'node.exe')) { $env:Path = "$updNodeDir;$env:Path" }
-npm install --omit=dev --no-audit --no-fund --loglevel=error
+# v1.10.81 (#109) - and it must be new enough: an old Node.js on PATH (6.10)
+# brought npm 3, which broke the install, and this still said "complete".
+. (Join-Path $SystemDir 'ensure-node.ps1')
+$npmOk = $false
+if ((Use-GoodNode) -and (Test-InstallReady)) {
+  if ($script:NodeWasFetched -or (Test-PackagesBroken)) { Reset-Packages }
+  npm install --omit=dev --no-audit --no-fund --loglevel=error
+  $npmOk = ($LASTEXITCODE -eq 0)
+  if (-not $npmOk) { Show-InstallHelp }
+}
 Pop-Location
+if (-not $npmOk) {
+  if ($tmp) { Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue }
+  Write-Host ''
+  Write-Host '  The new version is in place, but it is not ready to run yet (see above).' -ForegroundColor Red
+  Write-Host '  Your data is safe (a backup was made above). Fix the problem shown,'
+  Write-Host '  then click Open App: it finishes the install by itself.'
+  Read-Host '  Press Enter to close'
+  exit 1
+}
 
 # --- Cleanup ---
 if ($tmp) { Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue }

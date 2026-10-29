@@ -28,7 +28,7 @@
     var dark = root.dataset.theme ? root.dataset.theme === 'dark'
       : window.matchMedia('(prefers-color-scheme: dark)').matches;
     root.dataset.theme = dark ? 'light' : 'dark';
-    try { localStorage.setItem('fgb-docs-theme', root.dataset.theme); } catch (e) { /* private mode */ }
+    try { localStorage.setItem('fgb-docs-theme', root.dataset.theme); } catch { /* private mode */ }
   });
 
   /* ---- copy buttons on commands ---- */
@@ -155,8 +155,15 @@
           $('span', bar).style.width = Math.min(100, (total / goal) * 100) + '%';
           $('.supporters-goal', sup).hidden = false;
         }
-        var names = (Array.isArray(d.thanks) ? d.thanks : []).map(function (x) { return t(x, 60); }).filter(Boolean).slice(0, 100);
-        if (names.length) { var th = $('.supporters-thanks', sup); th.textContent = 'Thank you ' + names.join(', ') + '.'; th.hidden = false; }
+        // Newest are last in the file: the latest 10, newest first (the app's
+        // Support page has the full list with a search).
+        var names = (Array.isArray(d.thanks) ? d.thanks : []).map(function (x) { return t(x, 60); }).filter(Boolean).reverse();
+        if (names.length) {
+          var more = names.length - 10;
+          var th = $('.supporters-thanks', sup);
+          th.textContent = 'Thank you ' + names.slice(0, 10).join(', ') + (more > 0 ? ', and ' + more + ' more.' : '.');
+          th.hidden = false;
+        }
         sup.hidden = false;
       })
       .catch(function () { /* offline: the section stays hidden */ });

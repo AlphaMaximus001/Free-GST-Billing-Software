@@ -1052,6 +1052,16 @@ function compareSemver(a, b) {
   return 0;
 }
 
+// v1.10.81 - "What's new" on the Support & About page: the CHANGELOG.md that
+// ships in every ZIP next to this file, so it works offline. The page parses
+// it (src/utils/changelog.js) and shows it as text, never as HTML.
+app.get('/api/changelog', (req, res) => {
+  fs.readFile(path.join(__dirname, 'CHANGELOG.md'), 'utf8', (err, text) => {
+    if (err) return res.json({ text: '' });
+    res.json({ text: text.slice(0, 400000) });
+  });
+});
+
 app.get('/api/check-update', async (req, res) => {
   try {
     // Two parallel fetches: package.json (definitive version source) and the
@@ -1306,27 +1316,70 @@ const extraBackupsDir = () => {
     ? path.join(folder.trim(), EXTRA_BACKUP_SUBDIR) : null;
 };
 let lastExtraBackupError = '';
-function copyBackupToExtraFolder(date) {
+// v1.10.81 - which install made each copy: "<date>.from" next to it holds this
+// install's id (beside, not inside: a restore copies everything inside a
+// dated folder into data/). Two PCs pointed at one synced folder used to skip
+// each other's dates silently, so one PC was never backed up and a restore
+// could bring back the other PC's books. Now that is reported instead.
+const installId = () => {
+  const meta = readJSON(META_PATH, {});
+  if (typeof meta.installId === 'string' && meta.installId) return meta.installId;
+  const id = crypto.randomUUID();
+  writeJSON(META_PATH, { ...meta, installId: id });
+  return id;
+};
+const exists = (p) => fs.promises.access(p).then(() => true, () => false);
+async function copyDirAsync(src, dst) {
+  await fs.promises.mkdir(dst, { recursive: true });
+  for (const entry of await fs.promises.readdir(src, { withFileTypes: true })) {
+    const s = path.join(src, entry.name);
+    const d = path.join(dst, entry.name);
+    if (entry.isDirectory()) await copyDirAsync(s, d);
+    else await fs.promises.copyFile(s, d);
+  }
+}
+// Async on purpose: the folder can be a network or USB drive, and a
+// disconnected one made the synchronous calls hang the whole server.
+let extraCopyRunning = false;
+async function copyBackupToExtraFolder(date) {
   const dir = extraBackupsDir();
-  if (!dir) return;
+  if (!dir || extraCopyRunning) return;
+  extraCopyRunning = true;
   try {
     const src = path.join(BACKUPS_DIR, date);
     const dst = path.join(dir, date);
-    if (!fs.existsSync(src) || fs.existsSync(dst)) { lastExtraBackupError = ''; return; }
-    ensureDir(dir);
+    const fromFile = path.join(dir, `${date}.from`);
+    if (!(await exists(src))) return;
+    const me = installId();
+    if (await exists(dst)) {
+      const owner = (await fs.promises.readFile(fromFile, 'utf8').catch(() => '')).trim();
+      // No owner: a copy from v1.10.80, made by this install.
+      lastExtraBackupError = !owner || owner === me ? ''
+        : 'This folder also gets backups from another computer. Give each computer its own backup folder, or their backups mix.';
+      return;
+    }
+    await fs.promises.mkdir(dir, { recursive: true });
     // Copied under a temporary name and renamed, so a half-copied folder (disk
     // removed mid-copy) never looks like a complete backup.
     const tmp = `${dst}.partial`;
-    fs.rmSync(tmp, { recursive: true, force: true });
-    copyDirRecursive(src, tmp);
-    fs.renameSync(tmp, dst);
-    const all = fs.readdirSync(dir).filter(n => DATE_DIR.test(n)).sort();
-    while (all.length > 30) fs.rmSync(path.join(dir, all.shift()), { recursive: true, force: true });
+    await fs.promises.rm(tmp, { recursive: true, force: true });
+    await copyDirAsync(src, tmp);
+    await fs.promises.rename(tmp, dst);
+    await fs.promises.writeFile(fromFile, me);
+    const all = (await fs.promises.readdir(dir)).filter(n => DATE_DIR.test(n)).sort();
+    while (all.length > 30) {
+      const old = all.shift();
+      await fs.promises.rm(path.join(dir, old), { recursive: true, force: true });
+      await fs.promises.rm(path.join(dir, `${old}.from`), { force: true });
+    }
     lastExtraBackupError = '';
     console.log(`[backup] Copy saved: ${dst}`);
   } catch (err) {
-    lastExtraBackupError = err.message || String(err);
-    console.warn('[backup] Copy to the backup folder failed:', lastExtraBackupError);
+    // Shown as is in Settings, so a whole sentence.
+    lastExtraBackupError = `The last copy to the backup folder failed (${err.code || err.message}). Is the drive connected and not full?`;
+    console.warn('[backup] Copy to the backup folder failed:', err.message || err);
+  } finally {
+    extraCopyRunning = false;
   }
 }
 // Where a dated backup is: data/backups, else the extra folder (e.g. after a
@@ -1344,7 +1397,8 @@ function runDailyBackup() {
     ensureDir(BACKUPS_DIR);
     const today = todayLocalIso();
     const target = path.join(BACKUPS_DIR, today);
-    if (fs.existsSync(target)) { copyBackupToExtraFolder(today); return; }
+    // Returns the copy's promise, so POST /api/backup-folder can report it.
+    if (fs.existsSync(target)) return copyBackupToExtraFolder(today);
     ensureDir(target);
     const entries = fs.readdirSync(DATA_DIR, { withFileTypes: true });
     for (const entry of entries) {
@@ -1359,13 +1413,14 @@ function runDailyBackup() {
       else fs.copyFileSync(src, dst);
     }
     console.log(`[backup] Daily snapshot saved: ${target}`);
-    copyBackupToExtraFolder(today);
+    const copied = copyBackupToExtraFolder(today);
     const all = fs.readdirSync(BACKUPS_DIR).filter(n => /^\d{4}-\d{2}-\d{2}$/.test(n)).sort();
     while (all.length > 30) {
       const oldest = all.shift();
       const oldestPath = path.join(BACKUPS_DIR, oldest);
       try { fs.rmSync(oldestPath, { recursive: true, force: true }); } catch { /* ignore */ }
     }
+    return copied;
   } catch (err) {
     console.warn('[backup] Daily backup failed:', err.message);
   }
@@ -1525,7 +1580,7 @@ app.get('/api/backup-folder', (req, res) => {
   const folder = readJSON(META_PATH, {})[BACKUP_FOLDER_KEY] || '';
   res.json({ path: folder, copiesIn: extraBackupsDir(), error: lastExtraBackupError });
 });
-app.post('/api/backup-folder', (req, res) => {
+app.post('/api/backup-folder', async (req, res) => {
   const raw = String(req.body?.path ?? '').trim();
   const meta = readJSON(META_PATH, {});
   if (!raw) {
@@ -1547,7 +1602,7 @@ app.post('/api/backup-folder', (req, res) => {
   }
   meta[BACKUP_FOLDER_KEY] = raw;
   writeJSON(META_PATH, meta);
-  runDailyBackup(); // copies today's backup there now
+  await runDailyBackup(); // copies today's backup there now
   return res.json({ ok: !lastExtraBackupError, path: raw, copiesIn: dir, error: lastExtraBackupError });
 });
 

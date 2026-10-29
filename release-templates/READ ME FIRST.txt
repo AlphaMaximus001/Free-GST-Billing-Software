@@ -115,28 +115,90 @@
 
 
 -----------------------------------------------------------
-  IF SOMETHING GOES WRONG
+  IF SOMETHING GOES WRONG - FIX IT YOURSELF
 -----------------------------------------------------------
 
-  "Some files are missing"
+  Find the message you see. Your invoices are never lost
+  by any of these: they stay in "_system\data".
+
+  "Some files are missing" / "extract the ZIP first"
       The ZIP was not fully extracted, or the launcher was
       opened from inside the ZIP. Go back to STEP 1.
 
-  "Cannot connect to server" / a blank page
+  "Windows protected your PC"
+      Click "More info", then "Run anyway" (see STEP 3).
+
+  "Node.js ... is too old", "npm ERR!", or a file called
+  "npm-debug.log" in the _system folder
+      This PC has an old Node.js (the engine the app runs
+      on). Version 1.10.81 and later set up a new one inside
+      this folder by themselves: just click Install or Open
+      App again. On an older version:
+        1. Install "Node.js LTS" from https://nodejs.org
+           (default options).
+        2. Open the "_system" folder. It is hidden: in File
+           Explorer click View -> Show -> Hidden items.
+        3. Delete the folder "node_modules" ONLY.
+           Never delete the "data" folder.
+        4. Open the launcher and click Install.
+
+  "could not install the app's dependencies" /
+  "cannot reach the internet"
+      The first install needs the internet. Check the
+      connection (open any website). At an office, a proxy
+      or firewall may block registry.npmjs.org. Then click
+      Install again - it carries on where it stopped.
+
+  "Still starting..." / "The server has not answered in
+  90 seconds"
+      The first start after an install or update is slow
+      (antivirus checks every new file). Wait a minute and
+      open http://localhost:47371 in your browser. Still
+      nothing? Close the black window and click Open App
+      again.
+
+  "Free GST Billing is already installed on this computer"
+      You extracted a new ZIP into a new folder. Your
+      invoices are in the folder it names. Open that copy
+      from your Desktop shortcut and use More options ->
+      Update to the latest version. Delete the new folder.
+
+  "The app cannot write to its own folder"
+      Do not keep it in C:\Program Files. Move the whole
+      Free-GST-Billing folder to Documents or D:\ and open
+      it from there.
+
+  "Drive ... is almost full"
+      The install needs about 400 MB free. Empty the
+      Recycle Bin or delete old downloads.
+
+  "Node.js was downloaded but will not run"
+      Your antivirus removed it. Add this folder to the
+      antivirus exclusions and click Install again.
+
+  "Cannot connect to server" / "This site can't be
+  reached" / a blank page
       The app is not running. Open the Desktop shortcut and
       click "Open App".
 
-  The installer cannot download anything
-      It needs internet for the first install only. Check
-      your connection, or a work proxy, and click Install
-      again - it carries on from where it stopped.
+  The update finished but the app looks the same
+      Reload the page with Ctrl + F5.
 
-  Anything else
-      Open an issue, with a screenshot if you can:
-      https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues
+  Forgot the PIN?
+      In this folder (next to the launcher) make a new text
+      file named RESET-PIN, then reload the app. The PIN is
+      removed; your invoices are not touched.
 
-      The full guide is inside the app, under Help, and at:
-      https://github.com/IamRamgarhia/Free-GST-Billing-Software/blob/main/docs/USER_GUIDE.md
+  Still stuck?
+      Report it here, with a screenshot (hide your GSTIN and
+      bank details) and the message you see:
+      https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=bug_report.yml
+
+      Fixes come in the Saturday update - one every week -
+      and anything urgent straight away.
+
+      The full guide, with every screen explained:
+      https://dicecodes.com/free-gst-software-documentation/
 
 
 ===========================================================

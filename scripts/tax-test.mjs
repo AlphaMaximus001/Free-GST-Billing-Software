@@ -66,6 +66,7 @@ import {
 import { buildXlsx, colName } from '../src/utils/xlsx.js';
 import { bulkRowToProduct, closingStock, stockValueOf } from '../src/utils/products.js';
 import { upiNote, parseSupporters, shouldShowSupportNudge } from '../src/utils/supporters.js';
+import { parseChangelog, inlineParts } from '../src/utils/changelog.js';
 import { unzipSync, strFromU8 } from 'fflate';
 import {
   compute44AE,
@@ -1030,6 +1031,22 @@ console.log('\n[V80] Support page: UPI payment note and the supporters tracker')
   eq([show(50, { snoozedUntil: day.getTime() + 1 }), show(50, { snoozedUntil: day.getTime() - 1 })], [false, true], '"Hide for 30 days" holds until the date passes');
   eq(show(500, { never: true }), false, 'The old "Don\'t show again" is still honoured');
   eq(show(50, { snoozedAt: day.getTime() }), true, 'The old 120-day snooze no longer hides it');
+}
+
+console.log('\n[V81] What\'s new: the changelog on the Support page');
+{
+  const md = `# Changelog\n\n---\n\n## [1.10.82] - unreleased\n\n**Not out yet.**\n\n## [1.10.81] - 2026-10-31\n\n**Checks your PC first.**\n\n### How to update\n\n1. Click Update.\n#### On 1.10.72 or older\nUse the launcher.\n\n### Fixed\n- **Old Node.js** (#109): fixed.\n  - Node.js 18 or newer,\n    with npm 7.\n  - Windows 10 or 11.\n- CSV dates\n  read day first.\n\n---\n\n## [1.10.80] - 2026-10-24\n\n**CSV import.**\n\n### Added\nSee the list.\n- Lock button.\n`;
+  const e = parseChangelog(md);
+  eq(e.map((x) => `${x.version} ${x.date}`), ['1.10.81 2026-10-31', '1.10.80 2026-10-24'], 'Released versions only, newest first (an unreleased entry is left out)');
+  eq([e[0].summary, e[0].sections.map((s) => s.title)], ['Checks your PC first.', ['Fixed']], 'The summary, and no "How to update" section');
+  eq(e[0].sections[0].blocks, [
+    { kind: 'item', text: '**Old Node.js** (#109): fixed.', children: ['Node.js 18 or newer, with npm 7.', 'Windows 10 or 11.'] },
+    { kind: 'item', text: 'CSV dates read day first.', children: [] },
+  ], 'Items, nested items and wrapped lines');
+  eq(e[1].sections[0].blocks.map((b) => b.kind), ['para', 'item'], 'A plain line is a paragraph');
+  eq(inlineParts('**B** *i* `c` [x](https://a.b) [y](docs/z.md) [j](javascript:alert(1))').map((p) => p.t),
+    ['b', 'text', 'i', 'text', 'code', 'text', 'link', 'text'], 'Bold, italic, code and http links; other links stay text');
+  eq(inlineParts('[j](javascript:alert(1))').some((p) => p.t === 'link'), false, 'A javascript: link is never a link');
 }
 
 console.log('\n────────────────────────────────────────');

@@ -10,6 +10,8 @@ import { toast } from './Toast';
 import { getProfile } from '../store';
 import { upiNote } from '../utils/supporters';
 import useSupporters from './useSupporters';
+import WhatsNew from './WhatsNew';
+import SupportersList from './SupportersList';
 
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
 
@@ -66,7 +68,7 @@ export default function SupportView() {
   const freeWays = [
     { icon: Star, title: 'Star it on GitHub', text: 'Helps other businesses find it.', href: REPO },
     { icon: Share2, title: 'Tell another business', text: 'Send it to a friend on WhatsApp.', href: `https://wa.me/?text=${encodeURIComponent(shareText)}` },
-    { icon: Bug, title: 'Report a bug or ask for a feature', text: 'Many features started as a request.', href: `${REPO}/issues` },
+    { icon: Bug, title: 'Report a bug or ask for a feature', text: 'Many features started as a request.', href: `${REPO}/issues/new/choose` },
   ];
 
   const card = { padding: '1.25rem 1.5rem' };
@@ -170,15 +172,13 @@ export default function SupportView() {
                   </div>
                 </div>
               )}
-              {tracker.thanks.length > 0 && (
-                <p style={{ margin: '0.85rem 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  <b>Thank you</b> {tracker.thanks.join(', ')}
-                </p>
-              )}
+              <SupportersList names={tracker.thanks} />
             </div>
           </div>
         </div>
       )}
+
+      <WhatsNew />
 
       <div className="glass-panel" style={card}>
         <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Work with DiceCodes</h3>
