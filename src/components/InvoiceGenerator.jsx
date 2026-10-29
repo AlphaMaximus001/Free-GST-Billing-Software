@@ -7,6 +7,9 @@ import { INVOICE_TYPES, isModuleEnabled, businessKeyOf, GST_DOC_NUMBER, COUNTRIE
 import { getPrintSettings, savePrintSettings } from '../utils/printSettings';
 import { openWhatsAppShare } from '../utils/share';
 import { confirmAction, promptAction } from './ConfirmModal';
+import { useCostCentres } from './useCostCentres';
+import { CostCentreSelect } from './CostCentrePicker';
+import { centreFields } from '../utils/costCentres';
 import PrintPreviewModal from './PrintPreviewModal';
 import { ensureToken, findOrCreateFolder, uploadPDF } from '../services/googleDrive';
 import DOMPurify from 'dompurify';
@@ -615,6 +618,9 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     shippingPin: '',
     shippingState: '',
   });
+  // v1.10.83 (#112) - optional cost centre, kept in details.costCentre /
+  // costCentreName so drafts, edits and duplicates carry it. Not printed.
+  const { on: ccOn, centres } = useCostCentres(profile);
 
   const [items, setItems] = useState(draft?.items || [
     { id: Date.now().toString(), name: '', hsn: '', quantity: 1, unit: 'Nos', rate: 0, discount: 0, taxPercent: 18, cessPercent: 0 }
@@ -4275,6 +4281,16 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 <input type="date" className="form-input" value={details.dueDate}
                   onChange={(e) => setDetails({ ...details, dueDate: e.target.value })} />
               </div>
+              {ccOn && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="cost-centre">Cost centre</label>
+                  <CostCentreSelect centres={centres} value={details.costCentre || ''} name={details.costCentreName || ''}
+                    onChange={(id, name) => setDetails((prev) => {
+                      const { costCentre: _id, costCentreName: _name, ...rest } = prev;
+                      return { ...rest, ...centreFields(id, name) };
+                    })} />
+                </div>
+              )}
               {invoiceOptions.showPlaceOfSupply && (() => {
                 const posOpts = getStatesForCountry(profile?.country);
                 return (

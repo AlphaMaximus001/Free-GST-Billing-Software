@@ -1910,6 +1910,9 @@ export const FEATURE_GROUPS = [
     modules: [
       { id: 'dashboard', label: 'Dashboard', nav: 'dashboard', core: true },
       { id: 'reports',   label: 'Reports view', nav: 'reports', defaultOn: true },
+      // v1.10.83 (#112) - off by default: most shops have one branch, and the
+      // picker on every form would only be noise for them.
+      { id: 'costCentres', label: 'Cost centres (branch, site or project on bills, purchases and expenses)', nav: null, defaultOn: false },
     ],
   },
   {

@@ -7,6 +7,9 @@ import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
 import HelpButton from './HelpButton';
 import TableExport from './TableExport';
+import { useCostCentres } from './useCostCentres';
+import { CostCentreSelect, CostCentreFilter } from './CostCentrePicker';
+import { matchesCentre, centreFields, centreLabel, UNTAGGED } from '../utils/costCentres';
 
 // Each category is tagged with its ITR (Income Tax Return) head so the
 // v1.7.0+ ITR Filing Summary can auto-aggregate expenses under the correct
@@ -67,6 +70,9 @@ const emptyForm = {
   invoiceNo: '',
   paymentMode: 'Bank Transfer',
   note: '',
+  // v1.10.83 (#112) - optional; see utils/costCentres.js
+  costCentre: '',
+  costCentreName: '',
 };
 
 // v1.10.6 — audit L4: local copy removed, imported from utils above.
@@ -81,6 +87,8 @@ export default function ExpenseTracker() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ ...emptyForm });
+  const [centreFilter, setCentreFilter] = useState('');
+  const { on: ccOn, centres } = useCostCentres(ownerProfile);
 
   const fyOptions = getFYOptions();
   const defaultFy = fyOptions[0]?.value || '';
@@ -125,6 +133,7 @@ export default function ExpenseTracker() {
           !(exp.invoiceNo || '').toLowerCase().includes(q)) return false;
     }
     if (categoryFilter !== 'all' && exp.category !== categoryFilter) return false;
+    if (!matchesCentre(exp, centreFilter)) return false;
     if (fyFilter) {
       const fy = fyOptions.find(f => f.value === fyFilter);
       if (fy && exp.date) {
@@ -157,6 +166,8 @@ export default function ExpenseTracker() {
       paymentMode: exp.paymentMode || 'Bank Transfer',
       interstate: !!exp.interstate,
       note: exp.note || '',
+      costCentre: exp.costCentre || '',
+      costCentreName: exp.costCentreName || '',
     });
     setEditingId(exp.id);
     setShowForm(true);
@@ -194,6 +205,7 @@ export default function ExpenseTracker() {
         // exactly backwards, so the owner is kept in its own field.
         ownerGstin: ownerProfile?.gstin || '',
         ownerName: ownerProfile?.businessName || '',
+        ...centreFields(form.costCentre, form.costCentreName),
       };
       await saveExpense(expense);
       toast(editingId ? 'Expense updated' : 'Expense added', 'success');
@@ -246,6 +258,7 @@ export default function ExpenseTracker() {
   const statementPeriod = [
     fyOptions.find(f => f.value === fyFilter)?.label || 'all years',
     categoryFilter !== 'all' ? categoryFilter : '',
+    centreFilter ? (centreFilter === UNTAGGED ? 'no cost centre' : centreLabel(centres.find(c => c.id === centreFilter))) : '',
     search.trim() ? `matching "${search.trim()}"` : '',
   ].filter(Boolean).join(', ');
 
@@ -312,8 +325,9 @@ export default function ExpenseTracker() {
             {fyOptions.map(fy => <option key={fy.value} value={fy.value}>{fy.label}</option>)}
           </select>
           {/* v1.10.74 - Clear filters also puts the FY back to the current one. */}
-          {(search || categoryFilter !== 'all' || fyFilter !== defaultFy) && (
-            <button className="icon-btn icon-btn-red" onClick={() => { setSearch(''); setCategoryFilter('all'); setFyFilter(defaultFy); }} title="Clear filters" aria-label="Clear filters"><X size={15} /></button>
+          {ccOn && <CostCentreFilter centres={centres} value={centreFilter} onChange={setCentreFilter} />}
+          {(search || categoryFilter !== 'all' || fyFilter !== defaultFy || centreFilter) && (
+            <button className="icon-btn icon-btn-red" onClick={() => { setSearch(''); setCategoryFilter('all'); setFyFilter(defaultFy); setCentreFilter(''); }} title="Clear filters" aria-label="Clear filters"><X size={15} /></button>
           )}
         </div>
       </div>
@@ -372,6 +386,13 @@ export default function ExpenseTracker() {
                   {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
+              {ccOn && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="cost-centre">Cost centre</label>
+                  <CostCentreSelect centres={centres} value={form.costCentre} name={form.costCentreName}
+                    onChange={(id, name) => setForm(prev => ({ ...prev, costCentre: id, costCentreName: name }))} />
+                </div>
+              )}
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer' }}>
                   <input type="checkbox" checked={!!form.interstate}

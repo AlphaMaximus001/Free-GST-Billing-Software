@@ -15,6 +15,9 @@ import SupportNudge from './SupportNudge';
 import WelcomeCard from './WelcomeCard';
 import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
+import { useCostCentres } from './useCostCentres';
+import { CostCentreFilter } from './CostCentrePicker';
+import { matchesCentre, centreFields, centreLabel, UNTAGGED } from '../utils/costCentres';
 
 // v1.10.13 — `bg` values switched from opaque tints (#fffbeb / #f5f3ff /
 // etc.) to translucent alpha versions of the accent color. Reason:
@@ -267,6 +270,9 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
   const [fyFilter, setFyFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  // v1.10.83 (#112) - '' = all; see utils/costCentres.js.
+  const [centreFilter, setCentreFilter] = useState('');
+  const { on: ccOn, centres } = useCostCentres(profile);
   // Bulk-selection state. Stores a Set of bill IDs (not the bills themselves)
   // so we don't hold stale references when the underlying bill is edited
   // elsewhere. Cleared whenever filters change so the user doesn't accidentally
@@ -275,7 +281,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
   // v1.10.74 - the comment above was never wired up, so bulk actions could hit
   // ticked rows hidden by a filter. Reset during render (React's "adjust state
   // on prop change" pattern) when any filter changes.
-  const filterKey = [search, typeFilter, statusFilter, fyFilter, dateFrom, dateTo].join('|');
+  const filterKey = [search, typeFilter, statusFilter, fyFilter, dateFrom, dateTo, centreFilter].join('|');
   const [selectionFilterKey, setSelectionFilterKey] = useState(filterKey);
   if (selectionFilterKey !== filterKey) {
     setSelectionFilterKey(filterKey);
@@ -470,8 +476,9 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     }
     if (dateFrom) result = result.filter(b => b.invoiceDate >= dateFrom);
     if (dateTo) result = result.filter(b => b.invoiceDate <= dateTo);
+    if (centreFilter) result = result.filter(b => matchesCentre(b, centreFilter));
     setFiltered(result);
-  }, [bills, search, typeFilter, statusFilter, fyFilter, dateFrom, dateTo]);
+  }, [bills, search, typeFilter, statusFilter, fyFilter, dateFrom, dateTo, centreFilter]);
 
   // v1.10.67 (#66 item 12, @sangwanmail-eng) — an issued invoice is not
   // deleted: its number has to stay in the books, gapless, for GST. Cancelling
@@ -871,6 +878,33 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     setBulkBusy(false);
   };
 
+  // v1.10.83 (#112) - tag (or untag, UNTAGGED) the ticked invoices in one go,
+  // so invoices made before cost centres existed can be sorted quickly.
+  const bulkSetCentre = async (centreId) => {
+    const sel = getSelectedBills().filter(b => b.data);
+    if (!centreId || sel.length === 0) return;
+    const centre = centres.find(c => c.id === centreId);
+    const what = centre ? `"${centreLabel(centre)}"` : 'no cost centre';
+    if (!await confirmAction({
+      title: `Set ${what} on ${sel.length} invoice${sel.length !== 1 ? 's' : ''}?`,
+      message: 'Only the cost centre changes. Amounts, numbers and status stay as they are.',
+      confirmLabel: 'Set cost centre',
+    })) return;
+    setBulkBusy(true);
+    try {
+      const results = await Promise.allSettled(sel.map((b) => {
+        const { costCentre: _id, costCentreName: _name, ...details } = b.data.details || {};
+        return saveBill({ ...b, data: { ...b.data, details: { ...details, ...centreFields(centre?.id, centre?.name) } } }, { overwrite: true });
+      }));
+      const failed = results.filter(r => r.status === 'rejected').length;
+      if (failed > 0) toast(`${sel.length - failed} updated, ${failed} failed`, 'warning');
+      else toast(`Cost centre set on ${sel.length} invoice${sel.length !== 1 ? 's' : ''}`, 'success');
+      clearSelection();
+      loadBills();
+    } catch (err) { toast('Bulk update failed: ' + err.message, 'error'); }
+    setBulkBusy(false);
+  };
+
   const bulkExportJSON = () => {
     const sel = getSelectedBills();
     if (sel.length === 0) return;
@@ -1203,13 +1237,13 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
   };
 
   const clearFilters = () => {
-    setSearch(''); setTypeFilter('all'); setStatusFilter('all'); setFyFilter('all'); setDateFrom(''); setDateTo('');
+    setSearch(''); setTypeFilter('all'); setStatusFilter('all'); setFyFilter('all'); setDateFrom(''); setDateTo(''); setCentreFilter('');
   };
 
   // v1.10.4 — trivial boolean, still cheap but consistent with the rest.
   const hasFilters = useMemo(
-    () => Boolean(search || typeFilter !== 'all' || statusFilter !== 'all' || fyFilter !== 'all' || dateFrom || dateTo),
-    [search, typeFilter, statusFilter, fyFilter, dateFrom, dateTo]);
+    () => Boolean(search || typeFilter !== 'all' || statusFilter !== 'all' || fyFilter !== 'all' || dateFrom || dateTo || centreFilter),
+    [search, typeFilter, statusFilter, fyFilter, dateFrom, dateTo, centreFilter]);
 
   const sendReminder = (bill) => {
     const clientPhone = bill.clientPhone || bill.data?.client?.phone || '';
@@ -1513,6 +1547,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
           </select>
           <input type="date" className="filter-date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" />
           <input type="date" className="filter-date" value={dateTo} onChange={e => setDateTo(e.target.value)} title="To" />
+          {ccOn && <CostCentreFilter centres={centres} value={centreFilter} onChange={setCentreFilter} />}
           {hasFilters && <button className="icon-btn icon-btn-red" onClick={clearFilters} title="Clear" aria-label="Clear filters"><X size={15} /></button>}
           <button type="button" className="btn btn-secondary" onClick={() => setShowColumnPicker(v => !v)}
             title="Choose which columns to show" aria-label="Column picker"
@@ -1605,6 +1640,15 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             {einvoiceOn && (
               <button type="button" className="btn btn-secondary" disabled={bulkBusy} onClick={bulkExportEInvoice}
                 style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }} title="One e-invoice JSON with the ticked invoices, to upload on einvoice1.gst.gov.in"><QrCode size={13} /> E-invoice JSON</button>
+            )}
+            {ccOn && (
+              <select className="filter-select" value="" disabled={bulkBusy} aria-label="Set cost centre"
+                onChange={e => bulkSetCentre(e.target.value)}
+                style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', width: 'auto' }}>
+                <option value="">Set cost centre…</option>
+                {centres.filter(c => !c.archived).map(c => <option key={c.id} value={c.id}>{centreLabel(c)}</option>)}
+                <option value={UNTAGGED}>Remove cost centre</option>
+              </select>
             )}
             {/* v1.10.7 — Cancel button for the in-flight bulk export. The
                  underlying abort flag was wired in v1.10.3; this is the

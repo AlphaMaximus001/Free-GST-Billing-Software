@@ -81,6 +81,9 @@ export function billFormFromPo(po, purchases) {
       rate: Number(it.rate) || 0, taxPercent: Number(it.taxPercent) || 0, cessPercent: Number(it.cessPercent) || 0,
     })),
     fromPo: po.id,
+    // v1.10.83 (#112) - the bill belongs to the same cost centre as its order.
+    costCentre: po.costCentre || '',
+    costCentreName: po.costCentreName || '',
   };
 }
 

@@ -91,6 +91,16 @@ export const getNumberSeries = async (businessKey) => {
   return numberSeriesFor(shared, map, businessKey);
 };
 
+// v1.10.83 (#112) - cost centres of every business, one list in meta.json
+// (so backups carry it with the other settings): [{ id, name, code, archived, business }].
+export const getCostCentres = async () => {
+  const { value } = await apiFetch(`${API}/meta/costCentres`);
+  return Array.isArray(value) ? value : [];
+};
+export const saveCostCentres = (list) => apiFetch(`${API}/meta/costCentres`, {
+  method: 'POST', body: JSON.stringify({ value: list || [] }),
+});
+
 // ---- Stock-alert Settings ----
 // Master on/off for the low-stock alert + the threshold below which a product
 // counts as "low". Stored at app level (not per-business profile) because the

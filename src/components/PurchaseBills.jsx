@@ -11,6 +11,9 @@ import UnassignedBanner from './UnassignedBanner';
 import { getPrintSettings } from '../utils/printSettings';
 import { toast } from './Toast';
 import { confirmAction, promptAction } from './ConfirmModal';
+import { useCostCentres } from './useCostCentres';
+import { CostCentreSelect, CostCentreFilter } from './CostCentrePicker';
+import { matchesCentre, centreFields } from '../utils/costCentres';
 
 // v1.10.31 — UI-C3: Same accent-color helper as ClientsView so the
 // Purchase Bill PDF header rule + totals line pick up the user's brand.
@@ -73,6 +76,9 @@ const emptyForm = {
   poNumber: '',
   expectedDate: '',
   fromPo: '',
+  // v1.10.83 (#112) - optional; see utils/costCentres.js
+  costCentre: '',
+  costCentreName: '',
 };
 
 // v1.10.83 (#112) - calcItemTax / calcPurchaseTotal moved to
@@ -89,6 +95,8 @@ export default function PurchaseBills() {
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
   const [fyFilter, setFyFilter] = useState('');
+  const [centreFilter, setCentreFilter] = useState('');
+  const { on: ccOn, centres } = useCostCentres(ownerProfile);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ ...emptyForm, items: [{ ...emptyItem }] });
@@ -223,7 +231,7 @@ export default function PurchaseBills() {
         if (p.date < fy.from || p.date > fy.to) return false;
       }
     }
-    return true;
+    return matchesCentre(p, centreFilter);
   });
 
   const totalStats = filtered.reduce((acc, p) => {
@@ -256,6 +264,8 @@ export default function PurchaseBills() {
       poNumber: '',
       expectedDate: '',
       fromPo: purchase.fromPo || '',
+      costCentre: purchase.costCentre || '',
+      costCentreName: purchase.costCentreName || '',
     });
     setEditingId(purchase.id);
     setShowForm(true);
@@ -300,6 +310,8 @@ export default function PurchaseBills() {
       supplierGstin: po.supplierGstin || '',
       interstate: !!po.interstate,
       note: po.note || '',
+      costCentre: po.costCentre || '',
+      costCentreName: po.costCentreName || '',
       items: po.items?.length ? po.items.map(i => ({ ...i })) : [{ ...emptyItem }],
     });
     setEditingId(po.id);
@@ -376,6 +388,11 @@ export default function PurchaseBills() {
         ownerName: existing ? (existing.ownerName || '') : (ownerProfile?.businessName || ''),
         items,
         note: (form.note || '').trim(),
+        // v1.10.83 (#112) - cost centre on the order too (cleared when unpicked:
+        // undefined drops the old value from the saved file).
+        costCentre: undefined,
+        costCentreName: undefined,
+        ...centreFields(form.costCentre, form.costCentreName),
         taxableAmount: t.taxable,
         totalTax: t.tax,
         totalCess: t.cess,
@@ -560,6 +577,7 @@ export default function PurchaseBills() {
         paymentStatus: form.paymentStatus,
         interstate: !!form.interstate,
         note: form.note.trim(),
+        ...centreFields(form.costCentre, form.costCentreName),
       };
       await savePurchase(purchase);
 
@@ -1163,8 +1181,9 @@ export default function PurchaseBills() {
             <option value="">All years</option>
             {fyOptions.map(fy => <option key={fy.value} value={fy.value}>{fy.label}</option>)}
           </select>
-          {search && (
-            <button className="icon-btn icon-btn-red" onClick={() => setSearch('')} title="Clear search" aria-label="Clear search"><X size={15} /></button>
+          {ccOn && <CostCentreFilter centres={centres} value={centreFilter} onChange={setCentreFilter} />}
+          {(search || centreFilter) && (
+            <button className="icon-btn icon-btn-red" onClick={() => { setSearch(''); setCentreFilter(''); }} title="Clear search" aria-label="Clear search"><X size={15} /></button>
           )}
         </div>
       </div>
@@ -1258,6 +1277,13 @@ export default function PurchaseBills() {
                   onChange={e => updateField('note', e.target.value)} placeholder="Any note..." />
               </div>
               </>)}
+              {ccOn && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="cost-centre">Cost centre</label>
+                  <CostCentreSelect centres={centres} value={form.costCentre} name={form.costCentreName}
+                    onChange={(id, name) => setForm(prev => ({ ...prev, costCentre: id, costCentreName: name }))} />
+                </div>
+              )}
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer' }}>
                   <input type="checkbox" checked={!!form.interstate}

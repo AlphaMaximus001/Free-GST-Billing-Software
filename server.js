@@ -911,6 +911,13 @@ app.post('/api/import', (req, res) => {
       const meta = readJSON(META_PATH, {});
       const series = { ...(data.meta.invoiceNumberSeries || {}), ...(meta.invoiceNumberSeries || {}) };
       if (Object.keys(series).length) meta.invoiceNumberSeries = series;
+      // v1.10.83 (#112) - and the backup's cost centres this PC does not have,
+      // so the documents it brings in keep their cost centre.
+      if (Array.isArray(data.meta.costCentres)) {
+        const have = new Set((meta.costCentres || []).map((c) => c?.id));
+        const added = data.meta.costCentres.filter((c) => c?.id && !have.has(c.id));
+        if (added.length) meta.costCentres = [...(meta.costCentres || []), ...added];
+      }
       for (const [k, v] of Object.entries(data.meta)) {
         if (k.startsWith('counter_') && Number(v) > (Number(meta[k]) || 0)) meta[k] = Number(v);
       }
