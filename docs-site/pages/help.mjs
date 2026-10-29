@@ -107,6 +107,15 @@ export default [
 <p>The launcher was opened from inside the ZIP, or the ZIP was only partly extracted. Close it, right-click the ZIP, choose ${ui('Extract All…')}, and open the launcher from the extracted folder. Keep the launcher and the <code>_system</code> folder together. See <a href="install.html#extract-first">Extract the ZIP before opening anything</a>.</p>
 </section>
 
+<section id="mac-blocked">
+<h2>The Mac will not open the launcher</h2>
+<ul>
+  <li><strong>"could not be executed because you do not have appropriate access privileges"</strong>: open <b>Terminal</b> (Applications → Utilities), type <code>chmod +x </code> with a space after it, drag <b>Free GST Billing - MAC</b> into the Terminal window, press Enter, and open the file again. Downloads from v1.10.82 do not need this.</li>
+  <li><strong>"cannot be opened because Apple cannot check it for malicious software"</strong> or <strong>"unidentified developer"</strong>: the app is not signed by Apple. Hold <kbd>Control</kbd>, click <b>Free GST Billing - MAC</b>, choose <b>Open</b>, then <b>Open</b> again. Only the first time. Or use <b>System Settings → Privacy &amp; Security → Open Anyway</b>.</li>
+  <li><strong>"Node.js is not installed"</strong> or <strong>too old</strong>: install Node.js LTS from <a href="https://nodejs.org">nodejs.org</a> (or <code>brew install node@20</code>), then open the launcher again.</li>
+</ul>
+</section>
+
 <section id="windows-protected">
 <h2>Windows blocked the launcher</h2>
 <p>Click ${ui('More info')}, then ${ui('Run anyway')}. If it still will not open, right-click the launcher, choose ${ui('Properties')} and tick ${ui('Unblock')}. See <a href="install.html#windows-protected">"Windows protected your PC"</a>.</p>

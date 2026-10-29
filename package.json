@@ -94,6 +94,8 @@
     "test:unit": "node scripts/tax-test.mjs && node scripts/discount-modes-test.mjs && node scripts/csv-test.mjs",
     "test:install": "playwright install firefox",
     "test:update-unix": "node scripts/test-update-unix.mjs",
+    "release:check": "node scripts/release-check.mjs",
+    "docs:zip": "node scripts/build-docs-zip.mjs",
     "verify:release": "node scripts/verify-release.mjs"
   },
   "dependencies": {

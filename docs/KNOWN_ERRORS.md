@@ -720,6 +720,32 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-062 - Mac: "could not be executed because you do not have appropriate access privileges"
+
+**Version:** since v1.10.66 (ZIP built with Windows tar) · fixed in v1.10.82
+**Reported by:** saraiwalaneeraj-cell, issue #120
+
+**Symptom** - double-clicking `Free GST Billing - MAC.command` showed *"The file
+"Free GST Billing - MAC.command" could not be executed because you do not have
+appropriate access privileges."* Get Info showed it as a plain, non-executable
+file.
+
+**Cause** - the ZIP is built on Windows, which has no executable bit, so
+tar.exe stored every file as mode 0666. macOS Archive Utility (and Linux
+`unzip`) restore the mode stored in the ZIP, so the launcher and every `.sh`
+came out not executable.
+
+**Rule** - a release ZIP built on Windows must have its `.command` and `.sh`
+entries marked 0755 inside the archive; check the stored mode, not the file on
+disk.
+
+**Guard** - `scripts/build-release-zip.mjs` `markScriptsExecutable()` sets the
+mode, and `assertPortableZip()` refuses a ZIP with a non-executable launcher;
+`npm run release:check` checks it again. Verified: unzip on Debian gives
+`-rwxr-xr-x` for both launchers.
+
+---
+
 ## ERR-061 - The docs ZIP unpacked as flat files on the web host, every link 404
 
 **Version:** docs-site upload for v1.10.81 · fixed the same day

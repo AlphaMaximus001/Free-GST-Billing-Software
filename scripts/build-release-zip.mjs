@@ -29,7 +29,7 @@
 // This script will refuse to proceed if dist/ is missing so users
 // don't get a broken release.
 
-import { readdirSync, statSync, existsSync, mkdirSync, rmSync, copyFileSync, readFileSync } from 'fs';
+import { readdirSync, statSync, existsSync, mkdirSync, rmSync, copyFileSync, readFileSync, writeFileSync } from 'fs';
 import { join, resolve, basename } from 'path';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
@@ -267,7 +267,40 @@ try {
   console.error('  ❌ Zip step failed:', e.message);
   process.exit(1);
 }
+if (process.platform === 'win32') markScriptsExecutable(zipPath);
 assertPortableZip(zipPath);
+
+/**
+ * v1.10.82 (#120) - Windows has no "executable" bit, so tar.exe stores every
+ * file as 0666. macOS then refused the launcher: "Free GST Billing -
+ * MAC.command could not be executed because you do not have appropriate
+ * access privileges" (Archive Utility restores the mode stored in the ZIP),
+ * and the Linux launcher and scripts came out the same. The Unix mode lives in
+ * the top 16 bits of each central-directory entry's external attributes, so
+ * it is set there in place: 0100755 (regular file, rwxr-xr-x) for .command
+ * and .sh. Nothing is recompressed; local headers do not carry the mode.
+ */
+function markScriptsExecutable(file) {
+  const buf = readFileSync(file);
+  const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  const count = buf.readUInt16LE(eocd + 10);
+  let p = buf.readUInt32LE(eocd + 16);
+  let marked = 0;
+  for (let i = 0; i < count; i += 1) {
+    const nameLen = buf.readUInt16LE(p + 28);
+    const extraLen = buf.readUInt16LE(p + 30);
+    const commentLen = buf.readUInt16LE(p + 32);
+    const name = buf.toString('utf8', p + 46, p + 46 + nameLen);
+    if (/\.(command|sh)$/i.test(name)) {
+      buf.writeUInt16LE((3 << 8) | (buf.readUInt16LE(p + 4) & 0xff), p + 4); // "made by": Unix
+      buf.writeUInt32LE(((0o100755 << 16) | (buf.readUInt32LE(p + 38) & 0xffff)) >>> 0, p + 38);
+      marked += 1;
+    }
+    p += 46 + nameLen + extraLen + commentLen;
+  }
+  writeFileSync(file, buf);
+  console.log(`  → Marked ${marked} launcher and shell scripts executable for macOS / Linux`);
+}
 
 /**
  * v1.10.66 — a Unix script with Windows (CRLF) line endings dies in sh on its
@@ -313,7 +346,13 @@ function assertPortableZip(file) {
     const nameLen = buf.readUInt16LE(p + 28);
     const extraLen = buf.readUInt16LE(p + 30);
     const commentLen = buf.readUInt16LE(p + 32);
-    names.push(buf.toString('utf8', p + 46, p + 46 + nameLen));
+    const name = buf.toString('utf8', p + 46, p + 46 + nameLen);
+    names.push(name);
+    // #120 - a launcher macOS / Linux will not run is as broken as a missing one.
+    if (/\.(command|sh)$/i.test(name) && (((buf.readUInt32LE(p + 38) >>> 16) & 0o111) === 0)) {
+      console.error(`\n  x ${name} is not executable in the ZIP: macOS says "you do not have appropriate access privileges".\n`);
+      process.exit(1);
+    }
     p += 46 + nameLen + extraLen + commentLen;
   }
   const backslashed = names.filter((n) => n.includes('\\'));

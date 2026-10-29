@@ -128,6 +128,20 @@
   "Windows protected your PC"
       Click "More info", then "Run anyway" (see STEP 3).
 
+  Mac: "could not be executed because you do not have
+  appropriate access privileges"
+      Open Terminal (Applications -> Utilities), type
+      chmod +x  (with a space after it), drag the file
+      "Free GST Billing - MAC" into the Terminal window,
+      press Enter, then open the file again.
+
+  Mac: "cannot be opened because Apple cannot check it" /
+  "unidentified developer"
+      The app is not signed by Apple. Hold Control and click
+      "Free GST Billing - MAC", choose Open, then Open again.
+      Only the first time. (Or: System Settings -> Privacy &
+      Security -> Open Anyway.)
+
   "Node.js ... is too old", "npm ERR!", or a file called
   "npm-debug.log" in the _system folder
       This PC has an old Node.js (the engine the app runs
