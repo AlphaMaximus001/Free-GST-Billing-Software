@@ -126,7 +126,7 @@ export default [
   <tr><th>Group</th><th>Features</th></tr>
   <tr><td>Sales &amp; Invoicing</td><td>Invoices (always on), Recurring invoices, Payment receipts</td></tr>
   <tr><td>Directory</td><td>Clients (always on), Products &amp; Services</td></tr>
-  <tr><td>Purchases &amp; Expenses</td><td>Expense tracker, Purchase bills, GSTR-2B reconciliation</td></tr>
+  <tr><td>Purchases &amp; Expenses</td><td>Expense tracker, Purchase bills, GSTR-2B reconciliation, <a href="purchases.html#purchase-orders">Purchase orders</a> (<b>off</b> to start)</td></tr>
   <tr><td>GST &amp; Tax (India)</td><td>GSTR-1 / GSTR-3B, E-Way Bill, TDS / TCS on invoices (<b>off</b> to start), Income Tax Helper</td></tr>
   <tr><td>Reports</td><td>Dashboard (always on), Reports</td></tr>
   <tr><td>Integrations</td><td>Google Drive backup, UPI QR code on invoices</td></tr>

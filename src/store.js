@@ -2,6 +2,7 @@
 // All data persists as JSON files in the ./data/ folder
 
 import { getFinancialYearLabel, parseLocalDate, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, INVOICE_TYPES, savedPdfNameFor } from './utils';
+import { poCounterKey, formatPoNumber } from './utils/purchaseOrders';
 
 const API = '/api';
 
@@ -310,6 +311,24 @@ export const deletePurchase = async (id) => {
   return apiFetch(`${API}/purchases/${encodeURIComponent(id)}`, { method: 'DELETE' });
 };
 
+// ---- v1.10.83 (#112) Purchase orders ----
+export const getAllPurchaseOrders = async () => apiFetch(`${API}/purchase-orders`);
+
+export const savePurchaseOrder = async (order) => {
+  const res = await apiFetch(`${API}/purchase-orders`, { method: 'POST', body: JSON.stringify(order) });
+  return res.id ? { ...order, id: res.id } : order;
+};
+
+// The next PO number for a business, PO/26-27/0001. peek shows it without
+// using it up; otherwise it is reserved on the server's atomic counter.
+export const getNextPoNumber = async ({ peek = false, businessKey = '', date = '' } = {}) => {
+  const key = encodeURIComponent(poCounterKey(businessKey));
+  const next = peek
+    ? nextCounterValue((await apiFetch(`${API}/meta/${key}`)).value)
+    : (await apiFetch(`${API}/meta/${key}/increment`, { method: 'POST', body: JSON.stringify({}) })).value;
+  return formatPoNumber(next, date);
+};
+
 // ---- Recurring Invoices ----
 export const getAllRecurring = async () => {
   return apiFetch(`${API}/recurring`);
@@ -487,6 +506,7 @@ export const exportAllData = async (selection) => {
   if (sel.recurring)      data.recurring = all.recurring;
   if (sel.receipts)       data.receipts = all.receipts;
   if (sel.purchases)      data.purchases = all.purchases;
+  if (sel.purchases)      data.purchaseOrders = all.purchaseOrders; // v1.10.83 (#112) - travel with purchase bills
   if (sel.meta)           data.meta = all.meta; // includes regionMode, enabledModules, etc. on server
   if (sel.localStorage)   data.localStorage = collectLocalStorage();
 
@@ -539,6 +559,7 @@ export const importData = async (jsonString, selection) => {
   if (sel.recurring && data.recurring)           payload.recurring = data.recurring;
   if (sel.receipts && data.receipts)             payload.receipts = data.receipts;
   if (sel.purchases && data.purchases)           payload.purchases = data.purchases;
+  if (sel.purchases && data.purchaseOrders)      payload.purchaseOrders = data.purchaseOrders;
   if (sel.meta && data.meta)                     payload.meta = data.meta;
 
   const result = await apiFetch(`${API}/import`, { method: 'POST', body: JSON.stringify(payload) });

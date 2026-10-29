@@ -1880,6 +1880,8 @@ export const FEATURE_GROUPS = [
     modules: [
       { id: 'expenses',  label: 'Expense tracker', nav: 'expenses',  defaultOn: true },
       { id: 'purchases', label: 'Purchase bills',  nav: 'purchases', defaultOn: true },
+      // v1.10.83 (#112) - a tab on the Purchases screen; off until wanted.
+      { id: 'purchaseOrders', label: 'Purchase orders', nav: null, defaultOn: false },
       { id: 'gstr2b',    label: 'GSTR-2B reconciliation (purchase ITC matching)', nav: null, defaultOn: true, indiaOnly: true },
     ],
   },

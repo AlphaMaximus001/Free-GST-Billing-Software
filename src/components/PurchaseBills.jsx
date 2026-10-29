@@ -1,8 +1,10 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
-import { ShoppingCart, Plus, Edit3, Trash2, Search, X, Save, Download, Wand2, FileText, Eye } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import { ShoppingCart, Plus, Edit3, Trash2, Search, X, Save, Download, Wand2, Eye, ClipboardList } from 'lucide-react';
 import HelpButton from './HelpButton';
-import { getAllPurchases, savePurchase, deletePurchase, getAllProducts, saveProduct, getProfile } from '../store';
-import { formatCurrency, calculateRoundOff, getFYOptions, belongsToProfile, isUnassignedToBusiness, isInterstateSupply, localToday, roundQty, splitPurchaseTax } from '../utils';
+import { getAllPurchases, savePurchase, deletePurchase, getAllProducts, saveProduct, getProfile, getEnabledModules, getAllPurchaseOrders, savePurchaseOrder, getNextPoNumber } from '../store';
+import { formatCurrency, getFYOptions, belongsToProfile, isUnassignedToBusiness, isInterstateSupply, localToday, roundQty, splitPurchaseTax, isModuleEnabled, businessKeyOf, getAllUnits } from '../utils';
+import { purchaseTotals as calcPurchaseTotal, billFormFromPo } from '../utils/purchaseOrders';
+import PurchaseOrders from './PurchaseOrders';
 import TableExport from './TableExport';
 import BulkCsvImport from './BulkCsvImport';
 import UnassignedBanner from './UnassignedBanner';
@@ -43,7 +45,12 @@ const PAYMENT_STATUS_COLORS = {
 // cessPercent added in v1.6.8 (P1 #16) — suppliers of tobacco / aerated
 // drinks / motor vehicles / coal charge GST + Cess. Without a slot for it,
 // we couldn't reclaim ITC on the cess in GSTR-3B Table 4(A).
-const emptyItem = { name: '', hsn: '', quantity: 1, rate: 0, taxPercent: 18, cessPercent: 0 };
+// v1.10.83 (#112) - unit is shown on purchase orders only; a bill made from
+// a PO keeps it for the products it adds.
+// _auto marks the 18% default as not typed by the user (see isOursToReplace),
+// so picking a 12% product sets 12%. Before, the default was never replaced
+// and every product picked on a new row came in at 18%.
+const emptyItem = { name: '', hsn: '', quantity: 1, unit: '', rate: 0, taxPercent: 18, cessPercent: 0, _auto: { taxPercent: 18 } };
 
 
 const emptyForm = {
@@ -59,31 +66,17 @@ const emptyForm = {
   interstate: false, // true ⇒ supplier charged IGST; false ⇒ CGST + SGST. Routes ITC correctly in GSTR-3B.
   applyRoundOff: false, // off by default — purchase bill totals are usually pre-rounded by the supplier. Users with suppliers that don't pre-round can opt in here.
   note: '',
+  // v1.10.83 (#112) - the same form edits purchase orders (kind 'po'): it
+  // already knows suppliers, products and the GST split. fromPo links a bill
+  // to the order it was made from.
+  kind: 'bill',
+  poNumber: '',
+  expectedDate: '',
+  fromPo: '',
 };
 
-function calcItemTax(item) {
-  const amount = (item.quantity || 0) * (item.rate || 0);
-  const tax = (amount * (item.taxPercent || 0)) / 100;
-  const cess = (amount * (Number(item.cessPercent) || 0)) / 100;
-  return { amount, tax, cess, total: amount + tax + cess };
-}
-
-function calcPurchaseTotal(items, applyRoundOff = false) {
-  const raw = (items || []).reduce((acc, item) => {
-    const { amount, tax, cess, total } = calcItemTax(item);
-    return {
-      taxable: acc.taxable + amount,
-      tax: acc.tax + tax,
-      cess: acc.cess + cess,
-      total: acc.total + total,
-    };
-  }, { taxable: 0, tax: 0, cess: 0, total: 0 });
-  // Round-off is applied to the GRAND total (taxable + tax + cess). Stored
-  // as a separate line so GSTR-3B input tax credit reflects the supplier's
-  // actual tax amount, not a rounded version.
-  const roundOff = applyRoundOff ? calculateRoundOff(raw.total) : 0;
-  return { ...raw, roundOff, finalTotal: raw.total + roundOff };
-}
+// v1.10.83 (#112) - calcItemTax / calcPurchaseTotal moved to
+// utils/purchaseOrders.js unchanged, shared with purchase orders.
 
 // v1.10.6 — audit L4: local copy removed, imported from utils above.
 
@@ -105,6 +98,13 @@ export default function PurchaseBills() {
   // check the price without downloading the file every time". Holds the
   // purchase being previewed; modal has a Download PDF button inside.
   const [viewPurchase, setViewPurchase] = useState(null);
+  // v1.10.83 (#112) - purchase orders, when switched on in Settings -> Features.
+  const [poEnabled] = useState(() => isModuleEnabled('purchaseOrders', getEnabledModules()));
+  const [tab, setTab] = useState('bills');
+  const [orders, setOrders] = useState([]);
+  // The number shown on a new PO; only that one is swapped for a reserved
+  // number on save, so a number the user typed is kept.
+  const previewedPoRef = useRef('');
   const applyOCR = (extracted) => {
     // v1.10.35 — Now consumes the richer payload from BillOCR:
     // extracted.items[] with name/hsn/qty/rate/taxPercent/amount, and
@@ -170,12 +170,17 @@ export default function PurchaseBills() {
 
   const loadPurchases = async () => {
     try {
-      const [rows, prof] = await Promise.all([getAllPurchases(), getProfile().catch(() => null)]);
+      const [rows, prof, pos] = await Promise.all([
+        getAllPurchases(),
+        getProfile().catch(() => null),
+        poEnabled ? getAllPurchaseOrders().catch(() => []) : [],
+      ]);
       setOwnerProfile(prof);
       // v1.10.65 (#58 item 3) — show only this business's records. Anything
       // saved before businesses were separated has no owner recorded and is
       // always shown, so nothing disappears from an existing ledger.
       setPurchases((rows || []).filter(r => belongsToProfile(r, prof)));
+      setOrders((pos || []).filter(r => belongsToProfile(r, prof)));
     } catch {
       toast('Failed to load purchases', 'error');
     }
@@ -247,9 +252,142 @@ export default function PurchaseBills() {
       // just default to off — they won't suddenly change totals on re-save.
       applyRoundOff: !!purchase.applyRoundOff || (typeof purchase.roundOff === 'number' && purchase.roundOff !== 0),
       note: purchase.note || '',
+      kind: 'bill',
+      poNumber: '',
+      expectedDate: '',
+      fromPo: purchase.fromPo || '',
     });
     setEditingId(purchase.id);
     setShowForm(true);
+  };
+
+  // v1.10.83 (#112) - a new purchase order, blank or copied from `from`
+  // (Duplicate). The next number is shown at once; it is reserved on save.
+  const openNewPo = async (from = null) => {
+    const date = localToday();
+    previewedPoRef.current = '';
+    setForm({
+      ...emptyForm,
+      kind: 'po',
+      date,
+      ...(from ? {
+        supplierName: from.supplierName || '',
+        supplierAddress: from.supplierAddress || '',
+        supplierGstin: from.supplierGstin || '',
+        interstate: !!from.interstate,
+        note: from.note || '',
+      } : {}),
+      items: from?.items?.length ? from.items.map(i => ({ ...i })) : [{ ...emptyItem }],
+    });
+    setEditingId(null);
+    setShowForm(true);
+    try {
+      const next = await getNextPoNumber({ peek: true, businessKey: businessKeyOf(ownerProfile), date });
+      previewedPoRef.current = next;
+      setForm(prev => (prev.kind === 'po' && !prev.poNumber ? { ...prev, poNumber: next } : prev));
+    } catch { /* offline: the user can type a number */ }
+  };
+
+  const openEditPo = (po) => {
+    setForm({
+      ...emptyForm,
+      kind: 'po',
+      date: po.date || '',
+      expectedDate: po.expectedDate || '',
+      poNumber: po.poNumber || '',
+      supplierName: po.supplierName || '',
+      supplierAddress: po.supplierAddress || '',
+      supplierGstin: po.supplierGstin || '',
+      interstate: !!po.interstate,
+      note: po.note || '',
+      items: po.items?.length ? po.items.map(i => ({ ...i })) : [{ ...emptyItem }],
+    });
+    setEditingId(po.id);
+    setShowForm(true);
+  };
+
+  // Convert to purchase bill: the bill form, filled with what is still to
+  // come on the order. Stock moves only when that bill is saved.
+  const openBillFromPo = (po) => {
+    setForm({ ...emptyForm, date: localToday(), ...billFormFromPo(po, purchases) });
+    setEditingId(null);
+    setShowForm(true);
+  };
+
+  const cancelPo = async (po) => {
+    if (!await confirmAction({
+      title: `Cancel ${po.poNumber || 'this purchase order'}?`,
+      message: 'It keeps its number and can still be viewed and duplicated, but no longer edited or turned into a bill. Bills already saved from it stay as they are.',
+      confirmLabel: 'Cancel order',
+      cancelLabel: 'Keep it',
+      tone: 'danger',
+    })) return;
+    try {
+      await savePurchaseOrder({ ...po, cancelled: true, cancelledAt: new Date().toISOString() });
+      toast(`${po.poNumber || 'Purchase order'} cancelled`, 'success');
+      loadPurchases();
+    } catch {
+      toast('Could not cancel the purchase order', 'error');
+    }
+  };
+
+  const handleSavePo = async () => {
+    if (!form.date) { toast('PO date is required', 'warning'); return; }
+    if (!form.supplierName.trim()) { toast('Supplier name is required', 'warning'); return; }
+    const items = form.items
+      .filter(i => (i.name || '').trim() && (parseFloat(i.quantity) || 0) > 0)
+      .map(i => ({
+        name: i.name.trim(),
+        hsn: (i.hsn || '').trim(),
+        quantity: parseFloat(i.quantity) || 0,
+        unit: (i.unit || '').trim(),
+        rate: parseFloat(i.rate) || 0,
+        taxPercent: parseFloat(i.taxPercent) || 0,
+        cessPercent: parseFloat(i.cessPercent) || 0,
+      }));
+    if (!items.length) { toast('Add at least one item with a quantity', 'warning'); return; }
+    const existing = editingId ? orders.find(o => o.id === editingId) : null;
+    let poNumber = (form.poNumber || '').trim();
+    try {
+      if (!existing && (!poNumber || poNumber === previewedPoRef.current)) {
+        poNumber = await getNextPoNumber({ businessKey: businessKeyOf(ownerProfile), date: form.date });
+      }
+    } catch {
+      if (!poNumber) { toast('Could not get the next PO number. Type one in PO number.', 'error'); return; }
+    }
+    if (orders.some(o => o.id !== editingId && String(o.poNumber || '').trim().toLowerCase() === poNumber.toLowerCase())) {
+      setForm(prev => ({ ...prev, poNumber }));
+      toast(`${poNumber} is already used by another purchase order`, 'warning');
+      return;
+    }
+    const t = calcPurchaseTotal(items);
+    try {
+      await savePurchaseOrder({
+        ...(existing || {}),
+        poNumber,
+        date: form.date,
+        expectedDate: form.expectedDate || '',
+        supplierName: form.supplierName.trim(),
+        supplierAddress: (form.supplierAddress || '').trim(),
+        supplierGstin: form.supplierGstin.trim(),
+        interstate: !!form.interstate,
+        // Same rule as receipts: an edited order keeps the business it had.
+        ownerGstin: existing ? (existing.ownerGstin || '') : (ownerProfile?.gstin || ''),
+        ownerName: existing ? (existing.ownerName || '') : (ownerProfile?.businessName || ''),
+        items,
+        note: (form.note || '').trim(),
+        taxableAmount: t.taxable,
+        totalTax: t.tax,
+        totalCess: t.cess,
+        totalAmount: t.finalTotal,
+        createdAt: existing?.createdAt || new Date().toISOString(),
+      });
+      toast(existing ? `${poNumber} updated` : `${poNumber} saved`, 'success');
+      closeForm();
+      loadPurchases();
+    } catch {
+      toast('Failed to save the purchase order', 'error');
+    }
   };
 
   const closeForm = () => {
@@ -370,6 +508,7 @@ export default function PurchaseBills() {
   };
 
   const handleSave = async () => {
+    if (form.kind === 'po') return handleSavePo();
     if (!form.supplierName.trim()) { toast('Supplier name is required', 'warning'); return; }
     if (!form.invoiceNumber.trim()) { toast('Invoice number is required', 'warning'); return; }
     // v1.10.58 — reported (#47 item 2, @sangwanmail-eng): "Purchase also
@@ -404,7 +543,12 @@ export default function PurchaseBills() {
           rate: parseFloat(i.rate) || 0,
           taxPercent: parseFloat(i.taxPercent) || 0,
           cessPercent: parseFloat(i.cessPercent) || 0,
+          // v1.10.83 (#112) - only lines from a purchase order carry a unit.
+          ...(String(i.unit || '').trim() ? { unit: String(i.unit).trim() } : {}),
         })),
+        // The purchase order this bill was made from; its status follows the
+        // quantities on the bills linked to it.
+        ...(form.fromPo ? { fromPo: form.fromPo } : {}),
         // totalAmount is the grand total INCLUDING round-off so the table
         // sum and GSTR-3B reconciliation both reflect what the supplier
         // actually charged. roundOff stored separately for audit clarity.
@@ -498,7 +642,7 @@ export default function PurchaseBills() {
               rate: it.rate,
               taxPercent: it.taxPercent || 0,
               cessPercent: it.cessPercent || 0,
-              unit: 'Nos',
+              unit: it.unit || 'Nos',
               stock: roundQty(seeded + qty),
               description: '',
             });
@@ -667,6 +811,7 @@ export default function PurchaseBills() {
         rate: Number(pr.purchasePrice) || Number(pr.rate) || 0,
         taxPercent: Number(pr.taxPercent) || 0,
         cessPercent: Number(pr.cessPercent) || 0,
+        unit: String(pr.unit || '').trim(),
       });
     }
 
@@ -682,6 +827,7 @@ export default function PurchaseBills() {
             rate: Number(it.rate) || 0,
             taxPercent: Number(it.taxPercent) || 0,
             cessPercent: Number(it.cessPercent) || 0,
+            unit: String(it.unit || '').trim(),
           });
         }
       }
@@ -767,6 +913,8 @@ export default function PurchaseBills() {
         if (isOursToReplace(cur.rate, last.rate)) cur.rate = match.rate;
         if (isOursToReplace(cur.taxPercent, last.taxPercent)) cur.taxPercent = match.taxPercent;
         if (isOursToReplace(cur.cessPercent, last.cessPercent)) cur.cessPercent = match.cessPercent;
+        // v1.10.83 (#112) - unit only on a purchase order; bills have no unit field.
+        if (prev.kind === 'po' && isOursToReplace(cur.unit, last.unit)) cur.unit = match.unit;
         // Remember exactly what we just wrote, so the next re-selection can
         // tell our values apart from the user's.
         cur._auto = {
@@ -774,6 +922,7 @@ export default function PurchaseBills() {
           rate: match.rate,
           taxPercent: match.taxPercent,
           cessPercent: match.cessPercent,
+          unit: match.unit,
         };
       }
       items[index] = cur;
@@ -823,14 +972,16 @@ export default function PurchaseBills() {
     return [...rows, ['Total', '', '', '', r2(sum.taxable), r2(sum.cgst), r2(sum.sgst), r2(sum.igst), r2(sum.cess), '', r2(sum.roundOff), r2(sum.finalTotal), '', '']];
   })();
 
-  const formTotals = calcPurchaseTotal(form.items, form.applyRoundOff);
+  const isPo = form.kind === 'po';
+  const fromPoNumber = form.fromPo ? orders.find(o => o.id === form.fromPo)?.poNumber : '';
+  const formTotals = calcPurchaseTotal(form.items, !isPo && form.applyRoundOff);
 
   return (
     <div className="dashboard-container">
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div>
-            <h1 className="page-title">Purchase Bills</h1>
+            <h1 className="page-title">{poEnabled ? 'Purchases' : 'Purchase Bills'}</h1>
             <p className="page-subtitle">Track supplier invoices for ITC claims in GSTR-3B</p>
           </div>
           <HelpButton title="Purchase Bills — how to use" doc="purchases">
@@ -843,6 +994,11 @@ export default function PurchaseBills() {
             </ul>
           </HelpButton>
         </div>
+        {tab === 'orders' ? (
+          <div className="flex gap-2">
+            <button className="btn btn-primary" onClick={() => openNewPo()}><Plus size={18} /> New purchase order</button>
+          </div>
+        ) : (
         <div className="flex gap-2">
           <button className="btn btn-secondary" onClick={() => setShowOCR(true)} title="Extract fields from a bill photo/scan">
             <Wand2 size={16} /> Import from image (OCR)
@@ -850,7 +1006,27 @@ export default function PurchaseBills() {
           <BulkCsvImport kind="purchase" onDone={() => { loadPurchases(); loadProducts(); }} />
           <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> Add Purchase</button>
         </div>
+        )}
       </div>
+
+      {/* v1.10.83 (#112) - Purchase bills | Purchase orders, only when the
+          Purchase orders feature is on. */}
+      {poEnabled && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+          <button className={`btn ${tab === 'bills' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab('bills')} aria-pressed={tab === 'bills'}>
+            <ShoppingCart size={16} /> Purchase bills
+          </button>
+          <button className={`btn ${tab === 'orders' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab('orders')} aria-pressed={tab === 'orders'}>
+            <ClipboardList size={16} /> Purchase orders
+          </button>
+        </div>
+      )}
+
+      {tab === 'orders' && (
+        <PurchaseOrders orders={orders} purchases={purchases} ownerProfile={ownerProfile}
+          onNew={() => openNewPo()} onEdit={openEditPo} onConvert={openBillFromPo}
+          onDuplicate={openNewPo} onCancel={cancelPo} />
+      )}
 
       {/* v1.10.22 — Bill OCR modal (tesseract.js, lazy-loaded). */}
       {showOCR && (
@@ -948,6 +1124,7 @@ export default function PurchaseBills() {
       })()}
 
       {/* Stats */}
+      {tab === 'bills' && (<>
       <UnassignedBanner
         count={unassignedPurchases.length}
         businessName={ownerProfile?.businessName}
@@ -989,22 +1166,37 @@ export default function PurchaseBills() {
         </div>
       </div>
 
+      </>)}
+
       {/* Add/Edit Modal */}
       {showForm && (
         <div className="modal-overlay" onClick={closeForm}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '720px' }}>
-            <h3 className="section-title">{editingId ? 'Edit Purchase Bill' : 'Add Purchase Bill'}</h3>
+            <h3 className="section-title">{isPo ? (editingId ? 'Edit purchase order' : 'New purchase order') : (editingId ? 'Edit Purchase Bill' : 'Add Purchase Bill')}</h3>
+            {/* v1.10.83 (#112) - a bill made from a purchase order. */}
+            {!isPo && fromPoNumber && (
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 0.75rem' }}>
+                From purchase order <strong>{fromPoNumber}</strong>. Type the supplier's bill number, and change quantities to what actually came.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="form-group">
-                <label className="form-label">Date *</label>
+                <label className="form-label">{isPo ? 'PO date *' : 'Date *'}</label>
                 <input type="date" className="form-input" value={form.date} onChange={e => updateField('date', e.target.value)} />
               </div>
+              {isPo ? (
+                <div className="form-group">
+                  <label className="form-label">Expected delivery</label>
+                  <input type="date" className="form-input" value={form.expectedDate} onChange={e => updateField('expectedDate', e.target.value)} />
+                </div>
+              ) : (
               <div className="form-group">
                 <label className="form-label">Payment Status</label>
                 <select className="form-input" value={form.paymentStatus} onChange={e => updateField('paymentStatus', e.target.value)}>
                   {PAYMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
+              )}
               <div className="form-group">
                 <label className="form-label">Supplier Name *</label>
                 {/* v1.10.50 (#39) — recall previously used suppliers. A native
@@ -1038,8 +1230,20 @@ export default function PurchaseBills() {
                 <label className="form-label">Supplier Address (optional)</label>
                 <input type="text" className="form-input" value={form.supplierAddress || ''}
                   onChange={e => updateField('supplierAddress', e.target.value)}
-                  placeholder="Street, City, State — printed on the Purchase Bill PDF" />
+                  placeholder={isPo ? 'Street, City, State — printed on the PO' : 'Street, City, State — printed on the Purchase Bill PDF'} />
               </div>
+              {isPo ? (<>
+                <div className="form-group">
+                  <label className="form-label">PO number *</label>
+                  <input type="text" className="form-input" value={form.poNumber}
+                    onChange={e => updateField('poNumber', e.target.value)} placeholder="PO/26-27/0001" />
+                </div>
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label">Notes / terms (optional)</label>
+                  <textarea className="form-input" rows={3} value={form.note}
+                    onChange={e => updateField('note', e.target.value)} placeholder="Delivery address, payment terms, packing..." />
+                </div>
+              </>) : (<>
               <div className="form-group">
                 <label className="form-label">Invoice Number *</label>
                 <input type="text" className="form-input" value={form.invoiceNumber}
@@ -1050,6 +1254,7 @@ export default function PurchaseBills() {
                 <input type="text" className="form-input" value={form.note}
                   onChange={e => updateField('note', e.target.value)} placeholder="Any note..." />
               </div>
+              </>)}
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer' }}>
                   <input type="checkbox" checked={!!form.interstate}
@@ -1073,9 +1278,14 @@ export default function PurchaseBills() {
             <datalist id="fgsb-item-history">
               {itemHistory.map(i => <option key={i.name} value={i.name} />)}
             </datalist>
+            {isPo && (
+              <datalist id="fgsb-unit-list">
+                {getAllUnits().map(u => <option key={u.label} value={u.label} />)}
+              </datalist>
+            )}
             {form.items.map((item, idx) => (
               <div key={idx} data-focus-key={item._focusKey} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <div className="form-group" style={{ flex: 2, margin: 0 }}>
+                <div className="form-group" style={{ flex: isPo ? 1.2 : 2, margin: 0 }}>
                   {idx === 0 && <label className="form-label">Name</label>}
                   {/* v1.10.50 (#39) — recall previously purchased items along
                       with their HSN, rate and tax rates. One shared datalist
@@ -1086,12 +1296,12 @@ export default function PurchaseBills() {
                     onChange={e => updateItemName(idx, e.target.value)}
                     placeholder={itemHistory.length ? 'Type or pick a previous item' : 'Item name'} />
                 </div>
-                <div className="form-group" style={{ flex: 1, margin: 0 }}>
+                <div className="form-group" style={{ flex: isPo ? 0.8 : 1, margin: 0 }}>
                   {idx === 0 && <label className="form-label">HSN</label>}
                   <input type="text" className="form-input" value={item.hsn}
                     onChange={e => updateItem(idx, 'hsn', e.target.value)} placeholder="HSN" />
                 </div>
-                <div className="form-group" style={{ flex: 0.7, margin: 0 }}>
+                <div className="form-group" style={{ flex: isPo ? 0.9 : 0.7, margin: 0 }}>
                   {idx === 0 && <label className="form-label">Qty</label>}
                   {/* v1.6.8 (P2 #30): decimal quantity for 2.5 kg / 0.5 hr / etc. */}
                   {/* v1.10.69 - requested (#71 item 2, @sangwanmail-eng): the
@@ -1102,13 +1312,20 @@ export default function PurchaseBills() {
                     onFocus={e => e.target.select()}
                     onChange={e => updateItem(idx, 'quantity', e.target.value)} />
                 </div>
+                {isPo && (
+                  <div className="form-group" style={{ flex: 0.8, margin: 0 }}>
+                    {idx === 0 && <label className="form-label">Unit</label>}
+                    <input type="text" className="form-input" value={item.unit || ''} list="fgsb-unit-list"
+                      autoComplete="off" onChange={e => updateItem(idx, 'unit', e.target.value)} placeholder="Nos" />
+                  </div>
+                )}
                 <div className="form-group" style={{ flex: 1, margin: 0 }}>
                   {idx === 0 && <label className="form-label">Rate</label>}
                   <input type="number" className="form-input" value={item.rate} min="0" step="any"
                     onFocus={e => e.target.select()}
                     onChange={e => updateItem(idx, 'rate', e.target.value)} />
                 </div>
-                <div className="form-group" style={{ flex: 0.75, margin: 0 }}>
+                <div className="form-group" style={{ flex: isPo ? 0.95 : 0.75, margin: 0 }}>
                   {idx === 0 && <label className="form-label">Tax %</label>}
                   {/* v1.6.8 (P2 #29): "Other…" for jeweller 3% / diamond 0.25% /
                        agriculture 0.1% and any bespoke rate. */}
@@ -1181,6 +1398,7 @@ export default function PurchaseBills() {
                 )}
                 <span>Total: <strong>{formatCurrency(formTotals.finalTotal)}</strong></span>
               </div>
+              {!isPo && (
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.78rem', cursor: 'pointer', marginTop: '0.6rem', color: '#475569' }}>
                 <input type="checkbox" checked={!!form.applyRoundOff}
                   onChange={e => updateField('applyRoundOff', e.target.checked)}
@@ -1191,6 +1409,7 @@ export default function PurchaseBills() {
                   most suppliers' totals already match what's calculated from line items.
                 </span>
               </label>
+              )}
             </div>
 
             <div className="flex gap-2 justify-end mt-4">
@@ -1202,6 +1421,7 @@ export default function PurchaseBills() {
       )}
 
       {/* Purchase Table */}
+      {tab === 'bills' && (
       <div className="glass-panel">
         <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
           <h3>Purchase Records</h3>
@@ -1284,6 +1504,7 @@ export default function PurchaseBills() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
