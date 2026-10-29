@@ -153,6 +153,11 @@ mkdirSync(join(SYSTEM, 'src', 'utils'), { recursive: true });
 copyFileSync(join(REPO_ROOT, 'src', 'utils', 'errorReport.js'), join(SYSTEM, 'src', 'utils', 'errorReport.js'));
 // The cash book endpoints check entries with the form's own rules (imports ../utils.js only).
 copyFileSync(join(REPO_ROOT, 'src', 'utils', 'cashBook.js'), join(SYSTEM, 'src', 'utils', 'cashBook.js'));
+// Supplier payments are checked on save (#123): purchasePayments.js imports
+// purchaseOrders.js, which imports ../utils.js only.
+for (const f of ['purchasePayments.js', 'purchaseOrders.js']) {
+  copyFileSync(join(REPO_ROOT, 'src', 'utils', f), join(SYSTEM, 'src', 'utils', f));
+}
 
 copyDirRecursive(join(REPO_ROOT, 'dist'), join(SYSTEM, 'dist'));
 // Only ship the scripts that postinstall / release-time need — not the
