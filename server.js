@@ -1362,7 +1362,10 @@ function pickScript(name) {
 // ship update + backup only, so Restore / Move / Stop are shown as not
 // available there instead of failing when clicked.
 const CONTROL_ACTIONS = ['update', 'backup', 'restore', 'move', 'stop'];
-const controlActions = () => Object.fromEntries(CONTROL_ACTIONS.map(a => [a, !!pickScript(a)]));
+// v1.10.83 - Stop works everywhere: on macOS / Linux there is no stop script,
+// so the server stops itself (see launch-script below). The Mac and Linux
+// guides tell people to use it.
+const controlActions = () => Object.fromEntries(CONTROL_ACTIONS.map(a => [a, a === 'stop' && !isWindows ? true : !!pickScript(a)]));
 
 function runControlScript(scriptPath) {
   return new Promise((resolve) => {
@@ -1456,6 +1459,12 @@ app.post('/api/control-panel/launch-script', async (req, res) => {
   const allowed = new Set(['update', 'restore', 'move', 'stop']);
   const action = String(req.body?.action || '');
   if (!allowed.has(action)) { res.status(400).json({ ok: false, error: 'Unknown action' }); return; }
+  if (action === 'stop' && !isWindows) {
+    // Answer first, then exit, so the page can say it stopped.
+    res.json({ ok: true, stdout: 'Stopped. Open the app again from its icon or launcher.' });
+    setTimeout(() => process.exit(0), 400);
+    return;
+  }
   const script = pickScript(action);
   const result = await runControlScript(script);
   res.json(result);
