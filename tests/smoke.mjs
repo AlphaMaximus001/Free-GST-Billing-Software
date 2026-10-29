@@ -169,7 +169,7 @@ try {
   // the app's own stylesheet inside html2canvas's clone — so PDFs rendered
   // with no CSS. Both were Firefox-only and silent.
   check('app loads with no CSP violations', cspViolations.length === 0,
-    cspViolations[0]?.slice(0, 90) || '');
+    cspViolations[0]?.slice(0, 400) || '');
 
   const styled = await page.evaluate(() => document.styleSheets.length > 0
     && getComputedStyle(document.body).fontFamily.includes('Inter'));
@@ -336,7 +336,7 @@ try {
   check('PDF downloads and is styled', pdfBytes > 300_000, `${pdfBytes} bytes`);
 
   check('no CSP violations during PDF generation', cspViolations.length === 0,
-    cspViolations[0]?.slice(0, 90) || '');
+    cspViolations[0]?.slice(0, 400) || '');
 
   // Generating the PDF saves the invoice, so the editor now holds a real,
   // dirty bill and navigating away raises the leave-guard. Dismiss it, then
