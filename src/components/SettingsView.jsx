@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getRegionMode, setRegionMode, getEnabledModules, setEnabledModules, getStockAlertSettings, saveStockAlertSettings, renameNumberSeries, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getCostCentres, saveCostCentres } from '../store';
+import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getRegionMode, setRegionMode, getStockAlertSettings, saveStockAlertSettings, renameNumberSeries, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getCostCentres, saveCostCentres } from '../store';
 import { ensureToken, findOrCreateFolder, uploadJSON } from '../services/googleDrive';
 import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, findSameBusiness, businessKeyOf, stockDelta } from '../utils';
 // v1.10.36 — lucide's `Image` icon was imported as `Image`, which
@@ -17,7 +17,7 @@ import PrintSettings from './PrintSettings';
 import HelpButton from './HelpButton';
 import AppLockSettings from './AppLockSettings';
 import CostCentreSettings from './CostCentreSettings';
-import { BusinessTypePanel, FeaturesPanel } from './FeatureSettings';
+import { BusinessTypePanel, FeaturesPanel, useFeatureDraft } from './FeatureSettings';
 import { rekeyCentres } from '../utils/costCentres';
 import InvoiceNumberSettings from './InvoiceNumberSettings';
 import SignatureImages, { SIGN_LAYOUTS } from './SignatureImages';
@@ -171,17 +171,13 @@ export default function SettingsView({ onSaved }) {
       result.ok ? 'success' : 'error', 10000);
   };
   const [regionMode, setRegionModeState] = useState(getRegionMode());
-  const [enabledModules, setEnabledModulesState] = useState(getEnabledModules());
+  // v1.10.83 - Business type + Features: a draft, applied by "Save all changes".
+  const features = useFeatureDraft();
   const [stockAlerts, setStockAlerts] = useState({ enabled: true, threshold: 5 });
   const [stockAlertsSaving, setStockAlertsSaving] = useState(false);
   // v1.10.75 - what is on disk for the forms that have their own Save, so
   // the bottom "Save all changes" bar knows what is still unsaved.
   const [stockSaved, setStockSaved] = useState(null);
-
-  const changeModules = (next) => {
-    setEnabledModulesState(next);
-    setEnabledModules(next);
-  };
   const fileInputRef = useRef(null);
   const logoInputRef = useRef(null);
   const sigInputRef = useRef(null);
@@ -739,13 +735,15 @@ export default function SettingsView({ onSaved }) {
 
   // v1.10.75 - one Save for the whole page (asked for: "a global save button
   // at the bottom, sticky, that saves all data filled anywhere"). Bank
-  // accounts, Features, Region and Print & PDF already save as they change;
-  // these are the four that wait for a Save.
+  // accounts, Region and Print & PDF already save as they change; these wait
+  // for a Save. v1.10.83 - Business type and Features joined them (asked for:
+  // "just checkbox and save button to apply").
   const unsaved = [
     profileDirty && 'Company Details',
     invNumDirty && 'Invoice Number Format',
     stockSaved !== null && JSON.stringify(stockAlerts) !== stockSaved && 'Low-stock alerts',
     !!editingTemplate && 'Terms template',
+    ...features.unsaved,
   ].filter(Boolean);
   const saveAll = async () => {
     if (!unsaved.length) { toast('Everything is already saved', 'info'); return; }
@@ -755,6 +753,7 @@ export default function SettingsView({ onSaved }) {
     if (unsaved.includes('Invoice Number Format')) jobs.push(invNumRef.current?.save());
     if (unsaved.includes('Low-stock alerts')) jobs.push(saveStockAlerts());
     if (editingTemplate) jobs.push(handleSaveTemplate());
+    if (features.unsaved.length) features.save();
     await Promise.all(jobs);
   };
   const discardAll = () => {
@@ -762,6 +761,7 @@ export default function SettingsView({ onSaved }) {
     invNumRef.current?.discard();
     if (stockSaved !== null) setStockAlerts(JSON.parse(stockSaved));
     setEditingTemplate(null);
+    features.discard();
   };
 
   const [taxIdWarning, setTaxIdWarning] = useState('');
@@ -1004,11 +1004,11 @@ export default function SettingsView({ onSaved }) {
       <div id="section-backups" style={{ order: 8 }}><BackupAndTrashPanel /></div>
 
       {/* v1.10.83 - Business type (first tab) and Features: FeatureSettings.jsx. */}
-      <BusinessTypePanel modules={enabledModules} onModulesChange={changeModules} />
-      <FeaturesPanel modules={enabledModules} onModulesChange={changeModules} regionMode={regionMode} />
+      <BusinessTypePanel features={features} />
+      <FeaturesPanel features={features} regionMode={regionMode} />
 
       {/* v1.10.83 (#112) - only while the feature is on, right under Features. */}
-      {isModuleEnabled('costCentres', enabledModules) && (
+      {isModuleEnabled('costCentres', features.saved.modules) && (
         <div id="section-costcentres" style={{ order: 5 }}><CostCentreSettings profile={activeBusiness} /></div>
       )}
 

@@ -56,17 +56,21 @@ export const applyBusinessType = (typeId, currentMap = {}) => {
   return target ? { ...currentMap, ...target } : { ...currentMap };
 };
 
-// What applying a type would change, for the "Turn on / Turn off" question.
-export const businessTypeChanges = (typeId, currentMap = {}) => {
-  const target = modulesForType(typeId) || {};
+// What would change going from one switch map to another (the "Turn on /
+// Turn off" line under the unsaved Business type and Features tabs).
+export const featureChanges = (fromMap = {}, toMap = {}) => {
   const turnOn = [], turnOff = [];
-  for (const [id, want] of Object.entries(target)) {
-    const now = isModuleEnabled(id, currentMap);
+  for (const id of SWITCHABLE_MODULES) {
+    const now = isModuleEnabled(id, fromMap), want = isModuleEnabled(id, toMap);
     if (want && !now) turnOn.push(id);
     if (!want && now) turnOff.push(id);
   }
   return { turnOn, turnOff };
 };
+
+// What applying a type would change.
+export const businessTypeChanges = (typeId, currentMap = {}) =>
+  featureChanges(currentMap, applyBusinessType(typeId, currentMap));
 
 const LABELS = Object.fromEntries(FEATURE_GROUPS.flatMap(g => g.modules).map(m => [m.id, m.label]));
 export const moduleLabel = (id) => LABELS[id] || id;

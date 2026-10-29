@@ -1,15 +1,40 @@
 import { useState, useEffect } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { FEATURE_GROUPS, isModuleEnabled } from '../utils';
-import { BUSINESS_TYPES, businessTypeById, businessTypeChanges, applyBusinessType, moduleLabel, orderedMenu, moveMenuItem } from '../utils/businessTypes';
-import { getBusinessType, setBusinessType, getMenuOrder, setMenuOrder, getAllRecurring } from '../store';
-import { confirmAction } from './ConfirmModal';
+import { BUSINESS_TYPES, businessTypeById, applyBusinessType, featureChanges, moduleLabel, orderedMenu, moveMenuItem } from '../utils/businessTypes';
+import { getEnabledModules, setEnabledModules, getBusinessType, setBusinessType, getMenuOrder, setMenuOrder, getAllRecurring } from '../store';
 import { toast } from './Toast';
 
 // v1.10.83 - Settings → Business type and Settings → Features.
 // Both only change what is shown; nothing is ever deleted.
+//
+// Asked for: "just checkbox and save button to apply". Ticking, the arrows
+// and picking a business type only change a draft; the page's one
+// "Save all changes" bar applies it (and lists it as unsaved until then,
+// like the Company form). The sidebar follows the saved copy only.
 
 const muted = { fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4 };
+const readSaved = () => ({ modules: getEnabledModules(), type: getBusinessType(), order: getMenuOrder() });
+const orderKey = (order) => orderedMenu(order).map(m => m.id).join();
+
+// Draft + saved copy for both tabs. SettingsView adds `unsaved` to its bar
+// and calls save() / discard() from "Save all changes" / "Discard".
+export function useFeatureDraft() {
+  const [saved, setSaved] = useState(readSaved);
+  const [draft, setDraft] = useState(saved);
+  const changes = featureChanges(saved.modules, draft.modules);
+  const typeChanged = draft.type !== saved.type;
+  const featuresChanged = changes.turnOn.length > 0 || changes.turnOff.length > 0 || orderKey(draft.order) !== orderKey(saved.order);
+  const unsaved = [typeChanged && 'Business type', featuresChanged && 'Features'].filter(Boolean);
+  const save = () => {
+    if (featuresChanged) { setEnabledModules(draft.modules); setMenuOrder(draft.order); }
+    if (typeChanged && draft.type) setBusinessType(draft.type);
+    setSaved(draft);
+    toast('Features saved. The menu now shows your choices.', 'success');
+  };
+  const discard = () => setDraft(saved);
+  return { draft, setDraft, saved, changes, unsaved, save, discard };
+}
 
 // Recurring invoices are made by the server (server.js processDueRecurring)
 // whether or not the Recurring screen is shown, so say so where it is hidden.
@@ -22,99 +47,86 @@ function useActiveRecurringCount() {
 }
 const recurringNote = (n) => `You have ${n} recurring invoice${n === 1 ? '' : 's'}; ${n === 1 ? 'it keeps' : 'they keep'} being made while Recurring is hidden. Pause ${n === 1 ? 'it' : 'them'} on the Recurring screen to stop.`;
 
-export function BusinessTypePanel({ modules, onModulesChange }) {
-  const [current, setCurrent] = useState(getBusinessType);
-  const recurring = useActiveRecurringCount();
+// "Not saved yet: Turn on … Turn off …" - shown on both tabs while the draft differs.
+function PendingChanges({ features }) {
+  if (!features.unsaved.length) return null;
+  const { turnOn, turnOff } = features.changes;
+  return (
+    <div className="notice notice-warn" style={{ fontSize: '0.8rem', margin: '0.85rem 0' }}>
+      <div>
+        <div><strong>Not saved yet.</strong> Click <strong>Save all changes</strong> at the bottom to apply.</div>
+        {turnOn.length > 0 && <div>Turn on: {turnOn.map(moduleLabel).join(', ')}</div>}
+        {turnOff.length > 0 && <div>Turn off: {turnOff.map(moduleLabel).join(', ')}</div>}
+        <div style={{ opacity: 0.85 }}>Nothing is deleted; this only changes what you see.</div>
+      </div>
+    </div>
+  );
+}
 
-  const choose = async (type) => {
-    const { turnOn, turnOff } = businessTypeChanges(type.id, modules);
-    if (turnOn.length || turnOff.length) {
-      const lines = [];
-      if (turnOn.length) lines.push(`Turn on: ${turnOn.map(moduleLabel).join(', ')}`);
-      if (turnOff.length) lines.push(`Turn off: ${turnOff.map(moduleLabel).join(', ')}`);
-      lines.push('', 'Nothing is deleted. This only changes what you see, and you can switch anything back in Features.');
-      if (turnOff.includes('recurring') && recurring > 0) lines.push('', recurringNote(recurring));
-      const ok = await confirmAction({ title: `Set up the app for "${type.label}"?`, message: lines.join('\n'), confirmLabel: 'Apply' });
-      if (!ok) return;
-      onModulesChange(applyBusinessType(type.id, modules));
-    }
-    setBusinessType(type.id);
-    setCurrent(type.id);
-    toast(`Business type: ${type.label}`, 'success');
-  };
-
-  const chosen = businessTypeById(current);
+export function BusinessTypePanel({ features }) {
+  const { draft, setDraft, saved } = features;
+  const choose = (type) => setDraft({ ...draft, type: type.id, modules: applyBusinessType(type.id, draft.modules) });
+  const chosen = businessTypeById(saved.type);
   return (
     <div id="section-biztype" className="glass-panel p-6 mb-6" style={{ order: 0 }}>
       <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>Business type</h3>
       <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
-        Pick what kind of business you run. The app then shows the features that business needs and hides the rest.
-        You will see what changes before anything happens.
+        Pick what kind of business you run. The tick boxes in Features are filled in for that business; nothing changes until you save.
       </p>
       <p style={{ fontSize: '0.85rem', margin: '0.85rem 0' }}>
         Your business type: <strong>{chosen ? chosen.label : 'Not chosen yet'}</strong>
       </p>
-      {!chosen && (
+      {!chosen && draft.type === saved.type && (
         <div className="notice notice-info" style={{ fontSize: '0.8rem', marginBottom: '0.85rem' }}>
-          Pick one below so the menu shows only what you use. Your current switches stay exactly as they are until you pick.
+          Pick one below so the menu shows only what you use. Your current switches stay exactly as they are until you pick and save.
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.6rem' }}>
         {BUSINESS_TYPES.map(type => (
           <button key={type.id} type="button" onClick={() => choose(type)}
-            className={`type-chip ${current === type.id ? 'type-chip-active' : ''}`}
-            aria-pressed={current === type.id}
+            className={`type-chip ${draft.type === type.id ? 'type-chip-active' : ''}`}
+            aria-pressed={draft.type === type.id}
             style={{ textAlign: 'left', padding: '0.7rem 0.85rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.2rem' }}>
             <span style={{ fontWeight: 600 }}>{type.label}</span>
             <span style={{ fontSize: '0.72rem', fontWeight: 400, opacity: 0.85 }}>{type.hint}</span>
           </button>
         ))}
       </div>
+      <PendingChanges features={features} />
     </div>
   );
 }
 
-function Switch({ mod, modules, onToggle, note }) {
-  const on = isModuleEnabled(mod.id, modules);
+function Check({ id, label, help, modules, onToggle, note }) {
+  const on = isModuleEnabled(id, modules);
   return (
     <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', flex: 1, minWidth: 0 }}>
-      <input type="checkbox" checked={on} onChange={() => onToggle(mod.id)}
+      <input type="checkbox" checked={on} onChange={() => onToggle(id)}
         style={{ width: 15, height: 15, accentColor: 'var(--primary)', marginTop: '2px', flexShrink: 0 }} />
       <span>
-        <span style={{ fontWeight: 600 }}>{mod.label}</span>
-        <span style={{ ...muted, display: 'block' }}>{mod.help}</span>
+        <span style={{ fontWeight: 600 }}>{label}</span>
+        {help && <span style={{ ...muted, display: 'block' }}>{help}</span>}
         {!on && note && <span style={{ ...muted, display: 'block', color: 'var(--warn-text)' }}>{note}</span>}
       </span>
     </label>
   );
 }
 
-export function FeaturesPanel({ modules, onModulesChange, regionMode }) {
-  const [order, setOrder] = useState(getMenuOrder);
+export function FeaturesPanel({ features, regionMode }) {
+  const { draft, setDraft } = features;
   const recurring = useActiveRecurringCount();
-  const type = businessTypeById(getBusinessType());
   const notes = { recurring: recurring > 0 ? recurringNote(recurring) : '' };
+  const type = businessTypeById(draft.type);
 
-  const toggle = (id) => onModulesChange({ ...modules, [id]: !isModuleEnabled(id, modules) });
-  const move = (id, dir) => { const next = moveMenuItem(order, id, dir); setOrder(next); setMenuOrder(next); };
-  const resetOrder = () => { setOrder([]); setMenuOrder([]); };
-  const reset = async () => {
-    if (!type) {
-      onModulesChange({});
-      toast('Features reset to default', 'success');
-      return;
-    }
-    const { turnOn, turnOff } = businessTypeChanges(type.id, modules);
-    if (!turnOn.length && !turnOff.length) { toast(`Already set up for "${type.label}"`, 'info'); return; }
-    const msg = [turnOn.length && `Turn on: ${turnOn.map(moduleLabel).join(', ')}`, turnOff.length && `Turn off: ${turnOff.map(moduleLabel).join(', ')}`].filter(Boolean).join('\n');
-    if (!await confirmAction({ title: `Reset to "${type.label}"?`, message: `${msg}\n\nNothing is deleted.`, confirmLabel: 'Reset' })) return;
-    onModulesChange(applyBusinessType(type.id, modules));
-    toast(`Features reset to "${type.label}"`, 'success');
-  };
+  const setModules = (modules) => setDraft({ ...draft, modules });
+  const toggle = (id) => setModules({ ...draft.modules, [id]: !isModuleEnabled(id, draft.modules) });
+  const move = (id, dir) => setDraft({ ...draft, order: moveMenuItem(draft.order, id, dir) });
+  const reset = () => setModules(type ? applyBusinessType(type.id, draft.modules) : {});
 
-  const menu = orderedMenu(order);
-  const menuGroup = FEATURE_GROUPS.find(g => g.id === 'menu');
-  const modFor = (item) => menuGroup.modules.find(m => m.id === item.module);
+  // Data-driven: every module in FEATURE_GROUPS and every item in MENU_ITEMS
+  // shows up here, so a module added later needs no change to this screen.
+  const menu = orderedMenu(draft.order);
+  const menuModules = FEATURE_GROUPS.find(g => g.id === 'menu')?.modules || [];
   const renderSection = (section, title) => {
     const items = menu.filter(m => m.section === section);
     return (
@@ -122,7 +134,7 @@ export function FeaturesPanel({ modules, onModulesChange, regionMode }) {
         <div style={{ fontWeight: 600, fontSize: '0.82rem', marginBottom: '0.5rem' }}>{title}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
           {items.map((item, i) => {
-            const mod = modFor(item);
+            const mod = menuModules.find(m => m.id === item.module);
             return (
               <div key={item.id} data-menu-item={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
                 <span style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
@@ -132,7 +144,7 @@ export function FeaturesPanel({ modules, onModulesChange, regionMode }) {
                     aria-label={`Move ${item.label} down`} title="Move down" style={{ padding: 2 }}><ChevronDown size={16} /></button>
                 </span>
                 {mod && !mod.core ? (
-                  <Switch mod={mod} modules={modules} onToggle={toggle} note={notes[mod.id]} />
+                  <Check id={mod.id} label={item.label} help={item.help} modules={draft.modules} onToggle={toggle} note={notes[mod.id]} />
                 ) : (
                   <span style={{ fontSize: '0.8rem', flex: 1, minWidth: 0 }}>
                     <span style={{ fontWeight: 600 }}>{item.label}</span>
@@ -154,19 +166,20 @@ export function FeaturesPanel({ modules, onModulesChange, regionMode }) {
         <div>
           <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>Features</h3>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
-            Turn off what you don't need. It disappears from the menu and screens; your data stays untouched.
+            Tick what you want to see, untick what you don't, then click <strong>Save all changes</strong>. Unticked things disappear from the menu and screens; your data stays untouched.
           </p>
         </div>
         <button type="button" className="btn btn-secondary" onClick={reset} style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem' }}>
           {type ? 'Reset to my business type' : 'Reset to default'}
         </button>
       </div>
+      <PendingChanges features={features} />
 
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', margin: '1.1rem 0 0.5rem' }}>
         <h4 style={{ margin: 0, fontSize: '0.92rem' }}>Menu</h4>
         <span style={muted}>
           Use the arrows to change the order of the menu.{' '}
-          {order.length > 0 && <button type="button" className="btn-link" onClick={resetOrder} style={{ fontSize: '0.72rem', background: 'none', border: 0, color: 'var(--primary)', cursor: 'pointer', padding: 0 }}>Default order</button>}
+          {draft.order.length > 0 && <button type="button" onClick={() => setDraft({ ...draft, order: [] })} style={{ fontSize: '0.72rem', background: 'none', border: 0, color: 'var(--primary)', cursor: 'pointer', padding: 0 }}>Default order</button>}
         </span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
@@ -178,13 +191,13 @@ export function FeaturesPanel({ modules, onModulesChange, regionMode }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
         {FEATURE_GROUPS.filter(g => g.id !== 'menu').map(group => {
           // India-only switches do nothing outside India, so they are not listed.
-          const mods = group.modules.filter(m => !(m.indiaOnly && regionMode === 'international'));
+          const mods = group.modules.filter(m => !m.core && !(m.indiaOnly && regionMode === 'international'));
           if (!mods.length) return null;
           return (
             <div key={group.id} className="surface-card">
               <div style={{ fontWeight: 600, fontSize: '0.82rem', marginBottom: '0.5rem' }}>{group.label}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                {mods.map(mod => <Switch key={mod.id} mod={mod} modules={modules} onToggle={toggle} />)}
+                {mods.map(mod => <Check key={mod.id} id={mod.id} label={mod.label} help={mod.help} modules={draft.modules} onToggle={toggle} note={notes[mod.id]} />)}
               </div>
             </div>
           );

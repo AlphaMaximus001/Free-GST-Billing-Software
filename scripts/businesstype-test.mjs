@@ -4,7 +4,7 @@
 
 import {
   BUSINESS_TYPES, SWITCHABLE_MODULES, modulesForType, applyBusinessType,
-  businessTypeChanges, orderedMenu, moveMenuItem,
+  businessTypeChanges, featureChanges, orderedMenu, moveMenuItem,
 } from '../src/utils/businessTypes.js';
 import { isModuleEnabled, MENU_ITEMS, FEATURE_GROUPS } from '../src/utils.js';
 import { BUSINESS_PRESETS } from '../src/utils/printSettings.js';
@@ -66,6 +66,14 @@ const applied = applyBusinessType('freelancer', mine);
 eq(applied.futureThing, true, 'a key from a newer version is kept');
 eq(JSON.stringify(mine), before, 'applying returns a new map');
 eq(businessTypeChanges('freelancer', applied), { turnOn: [], turnOff: [] }, 'after applying, nothing left to change');
+
+console.log('Unsaved draft vs saved');
+eq(featureChanges({}, {}), { turnOn: [], turnOff: [] }, 'same switches: nothing to save');
+eq(featureChanges({}, { reports: true }), { turnOn: [], turnOff: [] }, 'ticking something already on by default is no change');
+eq(featureChanges({ reports: false }, {}), { turnOn: ['reports'], turnOff: [] }, 'back to default turns Reports on');
+eq(featureChanges({}, { recurring: false, einvoice: true }), { turnOn: ['einvoice'], turnOff: ['recurring'] }, 'on and off listed');
+eq(featureChanges({}, { dashboard: false }), { turnOn: [], turnOff: [] }, 'core items never count as a change');
+eq(featureChanges({}, applyBusinessType('freelancer', {})), businessTypeChanges('freelancer', {}), 'picking a type = the same changes');
 
 console.log('Sidebar order');
 const def = MENU_ITEMS.map(m => m.id);
