@@ -38,6 +38,7 @@ export default [
   <tr><td>${ui('Print')}</td><td>Saves the invoice, then prints it. See <a href="#print">Printing</a>.</td></tr>
   <tr><td>${ui('WhatsApp')}</td><td>Opens WhatsApp with the invoice details typed in. See <a href="#whatsapp">Sending on WhatsApp</a>.</td></tr>
   <tr><td>${ui('E-Way Bill')}</td><td>Tax invoices and delivery challans only. Downloads the e-way bill file. See <a href="#eway-bill">E-way bill</a>.</td></tr>
+  <tr><td>${ui('E-invoice')}</td><td>Only when <b>E-invoicing (IRN)</b> is on in Settings, Modules. Tax invoices and credit notes. Downloads the e-invoice file and takes back the IRN. See <a href="gst-returns.html#e-invoice">E-invoicing</a>.</td></tr>
   <tr><td>${ui('Customize')}</td><td>Opens the panel that controls what prints, the paper size, currency and more. See <a href="invoice-options.html">Customize: what prints and how</a>.</td></tr>
   <tr><td>${ui('Hide Preview')}</td><td>Hides the preview so the form uses the whole width, handy for long invoices. ${ui('Show Preview')} brings it back, and the app remembers your choice.</td></tr>
 </table></div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import QRCode from 'qrcode';
 import SignatureImages from './SignatureImages';
 import DOMPurify from 'dompurify';
@@ -13,7 +13,7 @@ import InvoiceGridLayout, { HsnSummaryTable } from './InvoiceGridLayout';
 // instance renders with previewOnly=true so it doesn't create a
 // duplicate id on the page — HTML-invalid + could confuse getElementById
 // lookups.
-const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details, items, totals, invoiceType = 'tax-invoice', customTerms, customNotes, extraSections = [], options = {}, previewOnly = false, cancelled = false }, ref) => {
+const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details, items, totals, invoiceType = 'tax-invoice', customTerms, customNotes, extraSections = [], options = {}, previewOnly = false, cancelled = false, einvoice = null }, ref) => {
   // v1.10.76 - the business profile can still be loading on the first render
   // (a page refresh while editing an invoice), and reading a bank field from
   // null blanked the whole app. Empty until it arrives.
@@ -181,6 +181,17 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(''));
   }, [showUPI, upiId, profile?.businessName, upiAmount, details?.invoiceNumber, currencySymbol]);
+
+  // v1.10.83 (#111) - an invoice with an IRN prints the IRN, Ack No, Ack Date
+  // and a QR code of the portal's Signed QR Code: that is what makes the
+  // printed e-invoice valid. Made synchronously (the callback form of
+  // toDataURL runs at once), so a PDF captured right after render has it.
+  const einv = einvoice?.irn ? einvoice : null;
+  const irnQr = useMemo(() => {
+    let url = '';
+    if (einv?.signedQr) QRCode.toDataURL(einv.signedQr, { errorCorrectionLevel: 'L', margin: 1, width: 360 }, (err, u) => { url = err ? '' : u; });
+    return url;
+  }, [einv?.signedQr]);
 
   const accentColors = {
     'tax-invoice': '#1e40af',
@@ -628,6 +639,15 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
           {client?.phone && <div>{cap('Ph: ' + client.phone)}</div>}
         </div>
 
+        {einv && (
+          <div style={{ padding: secPad, fontSize: '0.85em', textAlign: 'center', wordBreak: 'break-all', ...dashLine }}>
+            <div><strong style={{ fontWeight: strongWeight }}>IRN: </strong>{einv.irn}</div>
+            <div><strong style={{ fontWeight: strongWeight }}>{cap('Ack No')}: </strong>{einv.ackNo}</div>
+            <div><strong style={{ fontWeight: strongWeight }}>{cap('Ack Date')}: </strong>{einv.ackDate}</div>
+            {irnQr && <img src={irnQr} alt="E-invoice QR code" style={{ width: 130, maxWidth: '100%', marginTop: 4 }} />}
+          </div>
+        )}
+
         {/* ================= ITEMS =================
              CSS Grid with a FIXED-WIDTH amount column so every amount lines
              up vertically no matter how long the qty/rate text is. Fixes the
@@ -1048,6 +1068,17 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
             border: '6px solid rgba(220, 38, 38, 0.22)', borderRadius: 14,
             padding: '0.3rem 1.6rem',
           }}>CANCELLED</span>
+        </div>
+      )}
+      {/* v1.10.83 (#111) - one block, at the top of every design. */}
+      {einv && (
+        <div data-pdf-page-boundary="" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '0.6rem 1.25rem', borderBottom: '1px solid #cbd5e1', fontSize: '0.72rem', color: '#0f172a', lineHeight: 1.6 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, letterSpacing: '0.04em', color: '#334155' }}>E-INVOICE</div>
+            <div><strong>IRN:</strong> <span style={{ wordBreak: 'break-all' }}>{einv.irn}</span></div>
+            <div><strong>Ack No:</strong> {einv.ackNo}<span style={{ marginLeft: '1.25rem' }}><strong>Ack Date:</strong> {einv.ackDate}</span></div>
+          </div>
+          {irnQr && <img src={irnQr} alt="E-invoice QR code" style={{ width: 120, height: 120, flexShrink: 0 }} />}
         </div>
       )}
       {isGrid && <InvoiceGridLayout ctx={gridCtx} />}

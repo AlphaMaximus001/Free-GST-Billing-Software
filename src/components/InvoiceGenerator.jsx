@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import { ArrowLeft, Plus, Trash2, Download, UserPlus, Pencil, Settings, ChevronUp, ChevronDown, MessageCircle, Check, Loader, Truck, Printer, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Download, UserPlus, Pencil, Settings, ChevronUp, ChevronDown, MessageCircle, Check, Loader, Truck, Printer, Eye, EyeOff, QrCode } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { saveBill, deleteBill, applyStockChanges, getNextInvoiceNumber, getTermsTemplates, getAllClients, saveClient, getProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllRecurring, getAllBills } from '../store';
-import { INVOICE_TYPES, businessKeyOf, GST_DOC_NUMBER, COUNTRIES, printedSubtotal, deliveryChargeLine, stockEffect, appliedStock, stockDelta, generateEWayBillJSON, formatCurrency, getCountryConfig, getStatesForCountry, getAllUnits, addCustomUnit, removeCustomUnit, getCountriesForRegion, TDS_SECTIONS, TCS_SECTIONS, REMOVED_TCS_SECTIONS, TERMS_PRESETS, getActiveAccounts, getDefaultAccount, getAccountById, getDefaultUnitForMode, filterUnitsByMode, PAPER_SIZES, getPaperSize, computeInvoiceTotals, clientYearToDate, htmlHasText, ORDER_DETAIL_FIELDS, invoiceOptionOn, DEFAULT_DECLARATION, decodeGstin, safePageBoundaries, localToday, toLocalIsoDate, parseLocalDate, paymentStatusFor } from '../utils';
+import { saveBill, deleteBill, applyStockChanges, getNextInvoiceNumber, getTermsTemplates, getAllClients, saveClient, getProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllRecurring, getAllBills, getEnabledModules } from '../store';
+import { INVOICE_TYPES, isModuleEnabled, businessKeyOf, GST_DOC_NUMBER, COUNTRIES, printedSubtotal, deliveryChargeLine, stockEffect, appliedStock, stockDelta, generateEWayBillJSON, formatCurrency, getCountryConfig, getStatesForCountry, getAllUnits, addCustomUnit, removeCustomUnit, getCountriesForRegion, TDS_SECTIONS, TCS_SECTIONS, REMOVED_TCS_SECTIONS, TERMS_PRESETS, getActiveAccounts, getDefaultAccount, getAccountById, getDefaultUnitForMode, filterUnitsByMode, PAPER_SIZES, getPaperSize, computeInvoiceTotals, clientYearToDate, htmlHasText, ORDER_DETAIL_FIELDS, invoiceOptionOn, DEFAULT_DECLARATION, decodeGstin, safePageBoundaries, localToday, toLocalIsoDate, parseLocalDate, paymentStatusFor } from '../utils';
 import { getPrintSettings, savePrintSettings } from '../utils/printSettings';
 import { openWhatsAppShare } from '../utils/share';
 import { confirmAction, promptAction } from './ConfirmModal';
@@ -15,6 +15,7 @@ import { suggestGstRate } from '../utils/hsnRates';
 import HelpButton from './HelpButton';
 import { getClientCredit, planCreditApplication } from '../utils/clientCredit';
 import ClientModal from './ClientModal';
+import { EInvoiceEditorModal } from './EInvoiceModal';
 import { toast } from './Toast';
 
 // Rich text editor component that works with contentEditable properly
@@ -715,6 +716,10 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   // why); Download and Print still work. Duplicate it to make a new one.
   const [readOnlyDoc] = useState(() => !!editingBill && !editingBill._isDuplicate && !editingBill._convertToType
     && (editingBill.status === 'cancelled' || !!editingBill.convertedTo));
+  // v1.10.83 (#111) - the IRN the portal gave this invoice. A duplicate or a
+  // conversion is a new document and starts without one.
+  const [einvoice, setEinvoice] = useState(() => (editingBill && !editingBill._isDuplicate ? editingBill.einvoice || null : null));
+  const [showEinvoice, setShowEinvoice] = useState(null); // { saved } while open
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
   const autoSaveTimer = useRef(null);
   // v1.10.22 — reported: "if user click back without even changing anything
@@ -1804,6 +1809,10 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       // Kept from the saved bill: rebuilt from scratch, they used to be lost.
       ...(keepCancelled ? { cancelledAt: serverCopy?.cancelledAt || editingBill.cancelledAt || null } : {}),
       ...(isIssued && (serverCopy?.convertedTo || editingBill.convertedTo) ? { convertedTo: serverCopy?.convertedTo || editingBill.convertedTo } : {}),
+      // v1.10.83 (#111) - kept: the bill is rebuilt from scratch here, and an
+      // IRN imported on the Dashboard while this editor was open is on the
+      // server copy.
+      ...((serverCopy?.einvoice || einvoice) ? { einvoice: serverCopy?.einvoice || einvoice } : {}),
       data: { profile, client, details: { ...details, invoiceNumber: finalInvoiceNumber }, items, totals, invoiceType, customTerms, customNotes, internalNote, extraSections, invoiceOptions: invoiceOptionsWithSnapshot, taxInclusive,
         // A converted quotation/proforma/challan's stock moved to its invoice:
         // its own record stays empty, or a save would take the stock twice.
@@ -3273,6 +3282,26 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     toast('E-Way Bill JSON downloaded', 'success');
   };
 
+  // v1.10.83 (#111) - store (or remove) the IRN on the saved invoice. Only the
+  // einvoice field changes: the stored copy is read fresh and written back
+  // with it, whatever is still being edited on screen.
+  const einvoiceOn = isModuleEnabled('einvoice', getEnabledModules());
+  const saveEinvoice = async (value) => {
+    try {
+      const stored = (await getAllBills()).find((b) => b.id === savedId.current);
+      if (!stored) { toast('Save the invoice first.', 'warning'); return false; }
+      const { einvoice: _old, ...rest } = stored;
+      await saveBill(value ? { ...rest, einvoice: value } : rest, { overwrite: true });
+      setEinvoice(value);
+      toast(value ? 'IRN saved. It now prints on the invoice.' : 'IRN removed', 'success');
+      return true;
+    } catch (err) {
+      console.error('Saving the IRN failed', err);
+      toast('Could not save the IRN. Try again.', 'error');
+      return false;
+    }
+  };
+
   return (
     <div className="generator-container">
       {readOnlyDoc && (
@@ -3281,6 +3310,22 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
             ? `Converted to ${editingBill.convertedTo}. This copy is read-only; you can still download or print it.`
             : 'This invoice is cancelled and read-only; you can still download or print it. Undo the cancel on the Dashboard to change it.'}
         </div>
+      )}
+      {einvoice?.irn && !readOnlyDoc && (
+        <div className="notice notice-warn" role="status" style={{ marginBottom: '0.75rem' }}>
+          This invoice has an IRN. Changes made here are not sent to the e-invoice portal. To correct an e-invoice, cancel it on the portal (within 24 hours) and issue a new one, or issue a credit note.
+        </div>
+      )}
+      {showEinvoice && (
+        <EInvoiceEditorModal
+          bill={{
+            invoiceNumber: details.invoiceNumber, invoiceDate: details.invoiceDate, invoiceType,
+            status: editingBill && !editingBill._isDuplicate ? editingBill.status : 'unpaid',
+            currency: invoiceOptions.currency || 'INR', einvoice,
+            data: { profile, client, details, items, totals, invoiceType, customTerms, invoiceOptions, taxInclusive },
+          }}
+          profile={profile} bills={allBillsForCredit} saved={showEinvoice.saved}
+          onSaveIrn={saveEinvoice} onClose={() => setShowEinvoice(false)} />
       )}
       <div className="generator-toolbar">
         <div className="flex gap-2 items-center">
@@ -3411,6 +3456,12 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           {(invoiceType === 'tax-invoice' || invoiceType === 'delivery-challan') && (
             <button className="btn btn-secondary" onClick={exportEWayBill} disabled={saving} title="Download E-Way Bill JSON for NIC portal upload">
               <Truck size={18} /> E-Way Bill
+            </button>
+          )}
+          {einvoiceOn && (invoiceType === 'tax-invoice' || invoiceType === 'credit-note') && (
+            <button className="btn btn-secondary" onClick={() => setShowEinvoice({ saved: !!savedId.current })} disabled={saving}
+              title="Download the e-invoice JSON, or paste the IRN the portal gave">
+              <QrCode size={18} /> E-invoice{einvoice?.irn ? ' ✓' : ''}
             </button>
           )}
           {/* v1.10.65 — requested (#58 item 2, @sangwanmail-eng): "to access
@@ -4650,7 +4701,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
               <InvoicePreview ref={printRef} profile={profile} client={client} details={details}
                 items={items} totals={totals} invoiceType={invoiceType} customTerms={customTerms}
                 customNotes={customNotes} extraSections={extraSections} options={invoiceOptions}
-                cancelled={editingBill?.status === 'cancelled'} />
+                cancelled={editingBill?.status === 'cancelled'} einvoice={einvoice} />
             </div>
           </div>
         </div>
@@ -4669,6 +4720,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         onPrint={executePrint}
         onDownloadPdf={generatePDF}
         cancelled={editingBill?.status === 'cancelled'}
+        einvoice={einvoice}
         profile={profile}
         client={client}
         details={details}

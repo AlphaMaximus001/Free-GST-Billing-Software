@@ -29,7 +29,7 @@ import { getPaperSize } from '../utils';
 export default function PrintPreviewModal({
   isOpen, onClose, onPrint, onDownloadPdf,
   profile, client, details, items, totals, invoiceType,
-  customTerms, customNotes, extraSections, invoiceOptions, cancelled = false,
+  customTerms, customNotes, extraSections, invoiceOptions, cancelled = false, einvoice = null,
 }) {
   const [printing, setPrinting] = useState(false);
   // #100: zoom slider, kept between opens. null = the default size for the
@@ -158,7 +158,7 @@ export default function PrintPreviewModal({
               profile={profile} client={client} details={details}
               items={items} totals={totals} invoiceType={invoiceType}
               customTerms={customTerms} customNotes={customNotes}
-              extraSections={extraSections} options={invoiceOptions} cancelled={cancelled}
+              extraSections={extraSections} options={invoiceOptions} cancelled={cancelled} einvoice={einvoice}
             />
           </div>
         </div>
