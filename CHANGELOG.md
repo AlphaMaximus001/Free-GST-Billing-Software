@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.82] - 2026-10-29
+
+**Mac: the launcher opens again (#120).** A quick fix, released straight away
+because Mac users could not start the app at all.
+
+### How to update
+
+**Current version:** 1.10.81  →  **New version:** 1.10.82
+
+> **On a Mac**, download the new ZIP: the fix is in the download itself.
+> Windows and Linux users get no app changes from this update and can wait
+> for Saturday's.
+
+#### Mac
+1. Download `Free-GST-Billing.zip` from the
+   [Releases page](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest).
+2. Double-click it to unzip, then double-click **Free GST Billing - MAC**.
+3. The first time, macOS may say it "cannot be opened because Apple cannot
+   check it". **Hold Control, click the file, choose Open, then Open again.**
+   Only once.
+4. If you are updating, copy the new files over your old Free-GST-Billing
+   folder (keep the `_system/data` folder), or run **Update** from the app.
+
+#### Windows (1.10.73 and later)
+Click **Update to v1.10.82** in the sidebar, or **Settings → App Updates →
+Update Now**, wait about a minute, then reload the page. Or download
+`Free-GST-Billing.zip`, close the app, and extract it over your Free GST
+Billing folder (replace files when asked).
+
+#### Linux / NAS
+Run `update-unix.sh` from the `_system` folder, or extract the new ZIP over
+the old folder. Restart the app afterwards.
+
+### Fixed
+- **Mac: "Free GST Billing - MAC.command could not be executed because you do
+  not have appropriate access privileges"** (#120, thanks
+  @saraiwalaneeraj-cell). The ZIP is built on Windows, which has no
+  "executable" mark, so the Mac launcher and the Linux scripts arrived as
+  plain files. The download now marks them executable, and the build refuses
+  a ZIP where they are not (ERR-062). Already downloaded the old ZIP? See the
+  Mac section of the troubleshooting guide: one `chmod +x` command fixes it.
+- The troubleshooting guides (READ ME FIRST, README, online guide) now cover
+  both Mac messages, including "Apple cannot check it".
+
+---
+
 ## [1.10.81] - 2026-10-29
 
 **The app now checks your PC has what it needs, and fixes it or tells you how
