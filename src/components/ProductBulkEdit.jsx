@@ -8,6 +8,7 @@ import { Save, X } from 'lucide-react';
 import { getAllProducts, saveProduct } from '../store';
 import { toast } from './Toast';
 import { bulkRowToProduct } from '../utils/products';
+import HelpButton from './HelpButton';
 
 const FIELDS = [
   ['name', 'Name', 'text', 180],
@@ -58,7 +59,7 @@ export default function ProductBulkEdit({ products, units, onDone }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)' }}>
-        <strong style={{ fontSize: '0.9rem' }}>Bulk edit</strong>
+        <strong style={{ fontSize: '0.9rem' }}>Bulk edit <HelpButton title="Bulk edit" doc="products#bulk-edit" size={16} /></strong>
         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           {changedIds.length ? `${changedIds.length} product${changedIds.length === 1 ? '' : 's'} changed` : 'Change any cells, then save once.'}
         </span>

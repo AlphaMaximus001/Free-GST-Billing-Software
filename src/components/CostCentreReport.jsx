@@ -9,6 +9,7 @@ import { costCentreReport, centreLabel } from '../utils/costCentres';
 import { billCurrency } from '../utils/partyOutstanding';
 import { useCostCentres } from './useCostCentres';
 import TableExport from './TableExport';
+import HelpButton from './HelpButton';
 import { toast } from './Toast';
 
 const HEADERS = ['Cost centre', 'Sales (taxable)', 'GST on sales', 'Sales total', 'Purchases (ex. GST)', 'Expenses (ex. GST)', 'Profit'];
@@ -37,7 +38,7 @@ export default function CostCentreReport({ bills, expenses, profile, from, to, c
   return (
     <div className="glass-panel">
       <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h3>By cost centre</h3>
+        <h3>By cost centre<HelpButton title="By cost centre" doc="reports#cost-centres" size={16} /></h3>
         <TableExport title="Profit by cost centre" filename={`Cost-centres-${periodLabel}`} landscape
           subtitle={subtitle} headers={HEADERS}
           rows={[...rows.map((r) => [nameOf(r), ...cells(r)]), ['Total', ...cells(total)]]} />

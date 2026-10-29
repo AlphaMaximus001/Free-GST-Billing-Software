@@ -22,7 +22,13 @@ import { NAV, SITE, SEO } from './site.mjs';
 import start from './pages/start.mjs';
 import install from './pages/install.mjs';
 import daily from './pages/daily.mjs';
+import clients from './pages/clients.mjs';
+import products from './pages/products.mjs';
+import payments from './pages/payments.mjs';
+import buying from './pages/buying.mjs';
 import money from './pages/money.mjs';
+import reports from './pages/reports.mjs';
+import incomeTax from './pages/income-tax.mjs';
 import setup from './pages/setup.mjs';
 import invoice from './pages/invoice.mjs';
 import print from './pages/print.mjs';
@@ -32,7 +38,7 @@ import about from './pages/about.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, 'out', SITE.folder);
 const IMG_SRC = join(HERE, 'assets', 'img');
-const PAGES = [...start, ...install, ...invoice, ...daily, ...money, ...setup, ...print, ...help, ...about];
+const PAGES = [...start, ...install, ...invoice, ...daily, ...clients, ...products, ...payments, ...buying, ...money, ...reports, ...incomeTax, ...setup, ...print, ...help, ...about];
 const TODAY = new Date().toISOString().slice(0, 10);
 const BRAND = 'Free GST Billing Software';
 
@@ -91,7 +97,7 @@ for (const p of PAGES) {
     // doc="page#id", doc={'page#id'}, and SETTINGS_TAB_DOCS-style maps: any
     // 'page#id' literal naming a docs page, so a ternary or a map is checked too.
     for (const m of src.matchAll(/\bdoc=\{?\s*["']([a-z0-9-]+)(?:#([a-z0-9-]+))?["']/g)) check(file, m[1], m[2]);
-    for (const m of src.matchAll(/["']([a-z0-9-]+)#([a-z0-9-]+)["']/g)) if (bySlug.has(m[1])) check(file, m[1], m[2]);
+    for (const m of src.matchAll(/["'`]([a-z0-9-]+)#([a-z0-9-]+)["'`]/g)) if (bySlug.has(m[1])) check(file, m[1], m[2]);
     const map = /SETTINGS_TAB_DOCS = \{([\s\S]*?)\};/.exec(src);
     if (map) for (const m of map[1].matchAll(/:\s*'([a-z0-9-]+)(?:#([a-z0-9-]+))?'/g)) check(file, m[1], m[2]);
   }

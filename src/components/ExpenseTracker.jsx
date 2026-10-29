@@ -329,7 +329,7 @@ export default function ExpenseTracker() {
       {showForm && (
         <div className="modal-overlay" onClick={closeForm}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '620px' }}>
-            <h3 className="section-title">{editingId ? 'Edit Expense' : 'Add Expense'}</h3>
+            <h3 className="section-title">{editingId ? 'Edit Expense' : 'Add Expense'} <HelpButton title="Adding an expense" doc="expenses#add-expense" size={16} /></h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="form-group">
                 <label className="form-label">Date *</label>
@@ -416,7 +416,7 @@ export default function ExpenseTracker() {
       {/* Expense Table */}
       <div className="glass-panel">
         <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h3>Expense Records</h3>
+          <h3>Expense Records <HelpButton title="Expense Records" doc="expenses#expense-list" size={16} /></h3>
           <TableExport title="Expense statement" filename={`Expenses-${statementPeriod}`} landscape
             subtitle={[ownerProfile?.businessName, statementPeriod].filter(Boolean).join(', ')}
             headers={['Date', 'Description', 'Category', 'Amount', 'GST Amount', 'GST %', 'Vendor', 'Vendor GSTIN', 'Invoice No', 'Payment Mode', 'Inter-state', 'Note']}

@@ -9,6 +9,7 @@ import { localToday } from '../utils';
 import { closingStock, stockValueOf } from '../utils/products';
 import { toast } from './Toast';
 import TableExport from './TableExport';
+import HelpButton from './HelpButton';
 
 const amt = (n) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 // Last day of a YYYY-MM month, or today while that month is still running.
@@ -59,7 +60,7 @@ export default function StockReport({ businessName }) {
   return (
     <div className="glass-panel">
       <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-        <h3>Closing stock as on {asOfLabel}</h3>
+        <h3>Closing stock as on {asOfLabel}<HelpButton title="Closing stock" doc="reports#stock" size={16} /></h3>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <select className="form-input" style={{ width: 'auto' }} value={month} aria-label="Month" onChange={(e) => setMonth(e.target.value)}>
             {lastMonths.map(([v, label]) => <option key={v} value={v}>{label}</option>)}

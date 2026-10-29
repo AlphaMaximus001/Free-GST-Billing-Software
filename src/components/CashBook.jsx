@@ -142,7 +142,7 @@ export default function CashBook({ onOpenView }) {
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))' }}>
         <div className="stat-card">
           <div className="stat-icon stat-icon-blue"><Banknote size={22} /></div>
-          <div><p className="stat-label">Cash in hand</p><h2 className="stat-value" style={{ color: summary.inHand < 0 ? 'var(--danger)' : undefined }}>{formatCurrency(summary.inHand)}</h2></div>
+          <div><p className="stat-label">Cash in hand<HelpButton title="Cash in hand" doc="cash-book#cash-in-hand" size={14} /></p><h2 className="stat-value" style={{ color: summary.inHand < 0 ? 'var(--danger)' : undefined }}>{formatCurrency(summary.inHand)}</h2></div>
         </div>
         {[['Today', summary.today], ['This month', summary.month]].map(([label, t]) => (
           <div className="stat-card" key={label}>
@@ -162,7 +162,7 @@ export default function CashBook({ onOpenView }) {
       <form className="glass-panel p-4 mb-6" onSubmit={handleSave} aria-label="Cash entry">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: '0.75rem' }}>
           <h3 className="section-title" style={{ margin: 0 }}>{editing ? 'Edit entry' : 'New entry'}</h3>
-          <HelpButton title="Adding a cash entry" doc="cash-book#add-entry" size={16} />
+          <HelpButton title={editing ? 'Edit entry' : 'Adding a cash entry'} doc={editing ? 'cash-book#edit-entry' : 'cash-book#add-entry'} size={16} />
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
           <div className="form-group" style={{ margin: 0, flex: '2 1 250px' }}>
@@ -226,12 +226,13 @@ export default function CashBook({ onOpenView }) {
           {(search || period !== 'month') && (
             <button className="icon-btn icon-btn-red" onClick={() => { setSearch(''); setPeriod('month'); }} title="Clear filters" aria-label="Clear filters"><X size={15} /></button>
           )}
+          <HelpButton title="Choosing dates and searching" doc="cash-book#filters" size={16} />
         </div>
       </div>
 
       <div className="glass-panel">
         <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h3>{periodLabel} <span style={muted}>· In {formatCurrency(book.totals.in)} · Out {formatCurrency(book.totals.out)}</span></h3>
+          <h3>{periodLabel} <span style={muted}>· In {formatCurrency(book.totals.in)} · Out {formatCurrency(book.totals.out)}</span><HelpButton title="The cash book list" doc="cash-book#list" size={16} /></h3>
           <TableExport title="Cash book" filename={`Cash-book-${periodLabel}`}
             subtitle={[profile?.businessName, periodLabel, search.trim() ? `matching "${search.trim()}"` : ''].filter(Boolean).join(', ')}
             headers={['Date', 'Name', 'Note', 'Category', 'From', 'Money in', 'Money out', 'Balance']} rows={exportRows} />

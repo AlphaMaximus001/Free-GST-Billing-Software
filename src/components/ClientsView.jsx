@@ -865,6 +865,7 @@ export default function ClientsView({ onEdit, onDuplicate, onNew }) {
                         title="Aging report: outstanding invoices bucketed by how overdue they are">
                         <Download size={14} /> Aging PDF
                       </button>
+                      <HelpButton title="Statement and Aging PDFs" doc="clients#statement" size={16} style={{ alignSelf: 'center' }} />
                     </div>
 
                     {/* v1.10.22 — Aging summary strip: shows the four
@@ -882,7 +883,7 @@ export default function ClientsView({ onEdit, onDuplicate, onNew }) {
                       ];
                       return (
                         <div style={{ padding: '0.75rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8rem' }}>
-                          <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Aging:</span>
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Aging: <HelpButton title="Ageing: who is slow to pay" doc="clients#ageing" size={16} /></span>
                           {cells.map(c => (
                             <span key={c.label} style={{ display: 'inline-flex', gap: 4, alignItems: 'baseline' }}>
                               <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{c.label}</span>
@@ -991,6 +992,7 @@ export default function ClientsView({ onEdit, onDuplicate, onNew }) {
                           <Plus size={13} /> Save as Client
                         </button>
                       )}
+                      <HelpButton title="A client's account" doc="clients#ledger" size={16} style={{ alignSelf: 'center' }} />
                     </div>
                   </div>
                 )}

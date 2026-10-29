@@ -327,12 +327,15 @@ export default function ReceiptVoucher() {
       {showForm && (
         <div className="modal-overlay" onClick={closeForm}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-            <h3 className="section-title">{editingId ? 'Edit Payment Receipt' : 'New Payment Receipt'}</h3>
+            <h3 className="section-title">
+              {editingId ? 'Edit Payment Receipt' : 'New Payment Receipt'}
+              <HelpButton title={editingId ? 'Edit Payment Receipt' : 'New Payment Receipt'} doc={editingId ? 'receipts#edit-receipt' : 'receipts#new-receipt'} size={16} />
+            </h3>
 
             {/* Quick select from unpaid invoices */}
             {unpaidBills.length > 0 && !form.againstInvoice && (
               <div style={{ marginBottom: '1rem' }}>
-                <label className="form-label">Quick Select — Unpaid Invoices</label>
+                <label className="form-label">Quick Select — Unpaid Invoices<HelpButton title="Quick Select — Unpaid Invoices" doc="receipts#quick-select" size={14} /></label>
                 {/* v1.10.57 — reported (#44 item 2, @sangwanmail-eng):
                     "payment receipt overlapped". This capped the height of
                     `.client-picker`, which has no overflow handling — the
@@ -444,7 +447,7 @@ export default function ReceiptVoucher() {
 
       {/* Receipts Table */}
       <div className="glass-panel">
-        <div className="table-header"><h3>Payment Receipts</h3></div>
+        <div className="table-header"><h3>Payment Receipts<HelpButton title="Payment Receipts" doc="receipts#receipt-list" size={16} /></h3></div>
         {filtered.length === 0 ? (
           <div className="empty-state">
             <Receipt size={48} />

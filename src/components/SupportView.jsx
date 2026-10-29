@@ -88,7 +88,7 @@ export default function SupportView() {
       <div className="glass-panel" style={{ ...card, marginBottom: '1.25rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
         <Heart size={28} style={{ color: '#e11d48', flexShrink: 0, marginTop: 2 }} />
         <div>
-          <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.05rem' }}>Free, and it stays free</h3>
+          <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.05rem' }}>Free, and it stays free <HelpButton title="Free, and it stays free" doc="support#about" size={16} /></h3>
           <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '70ch' }}>
             Free GST Billing is built and maintained by <b>DiceCodes</b> in India. No ads, no account, no locked features,
             and your invoices never leave this computer. If it saves you time every month, you can help keep the
@@ -99,7 +99,7 @@ export default function SupportView() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
         <div className="glass-panel" style={card}>
-          <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Support with UPI</h3>
+          <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Support with UPI <HelpButton title="Support with UPI" doc="support#upi" size={16} /></h3>
           <p style={{ margin: '0 0 1rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>Scan with GPay, PhonePe, Paytm or any UPI app. Any amount helps.</p>
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }} role="group" aria-label="Amount">
             {AMOUNTS.map((a) => (
@@ -134,7 +134,7 @@ export default function SupportView() {
         </div>
 
         <div className="glass-panel" style={card}>
-          <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Help without paying</h3>
+          <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Help without paying <HelpButton title="Help without paying" doc="support#free-ways" size={16} /></h3>
           <p style={{ margin: '0 0 0.5rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>These matter just as much.</p>
           {freeWays.map((w) => (
             <a key={w.title} href={w.href} target="_blank" rel="noopener noreferrer" style={linkRow}>
@@ -157,6 +157,7 @@ export default function SupportView() {
                 {tracker.totalReceived > 0
                   ? <>{inr(tracker.totalReceived)} received so far{tracker.supporters ? ` from ${tracker.supporters} supporter${tracker.supporters === 1 ? '' : 's'}` : ''}</>
                   : 'Be the first to support Free GST Billing'}
+                {' '}<HelpButton title="Supporters" doc="support#supporters-card" size={16} />
               </h3>
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Every rupee goes into fixes and new features.{tracker.updated ? ` Updated ${new Date(`${tracker.updated}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.` : ''}
@@ -185,7 +186,7 @@ export default function SupportView() {
       <ProblemLog />
 
       <div className="glass-panel" style={card}>
-        <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Work with DiceCodes</h3>
+        <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Work with DiceCodes <HelpButton title="Work with DiceCodes" doc="support#services" size={16} /></h3>
         <p style={{ margin: '0 0 1rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>The team behind this app builds software for businesses too.</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', marginBottom: '1.1rem' }}>
           {SERVICES.map((w) => (

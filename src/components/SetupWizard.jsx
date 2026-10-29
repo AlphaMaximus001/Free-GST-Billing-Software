@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, ChevronRight, Check } from 'lucide-react';
 import { getPrintSettings, savePrintSettings, applyBusinessPreset } from '../utils/printSettings';
 import { toast } from './Toast';
+import HelpButton from './HelpButton';
 import { getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getEnabledModules, setEnabledModules, setBusinessType } from '../store';
 import { BUSINESS_TYPES, businessTypeById, applyBusinessType } from '../utils/businessTypes';
 
@@ -85,7 +86,7 @@ export default function SetupWizard({ onClose }) {
       <div className="modal-content" style={{ maxWidth: '640px', maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.35rem' }}>👋 Welcome to Free GST Billing</h2>
+            <h2 style={{ margin: 0, fontSize: '1.35rem' }}>👋 Welcome to Free GST Billing <HelpButton title="Setting up your invoices" doc="first-run#setup-wizard" size={16} /></h2>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Step {step} of 3 · Takes 90 seconds
             </p>
@@ -105,7 +106,7 @@ export default function SetupWizard({ onClose }) {
 
         {step === 1 && (
           <>
-            <h3 style={{ marginTop: 0 }}>What kind of business do you run?</h3>
+            <h3 style={{ marginTop: 0 }}>What kind of business do you run? <HelpButton title="What kind of business do you run?" doc="first-run#wizard-business-type" size={16} /></h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
               Pick one and the app shows the features that business needs, and sets an invoice style to match. You can change it later in Settings → Business type.
             </p>
@@ -152,7 +153,7 @@ export default function SetupWizard({ onClose }) {
 
         {step === 2 && (
           <>
-            <h3 style={{ marginTop: 0 }}>Paper size + language</h3>
+            <h3 style={{ marginTop: 0 }}>Paper size + language <HelpButton title="Paper size + language" doc="first-run#wizard-paper-language" size={16} /></h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
               What are you mostly printing on?
             </p>
@@ -206,7 +207,7 @@ export default function SetupWizard({ onClose }) {
 
         {step === 3 && (
           <>
-            <h3 style={{ marginTop: 0 }}>Ready to go 🚀</h3>
+            <h3 style={{ marginTop: 0 }}>Ready to go 🚀 <HelpButton title="Ready to go" doc="first-run#wizard-ready" size={16} /></h3>
             <p style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
               We'll apply these defaults to every new invoice. You can change any of them later in <strong>Settings → Print & PDF</strong>.
             </p>
