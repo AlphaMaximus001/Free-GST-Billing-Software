@@ -1257,6 +1257,12 @@ textarea.form-input { resize: vertical; min-height: 60px; }
   flex-wrap: wrap;
 }
 
+.generator-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
 .split-view {
   display: flex;
   flex: 1;

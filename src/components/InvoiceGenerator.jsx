@@ -3469,7 +3469,9 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           })()}
           <HelpButton title="Saving as you go" doc="invoices#autosave" size={16} />
         </div>
-        <div className="flex gap-2">
+        {/* v1.10.83 - wraps onto a second line on a narrower screen; it ran off
+            the right edge at 900-1100px and hid Customize and the preview button. */}
+        <div className="flex gap-2 generator-actions">
           {/* v1.10.37 — Explicit Save button. Reported: "invoice page
               needs a Save button". Previously only Download PDF was
               the primary action, forcing users who wanted to save
@@ -3544,7 +3546,14 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
               from anywhere on a long invoice. The options panel it opens has
               not moved. */}
           <button className="btn btn-secondary" type="button"
-            onClick={() => setShowOptions(!showOptions)}
+            onClick={() => {
+              const open = !showOptions;
+              setShowOptions(open);
+              // v1.10.83 - the panel is in the Invoice Type card at the top;
+              // from further down the page it opened out of sight ("it does
+              // nothing"), so take the user to it.
+              if (open) setTimeout(() => document.getElementById('invoice-options-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            }}
             title={showOptions ? 'Hide the layout and column options' : 'Choose columns, sections, paper size and PDF style'}>
             <Settings size={18} /> {showOptions ? 'Hide Options' : 'Customize'}
           </button>
@@ -3614,7 +3623,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
 
             {/* Customization Options */}
             {showOptions && (
-              <div className="invoice-options">
+              <div className="invoice-options" id="invoice-options-panel" style={{ scrollMarginTop: 110 }}>
                 <div className="form-group" style={{ marginBottom: '0.75rem' }}>
                   <label className="form-label">Invoice Title <HelpButton title="Title, currency and exchange rate" doc="invoice-options#title-currency" size={16} /></label>
                   <input type="text" className="form-input" value={invoiceOptions.customTitle}
