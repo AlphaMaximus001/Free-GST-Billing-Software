@@ -1368,7 +1368,8 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       { key: 'bank', done: hasBank,
         title: 'Add bank details or UPI', hint: 'So clients can pay you, with a UPI QR on the invoice',
         cta: 'Open Settings', go: onOpenSettings },
-    ];
+    // v1.10.83 - no products step when Products is switched off (a freelancer).
+    ].filter(s => s.key !== 'products' || isModuleEnabled('inventory', getEnabledModules()));
     return steps.every(s => s.done) ? null : steps;
   }, [guideDismissed, productCount, profile, allBills.length, onNew, onOpenProducts, onOpenSettings]);
 

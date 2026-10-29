@@ -289,7 +289,7 @@ function TallyLayout({ ctx }) {
           <tr>
             <th style={{ ...th, width: 28 }}>Sl No.</th>
             <th style={th}>Description of {ctx.isServices ? 'Services' : 'Goods'}</th>
-            {t.hsn && <th style={th}>HSN/SAC</th>}
+            {t.hsn && <th style={th}>{ctx.isServices ? 'SAC' : 'HSN/SAC'}</th>}
             {t.itemQty && <th style={th}>Quantity</th>}
             {t.rate && <th style={th}>Rate</th>}
             {perCol && <th style={th}>per</th>}

@@ -104,7 +104,7 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
           </div>
           <div className="form-group">
             <label className="form-label">City</label>
-            <input type="text" className="form-input" value={form.city} onChange={e => setForm(prev => ({ ...prev, city: e.target.value }))} placeholder="e.g. Mumbai" />
+            <input type="text" className="form-input" value={form.city} onChange={e => setForm(prev => ({ ...prev, city: e.target.value }))} placeholder={abroad ? 'City' : 'e.g. Mumbai'} />
           </div>
           <div className="form-group">
             <label className="form-label">{cc.postalLabel}</label>
@@ -122,7 +122,7 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">{abroad ? `${cc.taxIdLabel} (Tax ID / VAT, optional)` : cc.taxIdLabel}</label>
+            <label className="form-label">{abroad ? `${cc.taxIdLabel} (optional)` : cc.taxIdLabel}</label>
             <input type="text" className="form-input"
               style={taxIdWarning ? { borderColor: '#f59e0b' } : undefined}
               value={form.gstin}
@@ -137,7 +137,7 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
           </div>
           <div className="form-group">
             <label className="form-label">Phone</label>
-            <input type="tel" className="form-input" value={form.phone} onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))} placeholder="+91 98765 43210" />
+            <input type="tel" className="form-input" value={form.phone} onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))} placeholder={abroad ? 'With country code, e.g. +1 415 555 0100' : '+91 98765 43210'} />
           </div>
           {abroad && (defaultCountry || 'India') === 'India' && (
             <div className="form-group notice notice-info" style={{ gridColumn: 'span 2', display: 'block', fontSize: '0.78rem', lineHeight: 1.5, padding: '0.5rem 0.75rem', borderRadius: 6 }}>

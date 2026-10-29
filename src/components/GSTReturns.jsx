@@ -913,7 +913,7 @@ export default function GSTReturns() {
   filteredBills.forEach(bill => {
     const { client, items } = bill.data;
     if (bill.fxMissing) {
-      warnings.push({ type: 'error', msg: `Invoice ${bill.invoiceNumber} is in ${bill.currency || bill.data?.invoiceOptions?.currency} with no exchange rate, so it cannot be put in rupees. Open it and enter the rate (Invoice Details → Currency).` });
+      warnings.push({ type: 'error', msg: `Invoice ${bill.invoiceNumber} is in ${bill.currency || bill.data?.invoiceOptions?.currency} with no exchange rate: until you add it, its amounts are counted here as if they were rupees. Open it and enter the rate (Invoice Details → Currency).` });
     }
     // v1.10.83 - a client abroad has no GSTIN: the number there is their own
     // tax ID (VAT, EIN...), and an export has no Indian state.
