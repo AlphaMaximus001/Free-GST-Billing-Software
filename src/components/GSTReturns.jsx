@@ -615,13 +615,18 @@ export default function GSTReturns() {
   // (b2bRows, hsnMap, warnings, etc.) still run per render but consume
   // stable arrays — subsequent memoizations can layer on later without
   // touching this file's export helpers.
-  const filteredBills = useMemo(() => bills.filter(bill => {
+  const periodGstBills = useMemo(() => bills.filter(bill => {
     const type = bill.invoiceType || 'tax-invoice';
     if (!GST_TYPES.includes(type)) return false;
     if (!bill.data) return false;
     return filterByPeriod(bill.invoiceDate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [bills, filterMode, fyFilter, quarterFilter, monthFilter, yearFilter]);
+  // v1.10.83 - an invoice in another currency with no exchange rate is kept
+  // OUT of every total (its dollars are not rupees) and listed as an error
+  // until the rate is added: a missing figure is fixable, a wrong one is filed.
+  const filteredBills = useMemo(() => periodGstBills.filter(b => !b.fxMissing), [periodGstBills]);
+  const noRateBills = useMemo(() => periodGstBills.filter(b => b.fxMissing), [periodGstBills]);
   const allFilteredBills = useMemo(() => bills.filter(bill => bill.data && filterByPeriod(bill.invoiceDate)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [bills, filterMode, fyFilter, quarterFilter, monthFilter, yearFilter]);
@@ -658,7 +663,7 @@ export default function GSTReturns() {
   const exportBills = regularBills.filter(isExportBill);
   // v1.10.83 - GSTR-1 Table 6A, in rupees (each invoice at its own rate). WPAY
   // = with payment of IGST, WOPAY = without (under a LUT).
-  const exportRows = exportBills.map(b => {
+  const exportRows = [...exportBills, ...noRateBills.filter(isExportBill)].map(b => {
     const t = b.data?.totals || {};
     const rates = [...new Set((b.data?.items || []).map(i => Number(i.taxPercent) || 0))];
     return {
@@ -910,11 +915,11 @@ export default function GSTReturns() {
 
   // ========== Validation Warnings ==========
   const warnings = [];
+  noRateBills.forEach(bill => {
+    warnings.push({ type: 'error', msg: `Invoice ${bill.invoiceNumber} is in ${bill.currency || bill.data?.invoiceOptions?.currency} with no exchange rate, so it is left out of this return until you add the rate. Open it and enter the rate (Invoice Details → Currency).` });
+  });
   filteredBills.forEach(bill => {
     const { client, items } = bill.data;
-    if (bill.fxMissing) {
-      warnings.push({ type: 'error', msg: `Invoice ${bill.invoiceNumber} is in ${bill.currency || bill.data?.invoiceOptions?.currency} with no exchange rate: until you add it, its amounts are counted here as if they were rupees. Open it and enter the rate (Invoice Details → Currency).` });
-    }
     // v1.10.83 - a client abroad has no GSTIN: the number there is their own
     // tax ID (VAT, EIN...), and an export has no Indian state.
     if (isExportBill(bill)) {
@@ -1123,7 +1128,8 @@ export default function GSTReturns() {
   const exportExports = () => {
     if (exportRows.length === 0) { toast('No export invoices', 'warning'); return; }
     downloadCSV('GSTR1_Exports_6A.csv', ['Export Type', 'Invoice Number', 'Invoice Date', 'Invoice Value (INR)', 'Rate', 'Taxable Value (INR)', 'IGST (INR)', 'Cess (INR)', 'Client', 'Country', 'Currency', 'Exchange Rate'],
-      exportRows.map(r => [r.type, r.invoiceNo, formatDateGST(r.date), r.value.toFixed(2), r.rates, r.taxable.toFixed(2), r.igst.toFixed(2), r.cess.toFixed(2), r.client, r.country, r.currency, r.missing ? 'MISSING' : r.fxRate]));
+      // An invoice with no rate has no rupee figures yet: left out (it is listed as an error).
+      exportRows.filter(r => !r.missing).map(r => [r.type, r.invoiceNo, formatDateGST(r.date), r.value.toFixed(2), r.rates, r.taxable.toFixed(2), r.igst.toFixed(2), r.cess.toFixed(2), r.client, r.country, r.currency, r.missing ? 'MISSING' : r.fxRate]));
     toast('Exports (Table 6A) CSV downloaded', 'success');
   };
 
@@ -1275,7 +1281,7 @@ export default function GSTReturns() {
     // offenders so the user can fix them in the source invoice.
     // v1.10.83 - an invoice in another currency without a rate would go into
     // the HSN summary in dollars as if they were rupees.
-    const noRate = bills.filter(b => b.fxMissing);
+    const noRate = noRateBills;
     if (noRate.length > 0) {
       blocked.push(`${noRate.length} invoice(s) in a foreign currency have no exchange rate (${noRate.slice(0, 3).map(b => b.invoiceNumber).join(', ')}). Open each and enter the rate.`);
     }
