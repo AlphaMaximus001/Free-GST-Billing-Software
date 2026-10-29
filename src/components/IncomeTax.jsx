@@ -381,7 +381,7 @@ function PresumptiveTab({ presumptiveInputs, setPresumptiveInputs, presumptive, 
   const set = (patch) => setPresumptiveInputs(prev => ({ ...prev, ...patch }));
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '1rem' }}>
       <div className="glass-panel p-4">
         <h3 className="section-title" style={{ marginTop: 0 }}>Section<HelpButton title="Section: 44AD, 44ADA or 44AE" doc="income-tax#presumptive-sections" size={16} /></h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -617,7 +617,7 @@ function RegimeCalculatorTab({ inputs, setInputs, comparison, onReset }) {
   }));
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '1rem' }}>
       {/* Left column: inputs */}
       <div className="glass-panel p-4">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>

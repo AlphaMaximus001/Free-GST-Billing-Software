@@ -1911,7 +1911,7 @@ export default function SettingsView({ onSaved }) {
           boxShadow: '0 -4px 16px rgba(15, 23, 42, 0.10)',
         }}>
         <span style={{ flex: '1 1 220px', fontSize: '0.85rem', fontWeight: 600, color: unsaved.length ? '#f59e0b' : 'var(--text-muted)' }}
-          title="Bank accounts, Features, Region and Print & PDF save as you change them.">
+          title="Payment accounts, Print & PDF, Region and App lock save as you change them. Business type and Features wait for Save all changes.">
           {unsaved.length ? <>● Unsaved changes in {unsaved.join(', ')}</> : '✓ All changes saved'}
         </span>
         {unsaved.length > 0 && (
