@@ -14,6 +14,7 @@ import WhatsNew from './WhatsNew';
 import SupportersList from './SupportersList';
 import ProblemLog from './ProblemLog';
 import HelpButton from './HelpButton';
+import SafePrivateNote from './SafePrivateNote';
 
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
 
@@ -94,6 +95,7 @@ export default function SupportView() {
             and your invoices never leave this computer. If it saves you time every month, you can help keep the
             fixes and new features coming.
           </p>
+          <SafePrivateNote style={{ marginTop: '0.85rem', maxWidth: '70ch' }} />
         </div>
       </div>
 

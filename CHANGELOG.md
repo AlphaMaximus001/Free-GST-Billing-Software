@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.10.83] - unreleased
 
 ### Added
+- **"Is it safe?"** A short *Safe and private* note on the first welcome
+  screen and on Support & About (your data stays on this computer, no account,
+  works offline, open source), linking to a new help page that answers the
+  question in full: where your data is, every internet address the app ever
+  contacts and why, the PIN lock and backups, and how to check it yourself.
 - **Change the currency right on the invoice.** If you bill abroad (Region
   International or Both, or a client outside India), a *Currency* box such as
   "$ USD" sits in Invoice Details, with *1 USD = ? INR* for the exchange rate

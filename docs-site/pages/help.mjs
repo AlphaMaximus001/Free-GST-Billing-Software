@@ -643,7 +643,7 @@ export default [
 
 <section id="privacy">
 <h3>Is my data sent anywhere?</h3>
-<p>No. There is no account, no tracking and no server of ours. Your data stays in the app's folder unless you choose Google Drive, which copies files into your own Drive, or you send a <a href="#report-problem">problem report</a> yourself.</p>
+<p>No. There is no account, no tracking and no server of ours. Your data stays in the app's folder unless you choose Google Drive, which copies files into your own Drive, or you send a <a href="#report-problem">problem report</a> yourself. The full answer, with every address the app connects to, is in <a href="security.html">Is it safe?</a></p>
 </section>
 `,
 },
