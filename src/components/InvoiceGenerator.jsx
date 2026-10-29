@@ -2119,7 +2119,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       const latestProfile = await getProfile();
       const clientId = latestProfile.googleClientId;
       const folderName = latestProfile.googleDriveFolder || 'GST Billing Invoices';
-      if (!clientId) return;
+      // v1.10.83 - Settings → Features → Google Drive off means no upload.
+      if (!clientId || !isModuleEnabled('googleDrive', getEnabledModules())) return;
 
       const hasToken = await ensureToken(clientId);
       if (!hasToken) {
@@ -3292,6 +3293,10 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   // einvoice field changes: the stored copy is read fresh and written back
   // with it, whatever is still being edited on screen.
   const einvoiceOn = isModuleEnabled('einvoice', getEnabledModules());
+  // v1.10.83 - these switches in Settings → Features used to do nothing.
+  // An invoice that already has TDS / TCS keeps its box, so it can be edited.
+  const tdsTcsOn = isModuleEnabled('tdsTcs', getEnabledModules());
+  const ewayOn = isModuleEnabled('ewayBill', getEnabledModules());
   const saveEinvoice = async (value) => {
     try {
       const stored = (await getAllBills()).find((b) => b.id === savedId.current);
@@ -3449,7 +3454,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           <button className="btn btn-secondary" onClick={shareWhatsApp} disabled={saving} style={{ background: '#25d366', color: '#fff', borderColor: '#25d366' }}>
             <MessageCircle size={18} /> WhatsApp
           </button>
-          {(invoiceType === 'tax-invoice' || invoiceType === 'delivery-challan') && (
+          {ewayOn && (invoiceType === 'tax-invoice' || invoiceType === 'delivery-challan') && (
             <button className="btn btn-secondary" onClick={exportEWayBill} disabled={saving} title="Download E-Way Bill JSON for NIC portal upload">
               <Truck size={18} /> E-Way Bill
             </button>
@@ -3678,7 +3683,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 })()}
 
                 {/* TCS — collected by seller, ADDS to total (Section 206C, Income Tax Act) */}
-                {(profile?.country || 'India') === 'India' && (
+                {(profile?.country || 'India') === 'India' && (tdsTcsOn || invoiceOptions.showTCS) && (
                   <div className={`form-group${invoiceOptions.showTCS ? ' notice notice-warn' : ''}`} style={{ marginBottom: '0.75rem', padding: '0.6rem', borderRadius: '6px', display: 'block' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer' }}>
                       <input type="checkbox" checked={!!invoiceOptions.showTCS}
@@ -3718,7 +3723,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 )}
 
                 {/* TDS — deducted by buyer from payment, INFORMATIONAL on invoice */}
-                {(profile?.country || 'India') === 'India' && (
+                {(profile?.country || 'India') === 'India' && (tdsTcsOn || invoiceOptions.showTDS) && (
                   <div className={`form-group${invoiceOptions.showTDS ? ' notice notice-info' : ''}`} style={{ marginBottom: '0.75rem', padding: '0.6rem', borderRadius: '6px', display: 'block' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer' }}>
                       <input type="checkbox" checked={!!invoiceOptions.showTDS}

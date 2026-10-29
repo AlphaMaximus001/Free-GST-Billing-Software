@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { X, ChevronRight, Check } from 'lucide-react';
-import { getPrintSettings, savePrintSettings, BUSINESS_PRESETS, applyBusinessPreset } from '../utils/printSettings';
+import { getPrintSettings, savePrintSettings, applyBusinessPreset } from '../utils/printSettings';
 import { toast } from './Toast';
-import { getInvoiceDisplayOptions, saveInvoiceDisplayOptions } from '../store';
+import { getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getEnabledModules, setEnabledModules, setBusinessType } from '../store';
+import { BUSINESS_TYPES, businessTypeById, applyBusinessType } from '../utils/businessTypes';
 
 const PAPER_LABELS = { a4: 'A4', a5: 'A5', thermal80: '80mm thermal', thermal58: '58mm thermal' };
 
@@ -49,6 +50,13 @@ export default function SetupWizard({ onClose }) {
     // Preset first, THEN the language picked on step 2: four presets set
     // English, which used to overwrite a Hindi / Tamil / ... choice.
     if (selectedBiz) next = applyBusinessPreset(next, selectedBiz);
+    // v1.10.83 - the business type also decides which features show. A new
+    // install has nothing to lose, so it applies without asking (Settings →
+    // Business type asks first).
+    if (selectedBiz) {
+      setEnabledModules(applyBusinessType(selectedBiz, getEnabledModules()));
+      setBusinessType(selectedBiz);
+    }
     next.labelLanguage = language;
     if (paperSize) next.paperSize = paperSize;
     savePrintSettings(next);
@@ -99,10 +107,10 @@ export default function SetupWizard({ onClose }) {
           <>
             <h3 style={{ marginTop: 0 }}>What kind of business do you run?</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-              Pick one and we'll set the invoice style, receipt options and features that suit that kind of business. You can change anything later.
+              Pick one and the app shows the features that business needs, and sets an invoice style to match. You can change it later in Settings → Business type.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.6rem' }}>
-              {Object.entries(BUSINESS_PRESETS).map(([key, preset]) => (
+              {BUSINESS_TYPES.map(({ id: key, ...preset }) => (
                 <button key={key} type="button"
                   onClick={() => setSelectedBiz(key)}
                   style={{
@@ -204,7 +212,7 @@ export default function SetupWizard({ onClose }) {
             </p>
 
             <div style={{ padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 8, fontSize: '0.9rem' }}>
-              <Row label="Business type" value={selectedBiz ? BUSINESS_PRESETS[selectedBiz]?.label : '(none — manual config)'} />
+              <Row label="Business type" value={selectedBiz ? businessTypeById(selectedBiz)?.label : '(none — manual config)'} />
               <Row label="Default paper size" value={PAPER_LABELS[paperSize] || paperSize} />
               <Row label="Section label language" value={
                 { en: 'English', hi: 'हिन्दी', ta: 'தமிழ்', mr: 'मराठी', bn: 'বাংলা' }[language]

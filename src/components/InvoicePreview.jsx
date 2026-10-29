@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import QRCode from 'qrcode';
 import SignatureImages from './SignatureImages';
 import DOMPurify from 'dompurify';
-import { numberToWords, printedSubtotal, formatCurrency, INVOICE_TYPES, getCountryConfig, CURRENCY_NAMES, formatExchangeRateLine, getAccountById, getPaperSize, resolveLineDiscount, htmlHasText, splitNumberedTerms, invoiceOptionOn, DEFAULT_DECLARATION, filledOrderDetails, formatShortDate } from '../utils';
+import { numberToWords, printedSubtotal, formatCurrency, INVOICE_TYPES, getCountryConfig, CURRENCY_NAMES, formatExchangeRateLine, getAccountById, getPaperSize, resolveLineDiscount, htmlHasText, splitNumberedTerms, invoiceOptionOn, DEFAULT_DECLARATION, filledOrderDetails, formatShortDate, isModuleEnabled } from '../utils';
+import { getEnabledModules } from '../store';
 import { getPrintSettings, getLabel, formatCurrencyEx, formatDate } from '../utils/printSettings';
 import InvoiceGridLayout, { HsnSummaryTable } from './InvoiceGridLayout';
 
@@ -70,7 +71,8 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   const showHSN = opt('showHSN');
   const showDiscount = opt('showDiscount');
   const showBankDetails = opt('showBankDetails');
-  const showUPI = opt('showUPI');
+  // v1.10.83 - Settings → Features → UPI QR code off hides it on every invoice.
+  const showUPI = opt('showUPI') && isModuleEnabled('upiQr', getEnabledModules());
   const showLogo = opt('showLogo');
   const showSignature = opt('showSignature');
   const showSignatoryText = opt('showSignatoryText');

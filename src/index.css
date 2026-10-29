@@ -2934,6 +2934,10 @@ kbd {
 }
 
 .type-chip:hover { border-color: var(--primary); color: var(--primary); }
+/* v1.10.83 - a white chip with pale text was unreadable in dark mode (Business type, Region). */
+/* v1.10.83 - hovering the picked chip turned its text blue on blue (invisible). */
+.type-chip-active:hover { color: white; }
+[data-theme="dark"] .type-chip:not(.type-chip-active) { background: #1e293b; border-color: #334155; color: #e2e8f0; }
 
 .type-chip-active {
   background: var(--primary);

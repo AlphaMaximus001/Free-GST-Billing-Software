@@ -315,7 +315,7 @@ Website Maintenance,998314,5000,18,Month,0</code></pre>
 
 <section id="manufacturing">
 <h2>Manufacturing: making products from raw materials</h2>
-<p>If you make what you sell, the app can use up raw materials and add the finished product to stock in one step. Turn it on first: <a href="settings.html#modules">Settings → Features</a>, tick ${ui('Manufacturing (bill of materials)')}. It is off to start, and turning it off again hides it without deleting anything.</p>
+<p>If you make what you sell, the app can use up raw materials and add the finished product to stock in one step. Turn it on first: <a href="settings.html#features">Settings → Features</a>, tick ${ui('Manufacturing (bill of materials)')}. It is off to start, and turning it off again hides it without deleting anything.</p>
 <h3>1. Give the product its raw materials (bill of materials)</h3>
 <p>Add each raw material as a normal product, with its purchase price and stock. Then open the finished product with ${ui('Edit')}, tick ${ui('Made here (from raw materials)')}, and for each material choose the product and type how much goes into <b>one</b> unit made. ${ui('Add material')} adds a line; the cross removes one. ${ui('Cost per unit')} below the list is the materials' purchase prices times those quantities. Click ${ui('Update')}.</p>
 <p>A product cannot be in its own list, every quantity must be more than 0, and two products cannot use each other (chair uses seat, seat uses chair): the app tells you which and does not save.</p>
@@ -434,7 +434,7 @@ Website Maintenance,998314,5000,18,Month,0</code></pre>
 <section id="purchase-orders">
 <h2>Purchase orders</h2>
 <p>A purchase order (PO) is what you send a supplier before the goods come: what you want, how many, at what rate. It is not a bill, so it changes neither your stock nor your GST returns.</p>
-<p>Turn it on in <a href="settings.html#modules">Settings, Features</a>: tick <b>Purchase orders</b> under Purchases &amp; Expenses. Purchases then has two buttons at the top, ${ui('Purchase bills')} and ${ui('Purchase orders')}.</p>
+<p>Turn it on in <a href="settings.html#features">Settings, Features</a>: tick <b>Purchase orders</b> under Purchases screen. Purchases then has two buttons at the top, ${ui('Purchase bills')} and ${ui('Purchase orders')}.</p>
 <ol class="steps">
   <li><strong>Make one</strong>On ${ui('Purchase orders')}, click ${ui('New purchase order')}. Fill in the supplier (suppliers from your bills are suggested), <b>PO date</b>, <b>Expected delivery</b>, and the items: <b>Name</b>, <b>HSN</b>, <b>Qty</b>, <b>Unit</b>, <b>Rate</b>, <b>Tax %</b> and <b>Cess %</b>. Typing a name suggests your products and fills in their HSN, purchase price, GST and unit. Add delivery or payment terms under <b>Notes / terms</b>, then ${ui('Save')}.</li>
   <li><strong>Send it</strong>Click the eye to view it, then ${ui('Print')}, ${ui('Download PDF')}, ${ui('WhatsApp')} or ${ui('Email')}. The PDF has your business at the top, the supplier, the items, CGST and SGST (or IGST for a supplier in another state), the total, your notes and a signature box.</li>

@@ -1846,82 +1846,92 @@ export const setDefaultAccount = (accounts, accountId) => {
 export const isValidUpiId = (s) => /^[\w.-]+@[\w.-]+$/.test(String(s || '').trim());
 
 // ========== Feature modules ==========
-// Each module can be turned off by the user in Settings → Modules. Modules in
-// the 'core' group are always on (creating invoices, managing clients, settings)
-// — disabling them would leave the app unusable.
+// Each module can be turned off by the user in Settings → Features. `core`
+// modules are always on (creating invoices, managing clients, the dashboard)
+// — disabling them would leave the app unusable. Turning a module off only
+// hides it; no data is ever deleted.
 //
-// `nav` is the corresponding sidebar view id (or null if the module doesn't
-// have its own page). When a module is disabled, its nav entry is hidden and
-// any related fields/sections in other views are suppressed too.
+// v1.10.83 - the sidebar is listed item by item in MENU_ITEMS (order,
+// switch, one plain line each), and the other modules are grouped by the
+// screen they live on, so the Features tab reads like the app itself.
+// `module: null` = always shown (Settings, Support & About with the
+// DiceCodes branding, and Lock app, which only appears once a PIN is set).
+// `section` is the part of the sidebar: 'main' (top) or 'bottom'.
+export const MENU_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', module: 'dashboard', core: true, section: 'main', help: 'Your sales, dues and shortcuts at a glance.' },
+  { id: 'new', label: 'New invoice', module: 'invoicing', core: true, section: 'main', help: 'Tax invoices, quotations, credit notes and challans.' },
+  { id: 'clients', label: 'Clients', module: 'clients', core: true, section: 'main', help: 'The people and businesses you bill.' },
+  { id: 'inventory', label: 'Products', module: 'inventory', section: 'main', help: 'Your product and service list, with stock.' },
+  { id: 'expenses', label: 'Expenses', module: 'expenses', section: 'main', help: 'Rent, salaries and other running costs.' },
+  { id: 'purchases', label: 'Purchases', module: 'purchases', section: 'main', help: 'Bills from your suppliers, for stock and input tax credit.' },
+  { id: 'recurring', label: 'Recurring', module: 'recurring', section: 'main', help: 'Invoices that repeat every week, month or year.' },
+  { id: 'receipts', label: 'Receipts', module: 'receipts', section: 'main', help: 'Payment receipts for money you receive.' },
+  { id: 'reports', label: 'Reports', module: 'reports', section: 'main', help: 'Sales, profit and loss, dues and stock reports.' },
+  { id: 'filing', label: 'GST returns', module: 'gstReturns', section: 'main', indiaOnly: true, help: 'GSTR-1 and GSTR-3B files, with a filing guide.' },
+  { id: 'incometax', label: 'Income tax', module: 'incomeTax', section: 'main', indiaOnly: true, help: 'Old vs new regime calculator and bank statement import.' },
+  { id: 'guide', label: 'User guide', module: 'guide', section: 'main', help: 'Opens the online help for every screen.' },
+  { id: 'notifications', label: 'Notifications', module: 'notifications', section: 'bottom', help: 'Bell with overdue invoices, GST due dates and low stock.' },
+  { id: 'lock', label: 'Lock app', module: null, section: 'bottom', help: 'Shown only when a PIN is set, so you can always lock the app.' },
+  { id: 'darkMode', label: 'Dark mode', module: 'darkMode', section: 'bottom', help: 'Button to switch between light and dark screens.' },
+  { id: 'support', label: 'Support & About', module: null, section: 'bottom', help: 'Who makes this app, version and how to get help.' },
+  { id: 'controlpanel', label: 'Control Panel', module: 'controlPanel', section: 'bottom', help: 'Update, backup, restore and move to another PC.' },
+  { id: 'settings', label: 'Settings', module: null, section: 'bottom', help: 'Always here, so you can turn things back on.' },
+];
+
 export const FEATURE_GROUPS = [
   {
-    id: 'sales',
-    label: 'Sales & Invoicing',
-    description: 'Invoice creation, recurring invoices, payment receipts',
-    modules: [
-      { id: 'invoicing', label: 'Tax invoices, proforma, credit notes', nav: 'new', core: true },
-      { id: 'recurring', label: 'Recurring invoices', nav: 'recurring', defaultOn: true },
-      { id: 'receipts',  label: 'Payment receipts',  nav: 'receipts',  defaultOn: true },
-    ],
+    id: 'menu',
+    label: 'Menu',
+    modules: MENU_ITEMS.filter(m => m.module).map(m => ({
+      id: m.module, label: m.label, help: m.help, core: !!m.core, indiaOnly: !!m.indiaOnly, defaultOn: true,
+    })),
   },
   {
-    id: 'directory',
-    label: 'Directory',
-    description: 'Clients and product catalog',
+    id: 'invoice',
+    label: 'Invoice screen',
     modules: [
-      { id: 'clients',   label: 'Clients',   nav: 'clients', core: true },
-      { id: 'inventory', label: 'Products & Services (inventory)', nav: 'inventory', defaultOn: true },
-      // v1.10.83 (#115) - bill of materials + "Make" on the Products screen.
-      // Off by default: most shops buy and sell, they do not make.
-      { id: 'manufacturing', label: 'Manufacturing (bill of materials)', nav: null, defaultOn: false },
+      // v1.10.83 - this switch used to do nothing (the TDS / TCS boxes always
+      // showed), so its default is now "on": updating changes nothing for
+      // anyone who bills with TDS. New installs get it from their business type.
+      { id: 'tdsTcs', label: 'TDS / TCS', help: 'Show tax deducted or collected at source on an invoice.', defaultOn: true, indiaOnly: true },
+      { id: 'ewayBill', label: 'E-way bill', help: 'Button to download the e-way bill file for goods you send.', defaultOn: true, indiaOnly: true },
+      // v1.10.83 (#111) - off by default: only businesses above the turnover
+      // limit need it, and everyone else should never see it.
+      { id: 'einvoice', label: 'E-invoicing (IRN)', help: 'Only if your yearly turnover is above ₹5 crore: make the e-invoice file and print the IRN with its QR code.', defaultOn: false, indiaOnly: true },
+      { id: 'upiQr', label: 'UPI QR code', help: 'Print a UPI QR code so customers can pay by scanning.', defaultOn: true, indiaOnly: true },
     ],
   },
   {
     id: 'purchases',
-    label: 'Purchases & Expenses',
-    description: 'Vendor bills, expense tracking, ITC',
+    label: 'Purchases screen',
     modules: [
-      { id: 'expenses',  label: 'Expense tracker', nav: 'expenses',  defaultOn: true },
-      { id: 'purchases', label: 'Purchase bills',  nav: 'purchases', defaultOn: true },
       // v1.10.83 (#112) - a tab on the Purchases screen; off until wanted.
-      { id: 'purchaseOrders', label: 'Purchase orders', nav: null, defaultOn: false },
-      { id: 'gstr2b',    label: 'GSTR-2B reconciliation (purchase ITC matching)', nav: null, defaultOn: true, indiaOnly: true },
+      { id: 'purchaseOrders', label: 'Purchase orders', help: 'Send orders to suppliers and turn them into bills when goods arrive.', defaultOn: false },
+      { id: 'gstr2b', label: 'GSTR-2B matching', help: 'Match your purchase bills with GSTR-2B (a tab on GST returns).', defaultOn: true, indiaOnly: true },
     ],
   },
   {
-    id: 'gst',
-    label: 'GST & Tax (India)',
-    description: 'GSTR returns, e-Way Bill, TDS/TCS, HSN summaries',
+    id: 'products',
+    label: 'Products screen',
     modules: [
-      { id: 'gstReturns', label: 'GSTR-1 / GSTR-3B exports + filing guide', nav: 'filing', defaultOn: true, indiaOnly: true },
-      { id: 'ewayBill',   label: 'E-Way Bill JSON export', nav: null, defaultOn: true, indiaOnly: true },
-      // v1.10.83 (#111) - off by default: only businesses above the turnover
-      // limit need it, and everyone else should never see it.
-      { id: 'einvoice',   label: 'E-invoicing (IRN)', nav: null, defaultOn: false, indiaOnly: true,
-        help: 'Only needed if your yearly turnover is above ₹5 crore. 1) Download the e-invoice JSON. 2) Upload it on einvoice1.gst.gov.in. 3) Bring the IRN back with Import IRN, and it prints on the invoice with its QR code.' },
-      { id: 'tdsTcs',     label: 'TDS / TCS on invoices', nav: null, defaultOn: false, indiaOnly: true },
-      { id: 'incomeTax',  label: 'Income Tax Helper (regime calc + bank import)', nav: 'incometax', defaultOn: true, indiaOnly: true },
+      // v1.10.83 (#115) - off by default: most shops buy and sell, they do not make.
+      { id: 'manufacturing', label: 'Manufacturing (bill of materials)', help: 'Say what goes into a product, then "Make" it to move the stock.', defaultOn: false },
     ],
   },
   {
     id: 'reports',
-    label: 'Reports',
-    description: 'Dashboards and financial reports',
+    label: 'Reports screen',
     modules: [
-      { id: 'dashboard', label: 'Dashboard', nav: 'dashboard', core: true },
-      { id: 'reports',   label: 'Reports view', nav: 'reports', defaultOn: true },
       // v1.10.83 (#112) - off by default: most shops have one branch, and the
       // picker on every form would only be noise for them.
-      { id: 'costCentres', label: 'Cost centres (branch, site or project on bills, purchases and expenses)', nav: null, defaultOn: false },
+      { id: 'costCentres', label: 'Cost centres', help: 'Tag bills, purchases and expenses with a branch, site or project, and see profit for each.', defaultOn: false },
     ],
   },
   {
     id: 'integrations',
     label: 'Integrations',
-    description: 'Cloud backup and payment QR codes',
     modules: [
-      { id: 'googleDrive', label: 'Google Drive backup', nav: null, defaultOn: true },
-      { id: 'upiQr',       label: 'UPI QR code on invoices', nav: null, defaultOn: true, indiaOnly: true },
+      { id: 'googleDrive', label: 'Google Drive', help: 'Save invoice PDFs and backups to your Google Drive.', defaultOn: true },
     ],
   },
 ];

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getRegionMode, setRegionMode, getEnabledModules, setEnabledModules, getStockAlertSettings, saveStockAlertSettings, renameNumberSeries, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getCostCentres, saveCostCentres } from '../store';
+import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getRegionMode, setRegionMode, getStockAlertSettings, saveStockAlertSettings, renameNumberSeries, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getCostCentres, saveCostCentres } from '../store';
 import { ensureToken, findOrCreateFolder, uploadJSON } from '../services/googleDrive';
-import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, FEATURE_GROUPS, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, findSameBusiness, businessKeyOf, stockDelta } from '../utils';
+import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, findSameBusiness, businessKeyOf, stockDelta } from '../utils';
 // v1.10.36 — lucide's `Image` icon was imported as `Image`, which
 // SHADOWED the browser's `HTMLImageElement` constructor. Reported:
 // "Uncaught TypeError: et is not a constructor at onChange" on logo
@@ -17,6 +17,7 @@ import PrintSettings from './PrintSettings';
 import HelpButton from './HelpButton';
 import AppLockSettings from './AppLockSettings';
 import CostCentreSettings from './CostCentreSettings';
+import { BusinessTypePanel, FeaturesPanel, useFeatureDraft } from './FeatureSettings';
 import { rekeyCentres } from '../utils/costCentres';
 import InvoiceNumberSettings from './InvoiceNumberSettings';
 import SignatureImages, { SIGN_LAYOUTS } from './SignatureImages';
@@ -25,7 +26,9 @@ import { getBackupsList, restoreBackup, triggerBackup, deleteBackup, getTrashedB
 // v1.10.36 — Section order for the jump-nav pill bar. Keeping this at
 // module scope so the scroll-spy effect below can reference it without
 // re-computing on every render.
+// v1.10.83 - "Business type comes first": it decides which features show.
 const JUMP_NAV_SECTIONS = [
+  ['section-biztype',  'Business type'],
   ['section-company',  'Company'],
   ['section-profiles', 'Profiles'],
   ['section-terms',    'Terms'],
@@ -41,8 +44,9 @@ const JUMP_NAV_SECTIONS = [
 ];
 // v1.10.83 - the ? button opens the guide for the tab that is open.
 const SETTINGS_TAB_DOCS = {
+  'section-biztype': 'settings#business-type',
   'section-company': 'settings#company-details', 'section-profiles': 'settings#multiple-businesses',
-  'section-terms': 'settings#terms', 'section-print': 'print-settings', 'section-modules': 'settings#modules',
+  'section-terms': 'settings#terms', 'section-print': 'print-settings', 'section-modules': 'settings#features',
   'section-stock': 'settings#stock', 'section-region': 'settings#region', 'section-lock': 'settings#lock',
   'section-backups': 'backup', 'section-cloud': 'settings#google-drive', 'section-data': 'backup#export-import',
   'section-updates': 'settings#updates',
@@ -167,25 +171,13 @@ export default function SettingsView({ onSaved }) {
       result.ok ? 'success' : 'error', 10000);
   };
   const [regionMode, setRegionModeState] = useState(getRegionMode());
-  const [enabledModules, setEnabledModulesState] = useState(getEnabledModules());
+  // v1.10.83 - Business type + Features: a draft, applied by "Save all changes".
+  const features = useFeatureDraft();
   const [stockAlerts, setStockAlerts] = useState({ enabled: true, threshold: 5 });
   const [stockAlertsSaving, setStockAlertsSaving] = useState(false);
   // v1.10.75 - what is on disk for the forms that have their own Save, so
   // the bottom "Save all changes" bar knows what is still unsaved.
   const [stockSaved, setStockSaved] = useState(null);
-
-  const toggleModule = (moduleId) => {
-    const next = { ...enabledModules, [moduleId]: !isModuleEnabled(moduleId, enabledModules) };
-    setEnabledModulesState(next);
-    setEnabledModules(next);
-  };
-
-  const resetModules = () => {
-    setEnabledModulesState({});
-    setEnabledModules({});
-    // v1.10.74 - defaults keep some features off (e.g. TDS/TCS), so don't say "all visible"
-    toast('Features reset to default', 'success');
-  };
   const fileInputRef = useRef(null);
   const logoInputRef = useRef(null);
   const sigInputRef = useRef(null);
@@ -743,13 +735,15 @@ export default function SettingsView({ onSaved }) {
 
   // v1.10.75 - one Save for the whole page (asked for: "a global save button
   // at the bottom, sticky, that saves all data filled anywhere"). Bank
-  // accounts, Features, Region and Print & PDF already save as they change;
-  // these are the four that wait for a Save.
+  // accounts, Region and Print & PDF already save as they change; these wait
+  // for a Save. v1.10.83 - Business type and Features joined them (asked for:
+  // "just checkbox and save button to apply").
   const unsaved = [
     profileDirty && 'Company Details',
     invNumDirty && 'Invoice Number Format',
     stockSaved !== null && JSON.stringify(stockAlerts) !== stockSaved && 'Low-stock alerts',
     !!editingTemplate && 'Terms template',
+    ...features.unsaved,
   ].filter(Boolean);
   const saveAll = async () => {
     if (!unsaved.length) { toast('Everything is already saved', 'info'); return; }
@@ -759,6 +753,7 @@ export default function SettingsView({ onSaved }) {
     if (unsaved.includes('Invoice Number Format')) jobs.push(invNumRef.current?.save());
     if (unsaved.includes('Low-stock alerts')) jobs.push(saveStockAlerts());
     if (editingTemplate) jobs.push(handleSaveTemplate());
+    if (features.unsaved.length) features.save();
     await Promise.all(jobs);
   };
   const discardAll = () => {
@@ -766,6 +761,7 @@ export default function SettingsView({ onSaved }) {
     invNumRef.current?.discard();
     if (stockSaved !== null) setStockAlerts(JSON.parse(stockSaved));
     setEditingTemplate(null);
+    features.discard();
   };
 
   const [taxIdWarning, setTaxIdWarning] = useState('');
@@ -1007,52 +1003,12 @@ export default function SettingsView({ onSaved }) {
       {/* v1.9.5 — Backup Management + Trash Bin */}
       <div id="section-backups" style={{ order: 8 }}><BackupAndTrashPanel /></div>
 
-      {/* ---- Modules / Features ---- */}
-      <div id="section-modules" className="glass-panel p-6 mb-6" style={{ order: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <div>
-            <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>Modules</h3>
-            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
-              Turn off the features you don't need. They disappear from the sidebar and forms — your data stays untouched.
-            </p>
-          </div>
-          <button type="button" className="btn btn-secondary" onClick={resetModules} style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem' }}>
-            Reset to default
-          </button>
-        </div>
-        <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
-          {FEATURE_GROUPS.map(group => (
-            <div key={group.id} className="surface-card">
-              <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '0.15rem' }}>{group.label}</div>
-              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0 0 0.6rem' }}>{group.description}</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                {group.modules.map(mod => {
-                  const enabled = isModuleEnabled(mod.id, enabledModules);
-                  // Hide India-only modules entirely when region is "international" — toggling
-                  // them on wouldn't have any effect.
-                  if (mod.indiaOnly && regionMode === 'international') return null;
-                  return (
-                    <label key={mod.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.78rem', cursor: mod.core ? 'not-allowed' : 'pointer', opacity: mod.core ? 0.55 : 1 }}>
-                      <input type="checkbox" checked={enabled} disabled={mod.core}
-                        onChange={() => !mod.core && toggleModule(mod.id)}
-                        style={{ width: 15, height: 15, accentColor: 'var(--primary)', marginTop: '2px' }} />
-                      <span style={{ lineHeight: 1.35 }}>
-                        {mod.label}
-                        {mod.core && <span style={{ fontSize: '0.65rem', color: '#94a3b8', marginLeft: '0.4rem' }}>(always on)</span>}
-                        {mod.indiaOnly && <span style={{ fontSize: '0.65rem', color: '#94a3b8', marginLeft: '0.4rem' }} title="India-only feature">🇮🇳</span>}
-                        {mod.help && <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{mod.help}</span>}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* v1.10.83 - Business type (first tab) and Features: FeatureSettings.jsx. */}
+      <BusinessTypePanel features={features} />
+      <FeaturesPanel features={features} regionMode={regionMode} />
 
       {/* v1.10.83 (#112) - only while the feature is on, right under Features. */}
-      {isModuleEnabled('costCentres', enabledModules) && (
+      {isModuleEnabled('costCentres', features.saved.modules) && (
         <div id="section-costcentres" style={{ order: 5 }}><CostCentreSettings profile={activeBusiness} /></div>
       )}
 

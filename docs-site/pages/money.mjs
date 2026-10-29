@@ -165,7 +165,7 @@ export default [
 <section id="e-invoice">
 <h2>E-invoicing (IRN)</h2>
 <p>A business whose yearly turnover (aggregate, all GSTINs on one PAN) has been above <strong>₹5 crore</strong> in any year since 2017-18 must register its B2B invoices on the e-invoice portal. The portal gives each invoice an <b>IRN</b> (Invoice Reference Number) and a signed QR code, and an invoice without them is not valid. Below ₹5 crore you do not need any of this.</p>
-<p>The app stays offline: it makes the file, you upload it, and you bring the IRN back. Turn on <b>E-invoicing (IRN)</b> in <a href="settings.html#modules">Settings, Modules</a> first; it is off to start.</p>
+<p>The app stays offline: it makes the file, you upload it, and you bring the IRN back. Turn on <b>E-invoicing (IRN)</b> in <a href="settings.html#features">Settings, Features</a> first; it is off to start.</p>
 <ol class="steps">
   <li><strong>Download the e-invoice JSON</strong>For one invoice: open it, click ${ui('E-invoice')} in the toolbar, then ${ui('Download e-invoice JSON')}. For several: tick them on the <a href="dashboard.html">Dashboard</a> and click ${ui('E-invoice JSON')} in the bar that appears. Save the invoice first, so its number is final.</li>
   <li><strong>Upload it on the portal</strong>Log in at einvoice1.gst.gov.in, go to <b>e-Invoice</b>, <b>Bulk Upload</b>, choose the file and upload it. The portal returns the IRN, Ack No, Ack Date and Signed QR Code for each invoice; download that result as JSON.</li>
