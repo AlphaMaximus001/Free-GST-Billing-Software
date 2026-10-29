@@ -182,6 +182,17 @@ const ACCENT_PRESETS = [
   { color: '#1e293b', label: 'Dark' },
 ];
 
+// The ? beside each group title in the Customize panel opens that group's part of the guide.
+const OPTION_GROUP_HELP = {
+  'Header & branding': 'invoice-options#show-header',
+  'Client / Bill-to': 'invoice-options#show-client',
+  'Invoice meta': 'invoice-options#show-meta',
+  'Items table': 'invoice-options#show-items',
+  'Totals': 'invoice-options#show-totals',
+  'Compliance flags (India)': 'invoices#reverse-charge',
+  'Footer': 'invoice-options#show-footer',
+};
+
 const PDF_STYLES = [
   { id: 'classic', label: 'Classic', desc: 'Clean with top accent bar' },
   { id: 'modern', label: 'Modern', desc: 'Bold header with color block' },
@@ -3320,11 +3331,13 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           {editingBill.convertedTo
             ? `Converted to ${editingBill.convertedTo}. This copy is read-only; you can still download or print it.`
             : 'This invoice is cancelled and read-only; you can still download or print it. Undo the cancel on the Dashboard to change it.'}
+          <HelpButton title="When an invoice cannot be changed" doc="invoices#read-only" size={16} />
         </div>
       )}
       {einvoice?.irn && !readOnlyDoc && (
         <div className="notice notice-warn" role="status" style={{ marginBottom: '0.75rem' }}>
           This invoice has an IRN. Changes made here are not sent to the e-invoice portal. To correct an e-invoice, cancel it on the portal (within 24 hours) and issue a new one, or issue a credit note.
+          <HelpButton title="E-invoicing" doc="gst-returns#e-invoice" size={16} />
         </div>
       )}
       {showEinvoice && (
@@ -3404,6 +3417,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
               </button>
             );
           })()}
+          <HelpButton title="Saving as you go" doc="invoices#autosave" size={16} />
         </div>
         <div className="flex gap-2">
           {/* v1.10.37 — Explicit Save button. Reported: "invoice page
@@ -3505,7 +3519,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 toolbar. Two buttons doing the same thing would only raise the
                 question of whether they do. */}
             <div className="flex justify-between items-center">
-              <h3 className="section-title" style={{ margin: 0 }}>Invoice Type</h3>
+              <h3 className="section-title" style={{ margin: 0 }}>Invoice Type <HelpButton title="Invoice Type" doc="invoices#invoice-types" size={16} /></h3>
             </div>
             <div className="type-selector" style={{ marginTop: '0.75rem' }}>
               {Object.entries(INVOICE_TYPES).map(([key, val]) => (
@@ -3527,7 +3541,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 (Hrs vs Nos) and filters the unit dropdown. Stays out of the way
                 for users who never touch services. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginRight: '0.25rem' }}>This invoice is for:</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginRight: '0.25rem' }}>This invoice is for: <HelpButton title="Goods, services or both" doc="invoices#goods-services" size={16} /></span>
               {[
                 { id: 'goods',    label: '📦 Goods',    desc: 'Physical products — defaults to Nos / Kg / Pcs units' },
                 { id: 'services', label: '⏱ Services', desc: 'Time / work-based — defaults to Hrs and surfaces Session / Visit / Month units' },
@@ -3552,7 +3566,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
             {showOptions && (
               <div className="invoice-options">
                 <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                  <label className="form-label">Invoice Title</label>
+                  <label className="form-label">Invoice Title <HelpButton title="Title, currency and exchange rate" doc="invoice-options#title-currency" size={16} /></label>
                   <input type="text" className="form-input" value={invoiceOptions.customTitle}
                     onChange={(e) => setInvoiceOptions(prev => ({ ...prev, customTitle: e.target.value }))}
                     placeholder={typeConfig?.title || 'TAX INVOICE'} />
@@ -3618,6 +3632,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                         <input type="checkbox" checked={isOn} onChange={toggle}
                           style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} />
                         <strong>🔁 Make this a recurring invoice</strong>
+                        <HelpButton title="Recurring invoice" doc="invoice-options#recurring" size={16} />
                         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                           (auto-generate a new invoice on schedule, same items, new number)
                         </span>
@@ -3698,6 +3713,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                         })}
                         style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} />
                       <strong>TCS — Tax Collected at Source</strong>
+                      <HelpButton title="TCS" doc="invoices#tcs" size={16} />
                       <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>(Adds to invoice total)</span>
                     </label>
                     {invoiceOptions.showTCS && (
@@ -3730,6 +3746,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                         onChange={() => setInvoiceOptions(prev => ({ ...prev, showTDS: !prev.showTDS }))}
                         style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} />
                       <strong>TDS — Tax Deducted at Source</strong>
+                      <HelpButton title="TDS" doc="invoices#tds" size={16} />
                       <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>(Buyer deducts; informational)</span>
                     </label>
                     {invoiceOptions.showTDS && (
@@ -3760,7 +3777,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                   const resolved = getAccountById(profile, invoiceOptions.selectedAccountId);
                   return (
                     <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                      <label className="form-label">Payment account on this invoice</label>
+                      <label className="form-label">Payment account on this invoice <HelpButton title="Payment account on this invoice" doc="invoice-options#payment-account" size={16} /></label>
                       <select className="form-input" value={resolved?.id || ''}
                         onChange={(e) => {
                           // v1.10.21 — reported: "working but on select it is not
@@ -3792,7 +3809,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                   );
                 })()}
                 <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                  <label className="form-label">PDF Style</label>
+                  <label className="form-label">PDF Style <HelpButton title="PDF Style" doc="invoice-options#style" size={16} /></label>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {PDF_STYLES.map(s => (
                       <button key={s.id} type="button"
@@ -3803,7 +3820,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                   </div>
                 </div>
                 <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                  <label className="form-label">Accent Color</label>
+                  <label className="form-label">Accent Color <HelpButton title="Accent Color" doc="invoice-options#accent-colour" size={16} /></label>
                   <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     <button type="button" title="Auto (match invoice type)"
                       style={{ width: '28px', height: '28px', borderRadius: '50%', border: !invoiceOptions.accentColor ? '2.5px solid #334155' : '2px solid #cbd5e1', background: 'conic-gradient(#1e40af, #7c3aed, #0f766e, #be123c, #1e40af)', cursor: 'pointer', position: 'relative' }}
@@ -3888,7 +3905,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                   if (section.group === '__PAPER_SIZE__') {
                     return (
                       <div key="paper-size" style={{ marginBottom: '0.6rem' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.3rem' }}>Paper / print size</div>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.3rem' }}>Paper / print size <HelpButton title="Paper size" doc="invoice-options#paper-size" size={16} /></div>
                         <select className="form-input" style={{ fontSize: '0.85rem' }}
                           value={invoiceOptions.paperSize || 'a4'}
                           onChange={e => setInvoiceOptions(prev => ({ ...prev, paperSize: e.target.value }))}>
@@ -3948,7 +3965,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                         {getPaperSize(invoiceOptions.paperSize, invoiceOptions).kind === 'thermal' && (
                           <div style={{ marginTop: '0.6rem', padding: '0.6rem', background: 'var(--bg-secondary)', borderRadius: 6 }}>
                             <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.4rem' }}>
-                              Thermal printer settings
+                              Thermal printer settings <HelpButton title="Thermal printer settings" doc="invoice-options#thermal-options" size={16} />
                             </div>
 
                             <label style={{ display: 'block', fontSize: '0.78rem', marginBottom: '0.35rem' }}>
@@ -3993,7 +4010,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                   }
                   return (
                     <div key={section.group} style={{ marginBottom: '0.6rem' }}>
-                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.3rem' }}>{section.group}</div>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.3rem' }}>{section.group} <HelpButton title={section.group} doc={OPTION_GROUP_HELP[section.group]} size={16} /></div>
                       <div className="options-grid">
                         {section.items.map(([key, label]) => {
                           // These default to OFF; everything else defaults to ON.
@@ -4057,7 +4074,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           {/* Client Details */}
           <div className="glass-panel p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="section-title" style={{ margin: 0 }}>Billed To</h3>
+              <h3 className="section-title" style={{ margin: 0 }}>Billed To <HelpButton title="Billed To" doc="invoices#billed-to" size={16} /></h3>
             </div>
 
             {/* v1.10.24 — Client credit banner. Shows when the picked
@@ -4073,6 +4090,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <div>
                     <strong style={{ color: '#0369a1' }}>💳 Client has {formatCurrency(clientCredit.available, invoiceOptions.currency || 'INR')} credit</strong>
+                    <HelpButton title="Using a client's credit" doc="invoices#client-credit" size={16} />
                     <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>
                       from {clientCredit.sources.length} prior overpayment{clientCredit.sources.length > 1 ? 's' : ''}
                       {' '}({clientCredit.sources.map(s => s.invoiceNumber).slice(0, 3).join(', ')}
@@ -4249,6 +4267,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                     {gstinHint && (
                       <small style={{ color: gstinHint.tone === 'warn' ? '#d97706' : '#16a34a', fontSize: '0.7rem', display: 'block', marginTop: '0.2rem' }}>
                         {gstinHint.tone === 'warn' ? '⚠' : '✓'} {gstinHint.message}
+                        <HelpButton title="What the GSTIN check tells you" doc="invoices#gstin-check" size={16} />
                       </small>
                     )}
                   </div>
@@ -4259,7 +4278,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
 
           {/* Invoice Details */}
           <div className="glass-panel p-6 mb-6">
-            <h3 className="section-title">Invoice Details</h3>
+            <h3 className="section-title">Invoice Details <HelpButton title="Invoice Details" doc="invoices#details" size={16} /></h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="form-group">
                 <label className="form-label">Invoice Number</label>
@@ -4320,7 +4339,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                   <input type="checkbox" checked={details.shipToSameAsBilling !== false}
                     onChange={e => setDetails({ ...details, shipToSameAsBilling: e.target.checked })}
                     style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} />
-                  <span><strong>Ship to</strong> same as bill-to address</span>
+                  <span><strong>Ship to</strong> same as bill-to address <HelpButton title="Ship to" doc="invoices#ship-to" size={16} /></span>
                 </label>
                 {details.shipToSameAsBilling === false && (
                   <div className="grid grid-cols-2 gap-3" style={{ marginTop: '0.6rem' }}>
@@ -4372,6 +4391,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                     style={{ padding: '0.6rem 0.85rem', background: 'var(--bg-secondary)', borderRadius: 6 }}>
                     <summary style={{ cursor: 'pointer', fontSize: '0.88rem', userSelect: 'none' }}>
                       <strong>Order, dispatch &amp; reference details</strong>
+                      <HelpButton title="Order, dispatch and reference details" doc="invoices#order-details" size={16} />
                       <span style={{ color: 'var(--text-muted)' }}> (optional{filled ? `, ${filled} filled` : ''}) - buyer's order no, vehicle no, service period, work details</span>
                     </summary>
                     <div className="grid grid-cols-2 gap-3" style={{ marginTop: '0.6rem' }}>
@@ -4398,12 +4418,13 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           {/* Line Items */}
           <div className="glass-panel p-6 mb-6">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h3 className="section-title" style={{ margin: 0 }}>Line Items</h3>
+              <h3 className="section-title" style={{ margin: 0 }}>Line Items <HelpButton title="Line Items" doc="invoices#items" size={16} /></h3>
               {showGST && (
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer', userSelect: 'none' }}>
                   <input type="checkbox" checked={taxInclusive} onChange={e => setTaxInclusive(e.target.checked)}
                     style={{ width: 16, height: 16, accentColor: 'var(--primary)', cursor: 'pointer' }} />
                   <span style={{ fontWeight: 500 }}>Prices include tax</span>
+                  <HelpButton title="Prices that already include GST" doc="invoices#tax-inclusive" size={16} />
                 </label>
               )}
             </div>
@@ -4453,7 +4474,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 the line items so it reads as "…and then take X off the
                 whole bill". Zero value = no line renders in the preview. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: '0.75rem', flexWrap: 'wrap' }}>
-              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Discount on total (whole bill)</label>
+              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Discount on total (whole bill) <HelpButton title="Discounts" doc="invoices#discounts" size={16} /></label>
               <input type="number" min="0" step="any" className="form-input"
                 value={invoiceOptions.invoiceDiscountValue || ''}
                 onFocus={(e) => e.target.select()}
@@ -4475,7 +4496,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           {/* Terms */}
           <div className="glass-panel p-6 mb-6">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-              <h3 className="section-title" style={{ margin: 0 }}>Terms & Conditions</h3>
+              <h3 className="section-title" style={{ margin: 0 }}>Terms & Conditions <HelpButton title="Terms & Conditions" doc="invoices#terms-notes" size={16} /></h3>
               {/* v1.10.37 — Terms rendering mode picker. Reported: PDF was
                   showing terms as compact all-caps run-together block —
                   users wanted an option for normal formatted output too.
@@ -4484,7 +4505,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                   Formatted = 0.78rem, mixed case, list styles preserved,
                   reads like a document paragraph. */}
               <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>PDF layout</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>PDF layout <HelpButton title="PDF layout: Compact or Formatted" doc="invoices#terms-layout" size={16} /></span>
                 {[
                   { id: 'compact', label: 'Compact', hint: 'Tiny footer text — saves paper' },
                   { id: 'formatted', label: 'Formatted', hint: 'Larger readable paragraphs' },
@@ -4575,6 +4596,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
               <label className="form-label" style={{ color: '#92400e', fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v4m0 4h.01"/></svg>
                 Private Note (not shown on invoice)
+                <HelpButton title="Private Note" doc="invoices#private-note" size={16} />
               </label>
               <textarea rows="2" className="form-input note-textarea" value={internalNote}
                 onChange={(e) => setInternalNote(e.target.value)}
@@ -4586,7 +4608,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           {/* Extra Sections */}
           <div className="glass-panel p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="section-title" style={{ margin: 0 }}>Additional Pages / Sections</h3>
+              <h3 className="section-title" style={{ margin: 0 }}>Additional Pages / Sections <HelpButton title="Additional Pages / Sections" doc="invoices#extra-pages" size={16} /></h3>
               <button type="button" className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
                 onClick={() => setExtraSections(prev => [...prev, { id: Date.now().toString(), title: '', content: '' }])}>
                 <Plus size={15} /> Add Section
@@ -4657,6 +4679,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               <span style={{ fontSize: '0.85rem' }}>👁</span>
               Live preview
+              <HelpButton title="The live preview" doc="invoices#preview" size={16} />
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               {/* Segmented zoom cluster — three cells welded into one pill */}
@@ -4749,7 +4772,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       {leaveModal && (
         <div className="modal-overlay" onClick={leaveActions.cancel}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px' }}>
-            <h3 style={{ marginTop: 0 }}>Unsaved changes</h3>
+            <h3 style={{ marginTop: 0 }}>Unsaved changes <HelpButton title="Leaving with unsaved changes" doc="invoices#leaving" size={16} /></h3>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
               This invoice has changes that haven't been saved yet. What do you want to do?
             </p>
