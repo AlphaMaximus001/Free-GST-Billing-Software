@@ -43,12 +43,14 @@ const JUMP_NAV_SECTIONS = [
   ['section-updates',  'Updates'],
 ];
 // v1.10.83 - the ? button opens the guide for the tab that is open.
+// Each card inside a tab has its own ? next to its title too. The docs build
+// (docs-site/build.mjs) checks that every one of these exists.
 const SETTINGS_TAB_DOCS = {
   'section-biztype': 'settings#business-type',
-  'section-company': 'settings#company-details', 'section-profiles': 'settings#multiple-businesses',
+  'section-company': 'settings#company-details', 'section-profiles': 'settings#business-profiles',
   'section-terms': 'settings#terms', 'section-print': 'print-settings', 'section-modules': 'settings#features',
   'section-stock': 'settings#stock', 'section-region': 'settings#region', 'section-lock': 'settings#lock',
-  'section-backups': 'backup', 'section-cloud': 'settings#google-drive', 'section-data': 'backup#export-import',
+  'section-backups': 'backup#automatic-backups', 'section-cloud': 'settings#google-drive', 'section-data': 'backup#export-import',
   'section-updates': 'settings#updates',
 };
 
@@ -908,7 +910,7 @@ export default function SettingsView({ onSaved }) {
             fontSize: '1.15rem',
           }}>🔔</div>
           <div>
-            <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>Low-stock alerts</h3>
+            <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>Low-stock alerts <HelpButton title="Low-stock alerts" doc="settings#stock" size={16} style={{ marginLeft: 6 }} /></h3>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
               Powers the 🔔 sidebar badge and the Dashboard low-stock list. The Inventory page colour-codes products against this threshold too.
             </p>
@@ -1014,7 +1016,7 @@ export default function SettingsView({ onSaved }) {
 
       {/* ---- Region Preference ---- */}
       <div id="section-region" className="glass-panel p-6 mb-6" style={{ order: 7 }}>
-        <h3 className="section-title" style={{ marginTop: 0 }}>Region Preference</h3>
+        <h3 className="section-title" style={{ marginTop: 0 }}>Region Preference <HelpButton title="Region Preference" doc="settings#region" size={16} style={{ marginLeft: 6 }} /></h3>
         <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.85rem' }}>
           Choose how the app behaves. You can change this any time without losing data.
         </p>
@@ -1044,7 +1046,7 @@ export default function SettingsView({ onSaved }) {
       {/* ---- Business Profile ---- */}
       <form id="section-company" onSubmit={handleSave} className="glass-panel p-6 mb-6" ref={companyFormRef} style={{ order: 1 }}>
         <fieldset disabled={!profileLoaded} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-        <h3 className="section-title">Company Details</h3>
+        <h3 className="section-title">Company Details <HelpButton title="Company Details" doc="settings#company-details" size={16} style={{ marginLeft: 6 }} /></h3>
         {(() => {
           const cc = getCountryConfig(profile.country);
           return (
@@ -1113,7 +1115,7 @@ export default function SettingsView({ onSaved }) {
                   requires. India-only. */}
               {(profile.country || 'India') === 'India' && (
                 <div className="form-group full-width" style={{ background: 'var(--bg-secondary)', padding: '0.85rem 1rem', borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label className="form-label" style={{ marginBottom: 6 }}>GSTR filing details (used only for GSTR-1 / GSTR-3B JSON export)</label>
+                  <label className="form-label" style={{ marginBottom: 6 }}>GSTR filing details (used only for GSTR-1 / GSTR-3B JSON export) <HelpButton title="GSTR filing details" doc="settings#gstr-details" size={16} style={{ marginLeft: 6 }} /></label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 8 }}>
                     <input type="checkbox" id="aato-above-5cr" name="aatoAbove5Cr"
                       checked={!!profile.aatoAbove5Cr}
@@ -1162,7 +1164,7 @@ export default function SettingsView({ onSaved }) {
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '0.5rem', marginTop: '2rem' }}>
                 <div>
-                  <h3 className="section-title" style={{ margin: 0 }}>Payment Accounts</h3>
+                  <h3 className="section-title" style={{ margin: 0 }}>Payment Accounts <HelpButton title="Payment Accounts" doc="settings#payment-accounts" size={16} style={{ marginLeft: 6 }} /></h3>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.15rem 0 0' }}>
                     Multiple bank / UPI accounts per profile. Pick one per invoice in the Customize panel.
                     The ⭐ default account is preselected on new invoices.
@@ -1245,7 +1247,7 @@ export default function SettingsView({ onSaved }) {
               {editingAccount && (
                 <div className="modal-overlay" onClick={cancelAccount}>
                   <div className="modal-content" style={{ maxWidth: '560px' }} onClick={e => e.stopPropagation()}>
-                    <h3 className="section-title" style={{ marginTop: 0 }}>{getPaymentAccounts(profile).some(a => a.id === editingAccount.id) ? 'Edit account' : 'Add account'}</h3>
+                    <h3 className="section-title" style={{ marginTop: 0 }}>{getPaymentAccounts(profile).some(a => a.id === editingAccount.id) ? 'Edit account' : 'Add account'} <HelpButton title="Add or edit a payment account" doc="settings#add-account" size={16} style={{ marginLeft: 6 }} /></h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="form-group" style={{ gridColumn: 'span 2' }}>
                         <label className="form-label">Label (shown in the dropdown)</label>
@@ -1350,7 +1352,7 @@ export default function SettingsView({ onSaved }) {
           onDirtyChange={setInvNumDirty} onSavingChange={setInvNumSaving} />
 
         {/* Logo & Signature */}
-        <h3 className="section-title mt-8">Branding</h3>
+        <h3 className="section-title mt-8">Branding <HelpButton title="Branding: logo, signature and stamp" doc="settings#branding" size={16} style={{ marginLeft: 6 }} /></h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="form-group">
             <label className="form-label">Business Logo</label>
@@ -1438,7 +1440,7 @@ export default function SettingsView({ onSaved }) {
             {/* v1.10.83 (#117) - where the stamp goes relative to the signature. */}
             {profile.stamp && profile.signature && (
               <div style={{ marginTop: '0.75rem' }}>
-                <label className="form-label" htmlFor="sign-layout">Signature and stamp layout</label>
+                <label className="form-label" htmlFor="sign-layout">Signature and stamp layout <HelpButton title="Signature and stamp layout" doc="settings#sign-layout" size={16} style={{ marginLeft: 6 }} /></label>
                 <select id="sign-layout" className="form-input" value={profile.signLayout || 'side'}
                   onChange={(e) => setProfile(prev => ({ ...prev, signLayout: e.target.value }))}>
                   {SIGN_LAYOUTS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
@@ -1469,7 +1471,7 @@ export default function SettingsView({ onSaved }) {
            9 sections to find the switcher. */}
       <div id="section-profiles" className="glass-panel p-6 mb-6" style={{ order: 2 }}>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="section-title" style={{ margin: 0 }}>Business Profiles</h3>
+          <h3 className="section-title" style={{ margin: 0 }}>Business Profiles <HelpButton title="Business Profiles" doc="settings#business-profiles" size={16} style={{ marginLeft: 6 }} /></h3>
           <div className="flex gap-2">
             <button type="button" className="btn btn-secondary" onClick={handleAddNewProfile}>
               <Plus size={16} /> Add New Profile
@@ -1520,7 +1522,7 @@ export default function SettingsView({ onSaved }) {
 
       {/* ---- Cloud Backup ---- */}
       <div id="section-cloud" className="glass-panel p-6 mb-6" style={{ order: 9 }}>
-        <h3 className="section-title">Cloud Backup (Google Drive)</h3>
+        <h3 className="section-title">Cloud Backup (Google Drive) <HelpButton title="Cloud Backup (Google Drive)" doc="settings#google-drive" size={16} style={{ marginLeft: 6 }} /></h3>
         <p className="page-subtitle mb-4">
           Auto-sync your invoices to Google Drive — no coding or API setup needed.
         </p>
@@ -1549,7 +1551,7 @@ export default function SettingsView({ onSaved }) {
         {/* Advanced API method - collapsible */}
         <details style={{ fontSize: '0.85rem' }}>
           <summary style={{ cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.82rem', padding: '0.5rem 0' }}>
-            Advanced: Direct API Upload (for developers)
+            Advanced: Direct API Upload (for developers) <HelpButton title="Advanced: Direct API Upload" doc="settings#google-drive-api" size={16} style={{ marginLeft: 6 }} />
           </summary>
           <div style={{ paddingTop: '0.75rem' }}>
             <div className="grid grid-cols-2 gap-4">
@@ -1596,7 +1598,7 @@ export default function SettingsView({ onSaved }) {
       {/* ---- Terms Templates ---- */}
       <div id="section-terms" className="glass-panel p-6 mb-6" style={{ order: 3 }}>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="section-title" style={{ margin: 0 }}>Terms & Conditions Templates</h3>
+          <h3 className="section-title" style={{ margin: 0 }}>Terms & Conditions Templates <HelpButton title="Terms & Conditions Templates" doc="settings#terms" size={16} style={{ marginLeft: 6 }} /></h3>
           <button type="button" className="btn btn-secondary" onClick={() => setEditingTemplate({ id: '', name: '', content: '' })}>
             <Plus size={16} /> New Template
           </button>
@@ -1677,7 +1679,7 @@ export default function SettingsView({ onSaved }) {
 
       {/* ---- App Updates ---- */}
       <div id="section-updates" className="glass-panel p-6 mb-6" style={{ order: 11 }}>
-        <h3 className="section-title">App Updates</h3>
+        <h3 className="section-title">App Updates <HelpButton title="App Updates" doc="settings#updates" size={16} style={{ marginLeft: 6 }} /></h3>
         <p className="page-subtitle mb-4">Check if a newer version is available.</p>
         <div className="flex gap-4 items-center">
           <button type="button" className="btn btn-secondary" disabled={checkingUpdate} onClick={async () => {
@@ -1718,7 +1720,7 @@ export default function SettingsView({ onSaved }) {
       </div>
 
       <div id="section-data" className="glass-panel p-6 mb-6" style={{ order: 10 }}>
-        <h3 className="section-title">Data Management</h3>
+        <h3 className="section-title">Data Management <HelpButton title="Data Management: Export and Import Backup" doc="backup#export-import" size={16} style={{ marginLeft: 6 }} /></h3>
 
         {/* Privacy notice — uses the global .notice .notice-info utility so dark/light look identical to every other info card. */}
         <div className="notice notice-info" style={{ marginBottom: '1rem' }}>
@@ -1748,7 +1750,7 @@ export default function SettingsView({ onSaved }) {
       {showExportModal && (
         <div className="modal-overlay" onClick={() => !drivePending && setShowExportModal(false)}>
           <div className="modal-content" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
-            <h3 className="section-title" style={{ marginTop: 0 }}>Export Backup</h3>
+            <h3 className="section-title" style={{ marginTop: 0 }}>Export Backup <HelpButton title="Export Backup" doc="backup#export-backup" size={16} style={{ marginLeft: 6 }} /></h3>
             <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: '0.75rem' }}>
               Choose what to include. Everything is on by default — uncheck anything you don't want.
             </p>
@@ -1798,7 +1800,7 @@ export default function SettingsView({ onSaved }) {
       {showImportModal && importInspection && (
         <div className="modal-overlay" onClick={() => setShowImportModal(false)}>
           <div className="modal-content" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
-            <h3 className="section-title" style={{ marginTop: 0 }}>Restore from Backup</h3>
+            <h3 className="section-title" style={{ marginTop: 0 }}>Restore from Backup <HelpButton title="Restore from Backup" doc="backup#restore-from-backup" size={16} style={{ marginLeft: 6 }} /></h3>
             <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.75rem' }}>
               File contents preview
               {importInspection.exportedAt && <span> — exported {new Date(importInspection.exportedAt).toLocaleString()}</span>}
@@ -1995,7 +1997,7 @@ function BackupAndTrashPanel() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.75rem' }}>
         <div>
           <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>
-            💾 Backup Management + 🗑 Trash Bin
+            💾 Backup Management + 🗑 Trash Bin <HelpButton title="Backup Management + Trash Bin" doc="backup#automatic-backups" size={16} style={{ marginLeft: 6 }} />
           </h3>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
             Automatic daily snapshots kept for 30 days · Deleted invoices stay in the trash for 30 days.
@@ -2018,7 +2020,7 @@ function BackupAndTrashPanel() {
 
       {/* v1.10.80 (#99) - requested: backups only on C: are lost when Windows fails. */}
       <div style={{ padding: '0.85rem', background: 'var(--bg-secondary)', borderRadius: 8, marginTop: '0.75rem' }}>
-        <label className="form-label" htmlFor="backup-folder">Also keep a copy of every daily backup in this folder</label>
+        <label className="form-label" htmlFor="backup-folder">Also keep a copy of every daily backup in this folder <HelpButton title="Backup copy in another folder" doc="backup#backup-copy" size={16} style={{ marginLeft: 6 }} /></label>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <input id="backup-folder" type="text" className="form-input" style={{ flex: 1, minWidth: 220 }}
             placeholder={'e.g. D:\\FreeGSTBill or E:\\ (a second drive or USB disk)'}
@@ -2040,7 +2042,7 @@ function BackupAndTrashPanel() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
         {/* Backups list */}
         <div style={{ padding: '0.85rem', background: 'var(--bg-secondary)', borderRadius: 8 }}>
-          <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>📅 Daily backups ({backups.length})</h4>
+          <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>📅 Daily backups ({backups.length}) <HelpButton title="Daily backups" doc="backup#restore-daily-backup" size={16} style={{ marginLeft: 6 }} /></h4>
           {loading && backups.length === 0 && <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Loading…</p>}
           {!loading && backups.length === 0 && <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>No backups yet — the first will be created at midnight or click "Backup now" above.</p>}
           <div style={{ maxHeight: 260, overflowY: 'auto' }}>
@@ -2076,7 +2078,7 @@ function BackupAndTrashPanel() {
 
         {/* Trash bin */}
         <div style={{ padding: '0.85rem', background: 'var(--bg-secondary)', borderRadius: 8 }}>
-          <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>🗑 Trash bin ({trash.length})</h4>
+          <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>🗑 Trash bin ({trash.length}) <HelpButton title="Trash bin" doc="backup#trash" size={16} style={{ marginLeft: 6 }} /></h4>
           {loading && trash.length === 0 && <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Loading…</p>}
           {!loading && trash.length === 0 && <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>No deleted invoices. Anything you delete lands here for 30 days.</p>}
           <div style={{ maxHeight: 260, overflowY: 'auto' }}>
