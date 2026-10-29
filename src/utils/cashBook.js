@@ -144,7 +144,9 @@ export const ownCashLines = (entries = []) => entries.map((e) => ({
 }));
 
 const signed = (l) => (l.type === 'out' ? -l.amount : l.amount);
-const byDate = (a, b) => a.date.localeCompare(b.date) || String(a.at).localeCompare(String(b.at)) || a.key.localeCompare(b.key);
+// Same day: in the order entered where known, money in before money out otherwise.
+const byDate = (a, b) => a.date.localeCompare(b.date) || String(a.at).localeCompare(String(b.at))
+  || (a.type === b.type ? 0 : a.type === 'in' ? -1 : 1) || a.key.localeCompare(b.key);
 
 // Money in and out, and the change, of some lines.
 export function cashTotals(lines) {

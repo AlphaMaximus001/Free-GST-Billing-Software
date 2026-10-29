@@ -16,7 +16,7 @@ const SOURCE_SCREEN = { receipts: 'Receipts', dashboard: 'the Dashboard', expens
 const emptyForm = () => ({ type: 'in', amount: '', name: '', note: '', category: '', date: localToday() });
 const showDate = (d) => (d ? parseLocalDate(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
 const inOut = (type, on) => ({
-  flex: 1, justifyContent: 'center', fontWeight: 600,
+  flex: 1, justifyContent: 'center', fontWeight: 600, whiteSpace: 'nowrap',
   ...(on ? { background: type === 'in' ? 'var(--success)' : 'var(--danger)', color: '#fff', borderColor: 'transparent' } : {}),
 });
 
@@ -124,6 +124,7 @@ export default function CashBook({ onOpenView }) {
   ] : [];
 
   const muted = { color: 'var(--text-muted)', fontSize: '0.8rem' };
+  const field = { margin: 0, flex: '1 1 150px', minWidth: 0 };
   const money = (type) => ({ textAlign: 'right', fontWeight: 600, color: type === 'in' ? 'var(--success)' : 'var(--danger)', whiteSpace: 'nowrap' });
 
   return (
@@ -163,41 +164,41 @@ export default function CashBook({ onOpenView }) {
           <h3 className="section-title" style={{ margin: 0 }}>{editing ? 'Edit entry' : 'New entry'}</h3>
           <HelpButton title="Adding a cash entry" doc="cash-book#add-entry" size={16} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', alignItems: 'end' }}>
-          <div className="form-group" style={{ margin: 0 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
+          <div className="form-group" style={{ margin: 0, flex: '2 1 250px' }}>
             <span className="form-label">In or out *</span>
             <div style={{ display: 'flex', gap: '0.4rem' }} role="group" aria-label="Money in or money out">
               <button type="button" className="btn btn-secondary" style={inOut('in', form.type === 'in')} aria-pressed={form.type === 'in'} onClick={() => update('type', 'in')}><ArrowDownLeft size={15} /> Money in</button>
               <button type="button" className="btn btn-secondary" style={inOut('out', form.type === 'out')} aria-pressed={form.type === 'out'} onClick={() => update('type', 'out')}><ArrowUpRight size={15} /> Money out</button>
             </div>
           </div>
-          <div className="form-group" style={{ margin: 0 }}>
+          <div className="form-group" style={field}>
             <label className="form-label" htmlFor="cash-amount">Amount *</label>
             <input id="cash-amount" ref={amountRef} type="number" inputMode="decimal" min="0" step="0.01" className="form-input" placeholder="0.00"
               value={form.amount} onChange={(e) => update('amount', e.target.value)} />
           </div>
-          <div className="form-group" style={{ margin: 0 }}>
+          <div className="form-group" style={field}>
             <label className="form-label" htmlFor="cash-name">Name (who / what)</label>
             <input id="cash-name" type="text" className="form-input" list="cash-names" maxLength={120} placeholder="e.g. Ramesh, milk, auto"
               value={form.name} onChange={(e) => update('name', e.target.value)} />
             <datalist id="cash-names">{names.map((n) => <option key={n} value={n} />)}</datalist>
           </div>
-          <div className="form-group" style={{ margin: 0 }}>
+          <div className="form-group" style={field}>
             <label className="form-label" htmlFor="cash-category">Category</label>
             <input id="cash-category" type="text" className="form-input" list="cash-categories" maxLength={60} placeholder="Pick or type"
               value={form.category} onChange={(e) => update('category', e.target.value)} />
             <datalist id="cash-categories">{CASH_CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist>
           </div>
-          <div className="form-group" style={{ margin: 0 }}>
+          <div className="form-group" style={field}>
             <label className="form-label" htmlFor="cash-date">Date *</label>
             <input id="cash-date" type="date" className="form-input" value={form.date} onChange={(e) => update('date', e.target.value)} />
           </div>
-          <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+          <div className="form-group" style={{ ...field, flex: '3 1 220px' }}>
             <label className="form-label" htmlFor="cash-note">Note</label>
             <input id="cash-note" type="text" className="form-input" maxLength={500} placeholder="Optional"
               value={form.note} onChange={(e) => update('note', e.target.value)} />
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flex: '1 1 140px' }}>
             <button type="submit" className="btn btn-primary" disabled={saving} style={{ flex: 1, justifyContent: 'center' }}><Save size={16} /> {editing ? 'Update' : 'Save'}</button>
             {editing && <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>}
           </div>
