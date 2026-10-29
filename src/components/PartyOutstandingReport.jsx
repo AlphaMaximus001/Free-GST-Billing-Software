@@ -6,6 +6,7 @@ import { Wallet } from 'lucide-react';
 import { getFinancialYearStart } from '../utils';
 import { periodMonths, partyOutstanding, billCurrency } from '../utils/partyOutstanding';
 import TableExport from './TableExport';
+import HelpButton from './HelpButton';
 
 const amt = (n) => (n ? n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
 
@@ -39,7 +40,7 @@ export default function PartyOutstandingReport({ bills, businessName }) {
   return (
     <div className="glass-panel">
       <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-        <h3>Party outstanding by month</h3>
+        <h3>Party outstanding by month<HelpButton title="Party outstanding by month" doc="reports#party-outstanding" size={16} /></h3>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <select className="form-input" style={{ width: 'auto' }} value={mode} aria-label="Months"
             onChange={(e) => { setMode(e.target.value); setYear(e.target.value === 'fy' ? getFinancialYearStart() : thisYear); }}>

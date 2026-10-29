@@ -20,6 +20,17 @@ const MONTHS = [
 
 const getBillCurrency = billCurrency;
 
+// The ? at the end of the tab row opens the guide at the tab on screen.
+const TAB_HELP = {
+  pl: ['Profit & Loss', 'reports#profit-loss'],
+  aging: ['Outstanding & Aging', 'reports#outstanding'],
+  party: ['Party Outstanding', 'reports#party-outstanding'],
+  clients: ['Client Analytics', 'reports#clients'],
+  products: ['Product Performance', 'reports#products'],
+  stock: ['Stock', 'reports#stock'],
+  costcentres: ['By cost centre', 'reports#cost-centres'],
+};
+
 export default function ReportsView() {
   const [bills, setBills] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -243,6 +254,7 @@ export default function ReportsView() {
             <Building2 size={16} /> By cost centre
           </button>
         )}
+        <HelpButton title={TAB_HELP[activeTab][0]} doc={TAB_HELP[activeTab][1]} size={16} style={{ alignSelf: 'center' }} />
       </div>
 
       {/* v1.10.74 - Period + Currency Selector, shared by P&L, Client Analytics
@@ -288,6 +300,7 @@ export default function ReportsView() {
                   </select>
                 </div>
               )}
+              <HelpButton title="Period and currency" doc="reports#period" size={16} style={{ marginBottom: 7 }} />
             </div>
           </div>
       )}
@@ -323,7 +336,7 @@ export default function ReportsView() {
           {/* P&L Statement */}
           <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
             <div className="table-header">
-              <h3>Profit & Loss Statement</h3>
+              <h3>Profit & Loss Statement<HelpButton title="Profit & Loss Statement" doc="reports#pl-statement" size={16} /></h3>
               {allCurrencies.length > 1 && (
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>
                   Showing {currencyFilter} invoices only
@@ -374,7 +387,7 @@ export default function ReportsView() {
           {monthlyKeys.length > 0 && (
             <div className="glass-panel">
               <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-                <h3>Monthly Breakdown</h3>
+                <h3>Monthly Breakdown<HelpButton title="Monthly Breakdown" doc="reports#monthly-breakdown" size={16} /></h3>
                 <TableExport title="Profit and loss by month" filename={`Profit-and-loss-${periodLabel}`} subtitle={exportSubtitle('before tax, GST left out')}
                   headers={['Month', 'Revenue', 'Expenses', 'Profit/Loss']}
                   rows={[
@@ -481,7 +494,7 @@ export default function ReportsView() {
           {/* Aging Table */}
           <div className="glass-panel">
             <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-              <h3>Outstanding Receivables</h3>
+              <h3>Outstanding Receivables<HelpButton title="Outstanding Receivables" doc="reports#outstanding-receivables" size={16} /></h3>
               <TableExport title="Outstanding receivables" filename="Outstanding-receivables" landscape
                 subtitle={[businessName, `unpaid as on ${today.toLocaleDateString('en-IN')}`].filter(Boolean).join(', ')}
                 headers={['Client', 'Invoice No', 'Date', 'Due date', 'Currency', 'Amount', 'Paid', 'Outstanding', 'Days overdue']}
@@ -563,7 +576,7 @@ export default function ReportsView() {
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1rem' }}>
             <div className="glass-panel" style={{ padding: '1.25rem' }}>
-              <h3 style={{ marginTop: 0, fontSize: '1rem' }}>🏆 Top clients by revenue</h3>
+              <h3 style={{ marginTop: 0, fontSize: '1rem' }}>🏆 Top clients by revenue<HelpButton title="Top clients by revenue" doc="reports#top-clients" size={16} /></h3>
               {topByRevenue.length === 0 ? <p className="text-muted">No client data for this period.</p> : (
                 <table className="data-table" style={{ marginBottom: 0 }}>
                   <thead><tr><th>Client</th><th style={{ textAlign: 'right' }}>Revenue</th><th style={{ textAlign: 'right' }}>Invoices</th></tr></thead>
@@ -581,7 +594,7 @@ export default function ReportsView() {
             </div>
 
             <div className="glass-panel" style={{ padding: '1.25rem' }}>
-              <h3 style={{ marginTop: 0, fontSize: '1rem' }}>⚠️ Highest outstanding (worst payers)</h3>
+              <h3 style={{ marginTop: 0, fontSize: '1rem' }}>⚠️ Highest outstanding (worst payers)<HelpButton title="Highest outstanding" doc="reports#worst-payers" size={16} /></h3>
               {worstPayers.length === 0 ? <p className="text-muted">Everyone is up to date. 🎉</p> : (
                 <table className="data-table" style={{ marginBottom: 0 }}>
                   <thead><tr><th>Client</th><th style={{ textAlign: 'right' }}>Outstanding</th><th style={{ textAlign: 'right' }}>% Unpaid</th></tr></thead>
@@ -600,7 +613,7 @@ export default function ReportsView() {
 
             <div className="glass-panel" style={{ padding: '1.25rem', gridColumn: '1 / -1' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem' }}>📊 All clients breakdown ({clientArr.length})</h3>
+                <h3 style={{ margin: 0, fontSize: '1rem' }}>📊 All clients breakdown ({clientArr.length})<HelpButton title="All clients breakdown" doc="reports#all-clients" size={16} /></h3>
                 <TableExport title="Client analytics" filename={`Clients-${periodLabel}`} subtitle={exportSubtitle()}
                   headers={['Client', 'Invoices', 'Revenue', 'Paid', 'Outstanding', 'Last invoice']}
                   rows={[...clientArr].sort((a, b) => b.revenue - a.revenue).map(c => [c.name, c.count, r2(c.revenue), r2(c.paid), r2(c.outstanding), c.lastInvoiceDate || ''])} />
@@ -670,7 +683,7 @@ export default function ReportsView() {
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1rem' }}>
             <div className="glass-panel" style={{ padding: '1.25rem' }}>
-              <h3 style={{ marginTop: 0, fontSize: '1rem' }}>💰 Top revenue producers</h3>
+              <h3 style={{ marginTop: 0, fontSize: '1rem' }}>💰 Top revenue producers<HelpButton title="Top revenue producers" doc="reports#top-products" size={16} /></h3>
               {bestSellers.length === 0 ? <p className="text-muted">No product data for this period.</p> : (
                 <table className="data-table" style={{ marginBottom: 0 }}>
                   <thead><tr><th>Product</th><th style={{ textAlign: 'right' }}>Revenue</th><th style={{ textAlign: 'right' }}>Qty sold</th></tr></thead>
@@ -688,7 +701,7 @@ export default function ReportsView() {
             </div>
 
             <div className="glass-panel" style={{ padding: '1.25rem' }}>
-              <h3 style={{ marginTop: 0, fontSize: '1rem' }}>📦 Most units sold</h3>
+              <h3 style={{ marginTop: 0, fontSize: '1rem' }}>📦 Most units sold<HelpButton title="Most units sold" doc="reports#most-units" size={16} /></h3>
               {mostSoldByUnits.length === 0 ? <p className="text-muted">No product data.</p> : (
                 <table className="data-table" style={{ marginBottom: 0 }}>
                   <thead><tr><th>Product</th><th style={{ textAlign: 'right' }}>Qty sold</th><th style={{ textAlign: 'right' }}>Txns</th></tr></thead>
@@ -707,7 +720,7 @@ export default function ReportsView() {
 
             <div className="glass-panel" style={{ padding: '1.25rem', gridColumn: '1 / -1' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem' }}>📋 All products ({productArr.length})</h3>
+                <h3 style={{ margin: 0, fontSize: '1rem' }}>📋 All products ({productArr.length})<HelpButton title="All products" doc="reports#all-products" size={16} /></h3>
                 <TableExport title="Product performance" filename={`Products-sold-${periodLabel}`} subtitle={exportSubtitle('revenue before tax')}
                   headers={['Product', 'HSN', 'Qty sold', 'Revenue', 'Avg rate', 'Txns', 'Last sold']}
                   rows={[...productArr].sort((a, b) => b.revenue - a.revenue).map(p => [p.name, p.hsn || '', p.qty, r2(p.revenue), p.qty > 0 ? r2(p.revenue / p.qty) : 0, p.txns, p.lastSold || ''])} />
