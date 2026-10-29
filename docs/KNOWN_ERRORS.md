@@ -720,6 +720,30 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-061 - The docs ZIP unpacked as flat files on the web host, every link 404
+
+**Version:** docs-site upload for v1.10.81 · fixed the same day
+**Reported by:** the maintainer, uploading to dicecodes.com
+
+**Symptom** - the host's file manager listed files named
+`free-gst-software-documentation\assets\docs.js`,
+`free-gst-software-documentation\assets\img\app-clients.webp`... in one folder,
+and every page of the docs site returned 404.
+
+**Cause** - the ZIP was made with Windows PowerShell 5.1 `Compress-Archive`,
+which writes `\` as the folder separator inside the ZIP. Linux (the host, and
+`unzip`) treats `\` as part of the file name, so no folders were created.
+
+**Rule** - never zip anything for a web host or Linux with `Compress-Archive`.
+Use Windows' own `tar` (`tar -a -c -f out.zip folder`, writes `/`), and check
+the result before handing it over.
+
+**Guard** - `node scripts/check-zip-paths.mjs <file.zip>` fails on any `\`
+entry; the docs steps in `docs/WEEKLY_RELEASES.md` run it. (The app ZIP has
+had the same guard since ERR-014.)
+
+---
+
 ## ERR-060 - An old Node.js on the PC broke the update, which still said "complete"
 
 **Version:** since the Windows scripts were written · fixed in v1.10.81

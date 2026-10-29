@@ -54,4 +54,11 @@ The app's Support & About page links straight to both forms.
 - [ ] Committed and pushed; release `v<version>` with one `Free-GST-Billing.zip`
 - [ ] `gh api repos/IamRamgarhia/Free-GST-Billing-Software/releases/latest` shows the new tag
 - [ ] Replies posted, shipped issues closed
-- [ ] Docs site rebuilt (`node docs-site/build.mjs`) and uploaded
+- [ ] Docs site rebuilt and zipped into `release-build/` (never with PowerShell's
+      `Compress-Archive`: it writes `\` paths and the site 404s on the host, ERR-061):
+      ```
+      node docs-site/build.mjs
+      cd docs-site/out && tar -a -c -f ../../release-build/docs-v<version>.zip free-gst-software-documentation && cd ../..
+      node scripts/check-zip-paths.mjs release-build/docs-v<version>.zip
+      ```
+      then uploaded in place of `/free-gst-software-documentation/` on dicecodes.com
