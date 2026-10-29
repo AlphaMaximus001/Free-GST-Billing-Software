@@ -1051,6 +1051,7 @@ export default function SettingsView({ onSaved }) {
                         {mod.label}
                         {mod.core && <span style={{ fontSize: '0.65rem', color: '#94a3b8', marginLeft: '0.4rem' }}>(always on)</span>}
                         {mod.indiaOnly && <span style={{ fontSize: '0.65rem', color: '#94a3b8', marginLeft: '0.4rem' }} title="India-only feature">🇮🇳</span>}
+                        {mod.help && <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{mod.help}</span>}
                       </span>
                     </label>
                   );

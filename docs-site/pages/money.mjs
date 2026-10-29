@@ -161,6 +161,30 @@ export default [
 <h2>NIL returns</h2>
 <p>If a period has no sales and no expenses, the app says so. A NIL return is still due, on time. The Filing Guide's <b>NIL Return</b> tab shows how, including by SMS to 14409.</p>
 </section>
+
+<section id="e-invoice">
+<h2>E-invoicing (IRN)</h2>
+<p>A business whose yearly turnover (aggregate, all GSTINs on one PAN) has been above <strong>₹5 crore</strong> in any year since 2017-18 must register its B2B invoices on the e-invoice portal. The portal gives each invoice an <b>IRN</b> (Invoice Reference Number) and a signed QR code, and an invoice without them is not valid. Below ₹5 crore you do not need any of this.</p>
+<p>The app stays offline: it makes the file, you upload it, and you bring the IRN back. Turn on <b>E-invoicing (IRN)</b> in <a href="settings.html#modules">Settings, Modules</a> first; it is off to start.</p>
+<ol class="steps">
+  <li><strong>Download the e-invoice JSON</strong>For one invoice: open it, click ${ui('E-invoice')} in the toolbar, then ${ui('Download e-invoice JSON')}. For several: tick them on the <a href="dashboard.html">Dashboard</a> and click ${ui('E-invoice JSON')} in the bar that appears. Save the invoice first, so its number is final.</li>
+  <li><strong>Upload it on the portal</strong>Log in at einvoice1.gst.gov.in, go to <b>e-Invoice</b>, <b>Bulk Upload</b>, choose the file and upload it. The portal returns the IRN, Ack No, Ack Date and Signed QR Code for each invoice; download that result as JSON.</li>
+  <li><strong>Bring the IRN back</strong>On the Dashboard, click ${ui('Import IRN')} and choose that JSON file. Each IRN is saved on the invoice with the same number, date and GSTIN. Or open one invoice, click ${ui('E-invoice')}, paste the four values and click ${ui('Save IRN')}.</li>
+</ol>
+<p>From then on every design, A4 to thermal, prints <b>IRN</b>, <b>Ack No</b>, <b>Ack Date</b> and the QR code at the top of the invoice. The Dashboard marks such invoices <b>IRN</b>. Importing the IRN changes nothing else on the invoice.</p>
+<p><strong>What goes in the file:</strong> tax invoices and credit notes to clients with a GSTIN, SEZ units and clients abroad (exports), in rupees. A credit note names its original invoice when that number is in the app. The amounts are the ones printed on the invoice, to the paisa. TCS goes in as other charges; a discount on the whole bill goes in as the invoice discount.</p>
+<p><strong>What is checked first.</strong> Invoices with a problem are left out of the file and listed with what to fix:</p>
+<ul>
+  <li>a client with no GSTIN (a sale to a consumer needs no e-invoice), or a GSTIN that looks mistyped;</li>
+  <li>a missing PIN code, city, address or state, yours or the client's (yours are in <a href="settings.html">Settings, Company Details</a>);</li>
+  <li>an item with no HSN/SAC code, or one that is not 4, 6 or 8 digits;</li>
+  <li>an invoice number longer than 16 characters, or with anything other than letters, digits, <code>/</code> and <code>-</code>;</li>
+  <li>a date in the future, a cancelled invoice, an invoice in another currency, or one that already has an IRN.</li>
+</ul>
+<div class="note warn"><strong>Changing an invoice after its IRN</strong>
+<p>The portal does not take changes to a registered invoice. Cancel it on the portal within 24 hours and make a new one, or issue a credit note. The app warns you when you open an invoice that has an IRN.</p></div>
+<p>Businesses with turnover of ₹10 crore or more must report an invoice within 30 days of its date, or the portal refuses it.</p>
+</section>
 `,
 },
 

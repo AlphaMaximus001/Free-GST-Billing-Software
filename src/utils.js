@@ -1890,6 +1890,10 @@ export const FEATURE_GROUPS = [
     modules: [
       { id: 'gstReturns', label: 'GSTR-1 / GSTR-3B exports + filing guide', nav: 'filing', defaultOn: true, indiaOnly: true },
       { id: 'ewayBill',   label: 'E-Way Bill JSON export', nav: null, defaultOn: true, indiaOnly: true },
+      // v1.10.83 (#111) - off by default: only businesses above the turnover
+      // limit need it, and everyone else should never see it.
+      { id: 'einvoice',   label: 'E-invoicing (IRN)', nav: null, defaultOn: false, indiaOnly: true,
+        help: 'Only needed if your yearly turnover is above ₹5 crore. 1) Download the e-invoice JSON. 2) Upload it on einvoice1.gst.gov.in. 3) Bring the IRN back with Import IRN, and it prints on the invoice with its QR code.' },
       { id: 'tdsTcs',     label: 'TDS / TCS on invoices', nav: null, defaultOn: false, indiaOnly: true },
       { id: 'incomeTax',  label: 'Income Tax Helper (regime calc + bank import)', nav: 'incometax', defaultOn: true, indiaOnly: true },
     ],

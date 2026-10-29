@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban, Undo2, Eye } from 'lucide-react';
+import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban, Undo2, Eye, QrCode, Upload } from 'lucide-react';
 import HelpButton from './HelpButton';
-import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts, markSavedPdfCancelled } from '../store';
-import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES, localToday, amountDue, paymentStatusFor } from '../utils';
+import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts, markSavedPdfCancelled, getEnabledModules } from '../store';
+import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES, localToday, amountDue, paymentStatusFor, isModuleEnabled } from '../utils';
+import { prepareEInvoices, parseIrpResponse, matchIrnEntries, downloadJson, einvoiceFileName } from '../utils/einvoice';
+import { EInvoiceReport } from './EInvoiceModal';
 import { openWhatsAppShare } from '../utils/share';
 import PageHeader from './PageHeader';
 import LockButton from './LockButton';
@@ -299,6 +301,10 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
   const [paymentModal, setPaymentModal] = useState(null);
   // v1.10.80 (#100) - the invoice shown read-only by the View button.
   const [viewBill, setViewBill] = useState(null);
+  // v1.10.83 (#111) - e-invoicing: problems after an export, results after an IRN import.
+  const einvoiceOn = isModuleEnabled('einvoice', getEnabledModules());
+  const [einvReport, setEinvReport] = useState(null);
+  const irnFileRef = useRef(null);
   // v1.10.9 — receipt modal state. Opens automatically after
   // recordPayment succeeds; can also be opened via openReceiptFor(...)
   // for reprints.
@@ -901,6 +907,58 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
   // stale bulkExportPDF closure whose getSelectedBills read the OLD
   // (empty) selectedIds → silent no-op. Reported: "Paid button blinks,
   // shows nothing."
+  // v1.10.83 (#111) - one e-invoice JSON for the ticked invoices. Only the
+  // valid ones go in the file; the rest are listed with what to fix.
+  const bulkExportEInvoice = () => {
+    const { docs, problems } = prepareEInvoices(getSelectedBills(), { profile, bills: allBills });
+    if (docs.length) {
+      downloadJson(einvoiceFileName(docs.length === 1 ? docs[0].DocDtls.No : `${docs.length}-invoices-${localToday()}`), docs);
+      toast(`E-invoice JSON downloaded with ${docs.length} invoice${docs.length === 1 ? '' : 's'}. Upload it on einvoice1.gst.gov.in.`, 'success', 6000);
+    }
+    if (problems.length) {
+      setEinvReport({
+        title: docs.length ? `${problems.length} invoice${problems.length === 1 ? ' was' : 's were'} left out` : 'Nothing was exported',
+        intro: 'Fix these, then export them again.',
+        rows: problems,
+      });
+    }
+  };
+
+  // Bring the IRNs back from the portal's response file. Each one is stored on
+  // the invoice with the same number, date and GSTIN; nothing else changes.
+  const importIrnFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    let entries;
+    try { entries = parseIrpResponse(JSON.parse(await file.text())); } catch { entries = []; }
+    if (!entries.length) { toast('No IRN was found in that file. Choose the JSON the e-invoice portal gave you.', 'error', 7000); return; }
+    setBulkBusy(true);
+    try {
+      const fresh = (await getAllBills()).filter((b) => belongsToProfile(b, profile));
+      const results = matchIrnEntries(entries, fresh);
+      let saved = 0;
+      for (const r of results) {
+        if (!r.einvoice) continue;
+        await saveBill({ ...r.bill, einvoice: r.einvoice }, { overwrite: true });
+        saved += 1;
+      }
+      await loadBills();
+      const skipped = results.filter((r) => !r.einvoice);
+      if (saved) toast(`IRN saved on ${saved} invoice${saved === 1 ? '' : 's'}. It now prints on them.`, 'success', 6000);
+      if (skipped.length) {
+        setEinvReport({
+          title: saved ? `IRN saved on ${saved} invoice${saved === 1 ? '' : 's'}; ${skipped.length} not saved` : 'No IRN was saved',
+          rows: skipped.map((r) => ({ invoiceNumber: r.entry.docNo || `IRN ${r.entry.irn.slice(0, 12)}…`, errors: [r.reason] })),
+        });
+      }
+    } catch (err) {
+      console.error('IRN import failed', err);
+      toast('Could not save the IRNs. Try again.', 'error');
+    }
+    setBulkBusy(false);
+  };
+
   const bulkExportPDF = async (billsOverride = null) => {
     const sel = billsOverride || getSelectedBills();
     if (sel.length === 0) return;
@@ -950,7 +1008,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             profile: data.profile, client: data.client, details: data.details, items: data.items,
             totals: data.totals, invoiceType: data.invoiceType, customTerms: data.customTerms,
             customNotes: data.customNotes, extraSections: data.extraSections, options: data.invoiceOptions,
-            cancelled: bill.status === 'cancelled',
+            cancelled: bill.status === 'cancelled', einvoice: bill.einvoice,
           }));
           requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 100)));
         });
@@ -1021,7 +1079,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
           profile: data.profile, client: data.client, details: data.details, items: data.items,
           totals: data.totals, invoiceType: data.invoiceType, customTerms: data.customTerms,
           customNotes: data.customNotes, extraSections: data.extraSections, options: data.invoiceOptions,
-          cancelled: bill.status === 'cancelled',
+          cancelled: bill.status === 'cancelled', einvoice: bill.einvoice,
         }));
         requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 100)));
       });
@@ -1246,6 +1304,15 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         </HelpButton>
         <LockButton />
         <BulkCsvImport kind="sales" onDone={loadBills} />
+        {einvoiceOn && (
+          <>
+            <input ref={irnFileRef} type="file" accept=".json,application/json" onChange={importIrnFile} style={{ display: 'none' }} />
+            <button type="button" className="btn btn-secondary" disabled={bulkBusy} onClick={() => irnFileRef.current?.click()}
+              title="Choose the JSON file the e-invoice portal gave back, to save each IRN on its invoice">
+              <Upload size={16} /> Import IRN
+            </button>
+          </>
+        )}
         <button className="btn btn-primary" onClick={onNew}><Plus size={18} /> New Invoice</button>
       </PageHeader>
 
@@ -1535,6 +1602,10 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
               style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}><FileText size={13} /> Export JSON</button>
             <button type="button" className="btn btn-secondary" disabled={bulkBusy} onClick={() => bulkExportPDF()}
               style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }} title="Combine selected invoices into one multi-page PDF — CAs love this for filing archives"><Download size={13} /> Bulk PDF</button>
+            {einvoiceOn && (
+              <button type="button" className="btn btn-secondary" disabled={bulkBusy} onClick={bulkExportEInvoice}
+                style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }} title="One e-invoice JSON with the ticked invoices, to upload on einvoice1.gst.gov.in"><QrCode size={13} /> E-invoice JSON</button>
+            )}
             {/* v1.10.7 — Cancel button for the in-flight bulk export. The
                  underlying abort flag was wired in v1.10.3; this is the
                  UI surface promised by that changelog. Setting the flag
@@ -1606,7 +1677,8 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                           style={{ width: 15, height: 15, accentColor: 'var(--primary)', cursor: 'pointer' }} />
                       </td>
                       {visibleColumns.date && <td className="text-muted">{new Date(bill.invoiceDate).toLocaleDateString('en-IN')}</td>}
-                      {visibleColumns.invoice && <td><span className="invoice-badge">{bill.invoiceNumber}</span></td>}
+                      {visibleColumns.invoice && <td><span className="invoice-badge">{bill.invoiceNumber}</span>
+                        {bill.einvoice?.irn && <span title={`IRN ${bill.einvoice.irn}`} style={{ marginLeft: 6, fontSize: '0.65rem', fontWeight: 700, color: '#059669' }}>IRN</span>}</td>}
                       {visibleColumns.type && <td><span className="type-badge">{(INVOICE_TYPES[bill.invoiceType || 'tax-invoice'])?.label}</span></td>}
                       {visibleColumns.client && <td className="font-medium td-client" title={bill.clientName}>
                         {bill.clientName}
@@ -1696,6 +1768,8 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         )}
       </div>
 
+      {einvReport && <EInvoiceReport {...einvReport} onClose={() => setEinvReport(null)} />}
+
       {/* v1.10.80 (#100) - View: the invoice as it prints, without opening the editor. */}
       {viewBill?.data && (
         <PrintPreviewModal
@@ -1703,6 +1777,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
           onClose={() => setViewBill(null)}
           onPrint={() => onPrint(viewBill)}
           cancelled={isCancelledBill(viewBill)}
+          einvoice={viewBill.einvoice}
           profile={viewBill.data.profile}
           client={viewBill.data.client || {}}
           details={viewBill.data.details || {}}
