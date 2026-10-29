@@ -287,7 +287,7 @@ install_app() {
     printf '        Free GST Billing: using %s\n' "$FREEGSTBILL_ZIP"
     cp "$FREEGSTBILL_ZIP" "$WORK/app.zip" || fail "Could not read $FREEGSTBILL_ZIP" 'Check the path.'
   else
-    printf '        Free GST Billing (about 60 MB):\n'
+    printf '        Free GST Billing (about 25 MB):\n'
     download "$ZIP_URL" "$WORK/app.zip" || fail 'The app could not be downloaded from GitHub.' 'Check the internet connection, then run the install line again.'
   fi
 

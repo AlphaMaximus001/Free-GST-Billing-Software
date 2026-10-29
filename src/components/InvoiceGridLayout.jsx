@@ -45,7 +45,7 @@ function Signature({ ctx, align = 'right' }) {
       {sig.show && (
         <div style={{ margin: '4px 0' }}>
           <SignatureImages sigImg={sig.sigImg} stampImg={sig.stampImg} sigHeight={sig.sigHeight} stampHeight={sig.stampHeight}
-            layout={sig.layout} align={align} gap={6} sigMaxWidth={160} stampMaxWidth={110} />
+            layout={sig.layout} align={align} gap={6} sigMaxWidth={160} stampMaxWidth={110} spaceBelow={0} />
         </div>
       )}
       {ctx.showSignatoryText && <div>Authorised Signatory</div>}

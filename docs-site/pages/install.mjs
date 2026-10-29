@@ -12,7 +12,7 @@ const key = (...k) => k.map((x) => `<kbd>${x}</kbd>`).join(' + ');
 // no "downloaded from the internet" mark, so Windows and macOS show no
 // warning; the same line installs, updates and repairs.
 const RAW = 'https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main';
-const WIN_LINE = `powershell -ExecutionPolicy Bypass -c "irm ${RAW}/install.ps1 | iex"`;
+const WIN_LINE = `powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm ${RAW}/install.ps1 | iex"`;
 const WIN_REMOVE = `powershell -ExecutionPolicy Bypass -c "&amp; ([scriptblock]::Create((irm ${RAW}/install.ps1))) -Uninstall"`;
 const UNIX_LINE = `curl -fsSL ${RAW}/install.sh | bash`;
 const UNIX_REMOVE = `curl -fsSL ${RAW}/install.sh | bash -s -- --uninstall`;
@@ -38,7 +38,7 @@ ${which}
 <h2>Before you start</h2>
 <ul>
   <li><strong>Windows 10 or Windows 11.</strong> To check: press ${key('Windows', 'R')}, type <code>winver</code>, press ${key('Enter')}.</li>
-  <li><strong>Internet</strong> for the install only (it downloads about 60 MB). After that the app works offline.</li>
+  <li><strong>Internet</strong> for the install only (it downloads about 25 MB). After that the app works offline.</li>
   <li><strong>About 600 MB of free space.</strong></li>
 </ul>
 </section>
@@ -46,13 +46,13 @@ ${which}
 <section id="one-line">
 <h2>Install with one line</h2>
 <ol class="steps">
-  <li><strong>Copy this line</strong>Select all of it with the mouse and press ${key('Ctrl', 'C')}.
+  <li><strong>Copy this line</strong>Click the ${ui('Copy')} button at the right end of the line below. (Or select all of it with the mouse and press ${key('Ctrl', 'C')}.)
 <pre><code>${WIN_LINE}</code></pre></li>
   <li><strong>Press Windows + R</strong>Hold the ${key('Windows')} key (the one with the Windows logo) and press ${key('R')}. A small <b>Run</b> box opens at the bottom left.</li>
   <li><strong>Paste and press Enter</strong>Click in the box, press ${key('Ctrl', 'V')}, then press ${key('Enter')}.</li>
   <li><strong>Watch it work</strong>A blue or black window shows four steps, each ending in <b>OK</b>:
 <pre><code>[1/4] Checking this computer ... OK
-[2/4] Downloading (60 MB) ...
+[2/4] Downloading (25 MB) ...
 [3/4] Installing ... OK
 [4/4] Adding icons ... OK</code></pre>
   It may also fetch Node.js, the engine the app runs on (about 30 MB, kept inside the app folder).</li>
@@ -181,7 +181,7 @@ ${which}
 <section id="one-line">
 <h2>Install with one line</h2>
 <ol class="steps">
-  <li><strong>Copy this line</strong>Select all of it and press ${key('Cmd', 'C')}.
+  <li><strong>Copy this line</strong>Click the ${ui('Copy')} button at the right end of the line below. (Or select all of it and press ${key('Cmd', 'C')}.)
 <pre><code>${UNIX_LINE}</code></pre></li>
   <li><strong>Open Terminal</strong>Press ${key('Cmd', 'Space')}, type <code>Terminal</code> and press ${key('Return')}. A plain text window opens. (More help: <a href="terminal.html#mac">Opening Terminal on a Mac</a>.)</li>
   <li><strong>Paste and press Return</strong>Press ${key('Cmd', 'V')}, then ${key('Return')}.</li>

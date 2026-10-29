@@ -1124,6 +1124,8 @@ try {
     await page.evaluate(() => /All changes saved/.test(document.querySelector('.settings-savebar')?.innerText || '')));
 
   // ---- v1.10.75: the app-wide round-off switch saves the invoice default --
+  // v1.10.83 - Settings is tabbed; the switch lives on the Print & PDF tab.
+  await page.getByRole('button', { name: 'Print & PDF', exact: true }).click();
   const roundOffBox = page.locator('label', { hasText: 'Round off invoice totals' }).locator('input[type="checkbox"]');
   const roundOffBefore = await roundOffBox.isChecked();
   await roundOffBox.click();

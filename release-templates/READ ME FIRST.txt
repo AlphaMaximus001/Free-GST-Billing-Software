@@ -13,7 +13,7 @@
 
   Windows: press Windows + R, paste this line, press Enter:
 
-    powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"
+    powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"
 
   Mac / Linux: open Terminal, paste this line, press Return:
 

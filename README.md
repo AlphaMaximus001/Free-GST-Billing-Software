@@ -64,7 +64,7 @@ Free-GST-Billing/
 **Prefer one command?** Paste this into PowerShell — no admin rights needed:
 
 ```powershell
-irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex
+[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex
 ```
 
 It fetches the latest release, installs it to
@@ -145,7 +145,7 @@ You need: Windows 10/11 PC, ~50 MB free disk, your business name + bank details 
 5. Click **Open App** — the app opens in your browser at `http://localhost:47371`, and a Desktop shortcut is waiting for you next time
 
 > **Easier: one line, no ZIP, no warnings.** Press **Windows + R**, paste this, press **Enter**:
-> `powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"`
+> `powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"`
 > It installs the app, adds Desktop and Start-menu icons and opens it in its own window. Run it again any time to update or repair.
 
 > 💡 **Tip:** Click the small **Install App** icon in your browser's address bar to make the app open in its own window like Tally or Word — no browser chrome, looks and feels native.
@@ -438,7 +438,7 @@ If we priced every 🆕 feature at the going rate on the paid alternatives:
 **Windows:** press **Windows + R**, paste, press **Enter**:
 
 ```
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"
 ```
 
 **Mac / Linux:** open Terminal, paste, press **Return**:
@@ -471,7 +471,7 @@ The one-line install (Option 0) takes the folder from `FREEGSTBILL_DIR`. In Powe
 
 ```powershell
 $env:FREEGSTBILL_DIR = 'D:\Apps\Free GST Billing'
-irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex
+[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex
 ```
 
 On Mac / Linux: `curl -fsSL .../install.sh | FREEGSTBILL_DIR=/srv/free-gst-billing bash`. If the app is already in that folder it is updated in place; the data folder is never touched.
