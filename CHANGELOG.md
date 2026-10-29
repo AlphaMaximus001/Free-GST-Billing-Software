@@ -10,6 +10,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.10.83] - unreleased
 
 ### Added
+- **Business type comes first.** Settings has a new first tab, *Business
+  type*: pick Retail shop, Freelancer, Restaurant, Wholesale, Manufacturing,
+  Service / repair or Everything, and the Features tick boxes are filled in
+  for that business (a freelancer does not see Products or Purchases). New
+  installs choose it in the first-run setup. If you are updating, your
+  current choices stay exactly as they are until you pick a type.
+- **Settings → Features lists everything the app can show**, one tick box
+  each, plus arrows to change the order of the menu. Nothing changes until
+  you click *Save all changes*, and nothing is ever deleted: unticked things
+  are only hidden. Support & About is always shown.
+- **Install with one line** (Windows, Mac and Linux): paste one line from the
+  install guide and the app installs itself, with its own icon, and opens in
+  its own window. No administrator password and no "unknown publisher"
+  warning. The same line updates or repairs the app; your data is backed up
+  first.
+- **Cost centres** (#112, thanks @vhoramunis9510): turn on in Settings →
+  Features, then tag sales, purchases and expenses with a branch, site or
+  project and see the totals per cost centre.
+- **Problem log and "Report on GitHub"**: if something goes wrong, the app
+  shows a plain message instead of a blank screen, keeps a log (Support &
+  About → Problem log) and fills in a GitHub issue for you with the details,
+  ready to send. The docs have a new list of messages and how to fix each.
 - **Supporters list with amounts:** Support & About shows "Thank you to our
   N supporters - see all"; one click opens the full list with each name, the
   amount and the date, newest first, with a search once the list is long.
@@ -34,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Open, Partly received or Received from what the bills received. Stock
   changes only when the bill is saved.
 - **E-invoicing (IRN), offline** (#111, thanks @Sumit200507). Turn on
-  *E-invoicing (IRN)* in Settings → Modules (off by default; only for
+  *E-invoicing (IRN)* in Settings → Features (off by default; only for
   businesses above ₹5 crore turnover). Download the e-invoice JSON for one
   invoice (**E-invoice** in the invoice toolbar) or many (tick them →
   **E-invoice JSON**). It is checked first, and anything the portal would
@@ -53,6 +75,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   report counts production by its date.
 
 ### Changed
+- **Settings opens as tabs**: one page per tab (Business type, Company,
+  Profiles, Print & PDF, Features...) instead of one very long page.
+- **Every ? opens its guide at the right place**: the ? on each screen, each
+  Settings tab and each dialog goes straight to that topic in the online
+  guide, and the guide highlights it.
+- **Smaller download**: the app ZIP is about 25 MB instead of 58 MB, so it
+  downloads, starts for the first time and updates faster.
 - **Purchases show CGST + SGST** (#117): the purchase form shows the tax split
   as you type (IGST for an inter-state bill), and the purchase register export
   has CGST, SGST and IGST columns instead of one tax column. CGST and SGST
@@ -62,6 +91,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Purchase bills took 18% GST for every product picked on a new line**,
   instead of the product's own rate (a 12% item was booked at 18%, giving the
   wrong input tax credit). A product with no rate saved still gets 18%.
+- **Stop Server did nothing on Mac and Linux** (the button was greyed out).
+  It now stops the app there too.
+- **Windows: the first Open App could wait 90 seconds and give up** when
+  another program was using the app's usual port. It now finds the port the
+  app moved to.
+- **The Windows install line failed on some older Windows 10 PCs** that do
+  not use the newer secure connection by default. The line now turns it on.
 
 ---
 
