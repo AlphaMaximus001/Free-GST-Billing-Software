@@ -4,6 +4,13 @@
 # Desktop shortcut. Idempotent - safe to click multiple times.
 # If the server is already running on our chosen port, we just
 # open the browser without spawning a duplicate node.exe.
+#
+# v1.10.83 - -AppWindow opens the app in its own window (Edge --app: no tabs,
+# no address bar) instead of a browser tab; the one-line install's icons use
+# it. -Hidden says nobody can see this console (the icon runs it hidden), so
+# a problem re-opens this script in a window that shows it and waits.
+
+param([switch]$AppWindow, [switch]$Hidden)
 
 $ErrorActionPreference = 'Continue'
 $Host.UI.RawUI.WindowTitle = 'Free GST Billing - Server'
@@ -142,9 +149,36 @@ function TestServerUp {
   } catch { return $false }
 }
 
+# v1.10.83 - Edge is on every Windows 10 / 11 PC; its --app window has no tabs
+# or address bar, so the app looks like a program. Otherwise: a browser tab.
+# FREEGSTBILL_TEST (the installer's test mode) opens nothing.
+function Open-App([int]$p) {
+  $url = "http://localhost:$p/"
+  if ($env:FREEGSTBILL_TEST) { Write-Host "  (test mode: would open $url)"; return }
+  if ($AppWindow) {
+    foreach ($d in @(${env:ProgramFiles(x86)}, $env:ProgramFiles, $env:LOCALAPPDATA)) {
+      if (-not $d) { continue }
+      $edge = Join-Path $d 'Microsoft\Edge\Application\msedge.exe'
+      if (Test-Path -LiteralPath $edge) { Start-Process -FilePath $edge -ArgumentList "--app=$url"; return }
+    }
+  }
+  Start-Process $url
+}
+
+# Stops with the problem on screen. Run hidden (from the icon), nobody would
+# see it, so the same script is opened again in a normal window instead.
+function Exit-WithProblem {
+  if ($Hidden) {
+    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -AppWindow"
+    exit 1
+  }
+  Read-Host '  Press Enter to close'
+  exit 1
+}
+
 if (TestServerUp -p $port) {
-  Write-Host "  Server already running on port $port - opening browser..."
-  Start-Process "http://localhost:$port/"
+  Write-Host "  Server already running on port $port - opening the app..."
+  Open-App $port
   exit 0
 }
 
@@ -157,18 +191,14 @@ if (TestServerUp -p $port) {
 # on PATH was started here and never answered.
 . (Join-Path $SystemDir 'ensure-node.ps1')
 $NodeExe = Use-GoodNode
-if (-not $NodeExe) {
-  Read-Host '  Press Enter to close'
-  exit 1
-}
-if ($script:NodeWasFetched -or -not (Test-Path -LiteralPath (Join-Path $SystemDir 'node_modules\express\package.json'))) {
+if (-not $NodeExe) { Exit-WithProblem }
+# v1.10.83 - the ZIP ships complete packages, which work with any Node.js 18+;
+# only a missing or half-done node_modules (an old npm, ERR-060) is redone.
+if (-not (Test-PackagesReady)) {
   # The packages were installed by the old Node.js (or not at all): again.
   Write-Host '  Installing the app packages for this Node.js (one time)...'
   Reset-Packages
-  if (-not (Test-InstallReady)) {
-    Read-Host '  Press Enter to close'
-    exit 1
-  }
+  if (-not (Test-InstallReady)) { Exit-WithProblem }
   Push-Location $SystemDir
   npm install --omit=dev --no-audit --no-fund --loglevel=error
   $npmCode = $LASTEXITCODE
@@ -176,13 +206,14 @@ if ($script:NodeWasFetched -or -not (Test-Path -LiteralPath (Join-Path $SystemDi
   if ($npmCode -ne 0) {
     Show-InstallHelp
     Write-Host '  Then click Open App again.'
-    Read-Host '  Press Enter to close'
-    exit 1
+    Exit-WithProblem
   }
 }
 Write-Host "  Starting server on port $port..."
 Push-Location $SystemDir
-Start-Process -FilePath $NodeExe -ArgumentList 'server.js' -WorkingDirectory $SystemDir -WindowStyle Hidden
+# v1.10.83 - the full path, so the installer can tell this install's server
+# from any other node.exe when it has to stop it for an update.
+Start-Process -FilePath $NodeExe -ArgumentList "`"$(Join-Path $SystemDir 'server.js')`"" -WorkingDirectory $SystemDir -WindowStyle Hidden
 Pop-Location
 
 # Poll until the server responds. 15 seconds was not enough: the very first
@@ -197,7 +228,7 @@ $announced = 0
 while ((Get-Date) -lt $deadline) {
   Start-Sleep -Milliseconds 400
   if (TestServerUp -p $port) {
-    Start-Process "http://localhost:$port/"
+    Open-App $port
     exit 0
   }
   # Say something every 10s so a slow first start does not look like a hang.
@@ -213,4 +244,4 @@ Write-Host '  The server has not answered in 90 seconds.' -ForegroundColor Yello
 Write-Host '  It may still be starting - try this address in your browser:'
 Write-Host "  http://localhost:$port/"
 Write-Host '  If that does not work, close this window and click Open App again.'
-Read-Host '  Press Enter to close'
+Exit-WithProblem

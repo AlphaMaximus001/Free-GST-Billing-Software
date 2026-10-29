@@ -116,7 +116,9 @@ else
   fail 'Updating needs "unzip" (or python3) to open the release ZIP. Install it, then click Update again:
     Debian / Ubuntu:  sudo apt install unzip
     Alpine:           apk add unzip
-  Nothing was changed.'
+  Nothing was changed.
+  (Or update with the one-line install, which needs neither:
+    curl -fsSL https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.sh | FREEGSTBILL_DIR="'"$(dirname "$SYSTEM_DIR")"'" sh )'
 fi
 
 FROM=$(version_of "$SYSTEM_DIR")
@@ -241,11 +243,18 @@ say 'Applying the update (your data folder is not touched)...'
 rm -rf "$ROLLBACK"
 mkdir -p "$ROLLBACK"
 : > "$WORK/added"
+# v1.10.83 - a release that ships its packages replaces node_modules like any
+# other app folder (and a rollback puts the old one back); npm is not needed.
+SHIPPED=''
+[ -f "$NEW_SYSTEM/node_modules/express/package.json" ] && SHIPPED=1
 STATE=applying
 for entry in "$NEW_SYSTEM"/* "$NEW_SYSTEM"/.[!.]*; do
   [ -e "$entry" ] || continue
   name=$(basename "$entry")
-  case "$name" in data|node_modules) continue ;; esac
+  case "$name" in
+    data) continue ;;
+    node_modules) [ -n "$SHIPPED" ] || continue ;;
+  esac
   if [ -e "$SYSTEM_DIR/$name" ]; then
     # A rename inside the same folder: instant, and safe even for this
     # script, which the shell keeps reading through its open file handle.
@@ -257,10 +266,12 @@ for entry in "$NEW_SYSTEM"/* "$NEW_SYSTEM"/.[!.]*; do
 done
 
 # --- Step 6: dependencies ----------------------------------------------------
-say 'Reinstalling dependencies (this can take a few minutes)...'
-STATE=installing
-(cd "$SYSTEM_DIR" && npm install --omit=dev --no-audit --no-fund --loglevel=error) \
-  || fail 'npm install failed.'
+if [ -z "$SHIPPED" ]; then
+  say 'Reinstalling dependencies (this can take a few minutes)...'
+  STATE=installing
+  (cd "$SYSTEM_DIR" && npm install --omit=dev --no-audit --no-fund --loglevel=error) \
+    || fail 'npm install failed.'
+fi
 STATE=done
 
 # Refresh the launchers beside _system/ only now that nothing can roll back.
