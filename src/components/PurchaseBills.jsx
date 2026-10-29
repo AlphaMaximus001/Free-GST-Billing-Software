@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
-import { ShoppingCart, Plus, Edit3, Trash2, Search, X, Save, Download, Wand2, Eye, ClipboardList } from 'lucide-react';
+import { ShoppingCart, Plus, Edit3, Trash2, Search, X, Save, Download, Wand2, Eye, ClipboardList, IndianRupee } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllPurchases, savePurchase, deletePurchase, getAllProducts, saveProduct, getProfile, getEnabledModules, getAllPurchaseOrders, savePurchaseOrder, getNextPoNumber } from '../store';
 import { formatCurrency, getFYOptions, belongsToProfile, isUnassignedToBusiness, isInterstateSupply, localToday, roundQty, splitPurchaseTax, isModuleEnabled, businessKeyOf, getAllUnits, TDS_SECTIONS } from '../utils';
@@ -15,6 +15,8 @@ import { confirmAction, promptAction } from './ConfirmModal';
 import { useCostCentres } from './useCostCentres';
 import { CostCentreSelect, CostCentreFilter } from './CostCentrePicker';
 import { matchesCentre, centreFields } from '../utils/costCentres';
+import { PURCHASE_STATUS_LABEL, OVERPAY_SLACK, purchaseStatus, purchaseBalance, purchasePaid, purchaseOwed, hasPurchasePayments, withPurchasePayments, markPurchasePaid, markPurchaseUnpaid, purchasePaymentModeName } from '../utils/purchasePayments';
+import PurchasePaymentModal from './PurchasePaymentModal';
 
 // v1.10.31 — UI-C3: Same accent-color helper as ClientsView so the
 // Purchase Bill PDF header rule + totals line pick up the user's brand.
@@ -125,6 +127,10 @@ export default function PurchaseBills() {
   // check the price without downloading the file every time". Holds the
   // purchase being previewed; modal has a Download PDF button inside.
   const [viewPurchase, setViewPurchase] = useState(null);
+  // v1.10.83 (#123) - the bill whose supplier payments are open, and the
+  // status filter ('' all, 'due' unpaid or partly paid, 'Paid').
+  const [payPurchase, setPayPurchase] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('');
   // v1.10.83 (#112) - purchase orders, when switched on in Settings -> Features.
   const [poEnabled] = useState(() => isModuleEnabled('purchaseOrders', getEnabledModules()));
   const [tab, setTab] = useState('bills');
@@ -250,13 +256,15 @@ export default function PurchaseBills() {
         if (p.date < fy.from || p.date > fy.to) return false;
       }
     }
+    if (statusFilter === 'due' && purchaseStatus(p) === 'Paid') return false;
+    if (statusFilter === 'Paid' && purchaseStatus(p) !== 'Paid') return false;
     return matchesCentre(p, centreFilter);
   });
 
   const totalStats = filtered.reduce((acc, p) => {
     const t = calcPurchaseTotal(p.items, !!p.applyRoundOff);
-    return { taxable: acc.taxable + t.taxable, tax: acc.tax + t.tax, total: acc.total + t.finalTotal };
-  }, { taxable: 0, tax: 0, total: 0 });
+    return { taxable: acc.taxable + t.taxable, tax: acc.tax + t.tax, total: acc.total + t.finalTotal, owed: acc.owed + purchaseBalance(p) };
+  }, { taxable: 0, tax: 0, total: 0, owed: 0 });
 
   const openAdd = () => {
     setForm({ ...emptyForm, date: localToday(), items: [{ ...emptyItem }] });
@@ -455,7 +463,7 @@ export default function PurchaseBills() {
       doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(100);
       doc.text(`Invoice #: ${purchase.invoiceNumber || '-'}`, marginL, y); y += 5;
       doc.text(`Date: ${purchase.date ? new Date(purchase.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}`, marginL, y); y += 5;
-      doc.text(`Payment: ${purchase.paymentStatus || 'Unpaid'}   ·   ${purchase.interstate ? 'Interstate (IGST)' : 'Intrastate (CGST+SGST)'}`, marginL, y); y += 8;
+      doc.text(`Payment: ${PURCHASE_STATUS_LABEL[purchaseStatus(purchase)]}   ·   ${purchase.interstate ? 'Interstate (IGST)' : 'Intrastate (CGST+SGST)'}`, marginL, y); y += 8;
       doc.setDrawColor(...getAccentRGB()); doc.setLineWidth(0.5);
       doc.line(marginL, y, marginR, y); y += 8;
 
@@ -539,6 +547,33 @@ export default function PurchaseBills() {
         doc.text('Paid to supplier', marginL + 100, y); doc.text(fmt(t.finalTotal - purchase.tdsAmount), marginR, y, { align: 'right' });
       }
 
+      // v1.10.83 (#123) - payments made to the supplier, and what is left.
+      const pays = purchase.payments || [];
+      if (pays.length) {
+        y += 12;
+        if (y + 14 + pays.length * 5 > 280) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(0);
+        doc.text('Payments made', marginL, y); y += 2;
+        doc.setLineWidth(0.2); doc.line(marginL, y, marginR, y); y += 5;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+        for (const x of pays) {
+          if (y > 280) { doc.addPage(); y = 20; }
+          const when = x.date ? new Date(`${x.date}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+          doc.text(when, marginL, y);
+          doc.text(purchasePaymentModeName(x.mode), marginL + 30, y);
+          doc.text(doc.splitTextToSize([x.reference, x.note].filter(Boolean).join(' · ') || '', 90)[0] || '', marginL + 60, y);
+          doc.text(fmt(x.amount), marginR, y, { align: 'right' });
+          y += 5;
+        }
+      }
+      if (pays.length || purchaseStatus(purchase) === 'Paid') {
+        y += pays.length ? 1 : 8;
+        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(0);
+        if (pays.length) { doc.text('Paid', marginL + 100, y); doc.text(fmt(purchasePaid(purchase)), marginR, y, { align: 'right' }); y += 5; }
+        doc.setFont('helvetica', 'bold');
+        doc.text('Balance due', marginL + 100, y); doc.text(fmt(purchaseBalance(purchase)), marginR, y, { align: 'right' });
+      }
+
       if (purchase.note) {
         y += 14; doc.setFontSize(9); doc.setFont('helvetica', 'italic'); doc.setTextColor(90);
         doc.text('Note: ' + purchase.note, marginL, y);
@@ -571,7 +606,8 @@ export default function PurchaseBills() {
     }
     try {
       const totals = calcPurchaseTotal(form.items, form.applyRoundOff);
-      const purchase = {
+      const before = editingId ? purchases.find(p => p.id === editingId) : null;
+      const purchaseFields = {
         ...(editingId ? { id: editingId } : {}),
         date: form.date,
         supplierName: form.supplierName.trim(),
@@ -609,6 +645,20 @@ export default function PurchaseBills() {
         ...centreFields(form.costCentre, form.costCentreName),
         ...purchaseTdsFields(form, totals.taxable),
       };
+      // v1.10.83 (#123) - payments to the supplier stay with the bill when it
+      // is edited, and the status follows them (and a new total or TDS). With
+      // no payments, choosing Paid records one for the balance, as the list
+      // does; an old bill already marked Paid keeps its mark.
+      let purchase = purchaseFields;
+      if (hasPurchasePayments(before)) {
+        purchase = withPurchasePayments(purchaseFields, before.payments);
+        if (purchasePaid(purchase) > purchaseOwed(purchase) + OVERPAY_SLACK) {
+          toast(`Payments of ${formatCurrency(purchasePaid(purchase))} are already recorded, more than this bill now comes to (${formatCurrency(purchaseOwed(purchase))}). Change or delete a payment first (₹ button in the list).`, 'warning');
+          return;
+        }
+      } else if (form.paymentStatus === 'Paid' && (before?.paymentStatus || 'Unpaid') !== 'Paid') {
+        purchase = markPurchasePaid(purchaseFields, localToday());
+      }
       await savePurchase(purchase);
 
       // v1.10.29 — reported: "items added in purchase bill also available
@@ -744,11 +794,18 @@ export default function PurchaseBills() {
   // v1.10.69 (#71 item 3) - change the payment status straight from the list.
   // Saves the whole record back, so nothing else about the bill is disturbed;
   // the list is reloaded afterwards so the supplier-payable totals follow.
+  // v1.10.83 (#123) - Paid records one payment for the balance, Unpaid takes
+  // that payment back (yours stay), Partly paid opens Record payment for the
+  // amount. See utils/purchasePayments.js.
   const changePaymentStatus = async (purchase, paymentStatus) => {
-    if ((purchase.paymentStatus || 'Unpaid') === paymentStatus) return;
+    if (purchaseStatus(purchase) === paymentStatus) return;
+    if (paymentStatus === 'Partial') { setPayPurchase(purchase); return; }
+    const next = paymentStatus === 'Paid' ? markPurchasePaid(purchase, localToday()) : markPurchaseUnpaid(purchase);
     try {
-      await savePurchase({ ...purchase, paymentStatus });
-      toast(`Marked ${paymentStatus.toLowerCase()}`, 'success');
+      await savePurchase(next);
+      const now = purchaseStatus(next);
+      toast(now === paymentStatus ? `Marked ${PURCHASE_STATUS_LABEL[now].toLowerCase()}`
+        : `Now ${PURCHASE_STATUS_LABEL[now].toLowerCase()}: payments you recorded stay. Delete them with the ₹ button.`, now === paymentStatus ? 'success' : 'info');
       loadPurchases();
     } catch {
       toast('Could not change the status', 'error');
@@ -1012,18 +1069,19 @@ export default function PurchaseBills() {
   const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
   const registerRows = (() => {
     if (!filtered.length) return [];
-    const sum = { taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0, roundOff: 0, finalTotal: 0 };
+    const sum = { taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0, roundOff: 0, finalTotal: 0, paid: 0, balance: 0 };
     const rows = [...filtered].sort((x, y) => String(x.date || '').localeCompare(String(y.date || ''))).map(p => {
-      const t = { ...calcPurchaseTotal(p.items, !!p.applyRoundOff) };
+      const t = { ...calcPurchaseTotal(p.items, !!p.applyRoundOff), paid: purchasePaid(p), balance: purchaseBalance(p) };
       Object.assign(t, splitPurchaseTax(t.tax, !!p.interstate));
       for (const k of Object.keys(sum)) sum[k] += Number(t[k]) || 0;
       return [p.date || '', p.supplierName || '', p.supplierGstin || '', p.invoiceNumber || '', r2(t.taxable), r2(t.cgst), r2(t.sgst), r2(t.igst), r2(t.cess),
-        p.interstate ? 'Y' : 'N', r2(t.roundOff), r2(t.finalTotal), p.paymentStatus || '', p.note || ''];
+        p.interstate ? 'Y' : 'N', r2(t.roundOff), r2(t.finalTotal), r2(t.paid), r2(t.balance), PURCHASE_STATUS_LABEL[purchaseStatus(p)], p.note || ''];
     });
-    return [...rows, ['Total', '', '', '', r2(sum.taxable), r2(sum.cgst), r2(sum.sgst), r2(sum.igst), r2(sum.cess), '', r2(sum.roundOff), r2(sum.finalTotal), '', '']];
+    return [...rows, ['Total', '', '', '', r2(sum.taxable), r2(sum.cgst), r2(sum.sgst), r2(sum.igst), r2(sum.cess), '', r2(sum.roundOff), r2(sum.finalTotal), r2(sum.paid), r2(sum.balance), '', '']];
   })();
 
   const isPo = form.kind === 'po';
+  const editingBill = !isPo && editingId ? purchases.find(p => p.id === editingId) : null;
   const fromPoNumber = form.fromPo ? orders.find(o => o.id === form.fromPo)?.poNumber : '';
   const formTotals = calcPurchaseTotal(form.items, !isPo && form.applyRoundOff);
   const formTds = !isPo && form.tdsOn ? purchaseTdsFields(form, formTotals.taxable).tdsAmount : 0;
@@ -1043,7 +1101,7 @@ export default function PurchaseBills() {
             <button className="btn btn-primary" onClick={() => openNewPo()}><Plus size={18} /> New purchase order</button>
           </div>
         ) : (
-        <div className="flex gap-2">
+        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
           <button className="btn btn-secondary" onClick={() => setShowOCR(true)} title="Extract fields from a bill photo/scan">
             <Wand2 size={16} /> Import from image (OCR)
           </button>
@@ -1091,7 +1149,7 @@ export default function PurchaseBills() {
                 <button className="icon-btn" onClick={() => setViewPurchase(null)} title="Close"><X size={18} /></button>
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                {p.date ? new Date(p.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''} · {p.paymentStatus || 'Unpaid'} · {p.interstate ? 'Interstate (IGST)' : 'Intrastate (CGST+SGST)'}
+                {p.date ? new Date(p.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''} · {PURCHASE_STATUS_LABEL[purchaseStatus(p)]} · {p.interstate ? 'Interstate (IGST)' : 'Intrastate (CGST+SGST)'}
               </div>
               {/* Supplier block */}
               <div style={{ background: 'var(--bg-secondary)', padding: '0.75rem 1rem', borderRadius: 6, marginBottom: '1rem' }}>
@@ -1162,11 +1220,33 @@ export default function PurchaseBills() {
                     <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(t.finalTotal - p.tdsAmount)}</span>
                   </>
                 )}
+                {/* v1.10.83 (#123) - paid so far and what is left. */}
+                {hasPurchasePayments(p) && (
+                  <><span style={{ color: 'var(--text-muted)' }}>Paid</span><span style={{ textAlign: 'right' }}>{formatCurrency(purchasePaid(p))}</span></>
+                )}
+                <span style={{ fontWeight: 600 }}>Balance due</span>
+                <span style={{ textAlign: 'right', fontWeight: 600, color: purchaseBalance(p) > 0.005 ? 'var(--danger)' : 'var(--success)' }}>{formatCurrency(purchaseBalance(p))}</span>
               </div>
-              {p.note && <p style={{ fontSize: '0.82rem', fontStyle: 'italic', color: 'var(--text-muted)', marginTop: '1rem' }}>Note: {p.note}</p>}
+              {hasPurchasePayments(p) && (
+                <div style={{ marginTop: '1rem' }}>
+                  <div className="form-label">Payments made <HelpButton title="Payment history" doc="purchases#payment-history" size={14} /></div>
+                  <div className="payment-history">
+                    {p.payments.map((x, i) => (
+                      <div key={x.id || i} className="payment-row" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span style={{ minWidth: 90 }}>{x.date ? new Date(`${x.date}T00:00:00`).toLocaleDateString('en-IN') : '-'}</span>
+                        <span className="font-bold" style={{ minWidth: 100 }}>{formatCurrency(x.amount)}</span>
+                        <span className="text-muted">{purchasePaymentModeName(x.mode)}</span>
+                        {(x.reference || x.note) && <span className="text-muted" style={{ overflowWrap: 'anywhere' }}>· {[x.reference, x.note].filter(Boolean).join(' · ')}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {p.note &&<p style={{ fontSize: '0.82rem', fontStyle: 'italic', color: 'var(--text-muted)', marginTop: '1rem' }}>Note: {p.note}</p>}
               {/* Action bar */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
                 <button className="btn btn-secondary" onClick={() => setViewPurchase(null)}>Close</button>
+                <button className="btn btn-secondary" onClick={() => { setPayPurchase(p); setViewPurchase(null); }}><IndianRupee size={14} /> Payments</button>
                 <button className="btn btn-secondary" onClick={() => { openEdit(p); setViewPurchase(null); }}><Edit3 size={14} /> Edit</button>
                 <button className="btn btn-primary" onClick={() => viewAsPdf(p)}><Download size={14} /> Download PDF</button>
               </div>
@@ -1174,6 +1254,10 @@ export default function PurchaseBills() {
           </div>
         );
       })()}
+
+      {payPurchase && (
+        <PurchasePaymentModal purchase={payPurchase} onClose={() => setPayPurchase(null)} onChanged={() => loadPurchases()} />
+      )}
 
       {/* Stats */}
       {tab === 'bills' && (<>
@@ -1184,10 +1268,18 @@ export default function PurchaseBills() {
         onAssign={assignUnassignedPurchases}
       />
 
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+      <div className="stats-grid stats-grid-4">
         <div className="stat-card">
           <div className="stat-icon stat-icon-purple"><ShoppingCart size={22} /></div>
           <div><p className="stat-label">Total Purchases</p><h2 className="stat-value stat-value-purple">{formatCurrency(totalStats.total)}</h2></div>
+        </div>
+        {/* v1.10.83 (#123) - what is still to pay on the bills shown. */}
+        <div className="stat-card">
+          <div className="stat-icon stat-icon-amber"><IndianRupee size={22} /></div>
+          <div>
+            <p className="stat-label">Owed to suppliers <HelpButton title="Owed to suppliers" doc="purchases#owed-to-suppliers" size={13} /></p>
+            <h2 className="stat-value" style={{ color: totalStats.owed > 0.005 ? 'var(--danger)' : undefined }}>{formatCurrency(totalStats.owed)}</h2>
+          </div>
         </div>
         <div className="stat-card">
           <div className="stat-icon stat-icon-green"><ShoppingCart size={22} /></div>
@@ -1212,9 +1304,14 @@ export default function PurchaseBills() {
             <option value="">All years</option>
             {fyOptions.map(fy => <option key={fy.value} value={fy.value}>{fy.label}</option>)}
           </select>
+          <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} aria-label="Payment status">
+            <option value="">All bills</option>
+            <option value="due">Unpaid / Partly paid</option>
+            <option value="Paid">Paid</option>
+          </select>
           {ccOn && <CostCentreFilter centres={centres} value={centreFilter} onChange={setCentreFilter} />}
-          {(search || centreFilter) && (
-            <button className="icon-btn icon-btn-red" onClick={() => { setSearch(''); setCentreFilter(''); }} title="Clear search" aria-label="Clear search"><X size={15} /></button>
+          {(search || centreFilter || statusFilter) && (
+            <button className="icon-btn icon-btn-red" onClick={() => { setSearch(''); setCentreFilter(''); setStatusFilter(''); }} title="Clear search" aria-label="Clear search"><X size={15} /></button>
           )}
         </div>
       </div>
@@ -1244,10 +1341,20 @@ export default function PurchaseBills() {
                 </div>
               ) : (
               <div className="form-group">
-                <label className="form-label">Payment Status</label>
-                <select className="form-input" value={form.paymentStatus} onChange={e => updateField('paymentStatus', e.target.value)}>
-                  {PAYMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <label className="form-label">Payment Status <HelpButton title="Paying suppliers" doc="purchases#payment-status" size={13} /></label>
+                {/* v1.10.83 (#123) - with payments recorded, they decide the
+                    status: change them from the ₹ button in the list. A part
+                    payment needs its amount, so Partly paid is not offered here
+                    (an old bill already Partial keeps it). */}
+                {hasPurchasePayments(editingBill) ? (
+                  <div className="form-input" style={{ background: 'var(--bg-secondary)', fontSize: '0.85rem' }}>
+                    {PURCHASE_STATUS_LABEL[purchaseStatus(editingBill)]} · {editingBill.payments.length} payment{editingBill.payments.length === 1 ? '' : 's'} (₹ button in the list)
+                  </div>
+                ) : (
+                  <select className="form-input" value={form.paymentStatus} onChange={e => updateField('paymentStatus', e.target.value)}>
+                    {PAYMENT_STATUSES.filter(s => s !== 'Partial' || form.paymentStatus === 'Partial').map(s => <option key={s} value={s}>{PURCHASE_STATUS_LABEL[s]}</option>)}
+                  </select>
+                )}
               </div>
               )}
               <div className="form-group">
@@ -1519,7 +1626,7 @@ export default function PurchaseBills() {
           <h3>Purchase Records <HelpButton title="Purchase Records" doc="purchases#purchase-list" size={16} /></h3>
           <TableExport title="Purchase register" filename="Purchases" landscape
             subtitle={ownerProfile?.businessName || ''}
-            headers={['Date', 'Supplier', 'GSTIN', 'Invoice No', 'Taxable Amount', 'CGST', 'SGST', 'IGST', 'Cess', 'Inter-state', 'Round-off', 'Total', 'Status', 'Note']}
+            headers={['Date', 'Supplier', 'GSTIN', 'Invoice No', 'Taxable Amount', 'CGST', 'SGST', 'IGST', 'Cess', 'Inter-state', 'Round-off', 'Total', 'Paid', 'Balance due', 'Status', 'Note']}
             rows={registerRows} />
         </div>
         {filtered.length === 0 ? (
@@ -1540,6 +1647,7 @@ export default function PurchaseBills() {
                   <th style={{ textAlign: 'right' }}>Taxable</th>
                   <th style={{ textAlign: 'right' }}>Tax</th>
                   <th style={{ textAlign: 'right' }}>Total</th>
+                  <th style={{ textAlign: 'right' }}>Balance due</th>
                   <th>Status</th>
                   <th className="col-center">Actions</th>
                 </tr>
@@ -1547,6 +1655,8 @@ export default function PurchaseBills() {
               <tbody>
                 {filtered.map(p => {
                   const t = calcPurchaseTotal(p.items, !!p.applyRoundOff);
+                  const st = purchaseStatus(p);
+                  const bal = purchaseBalance(p);
                   return (
                     <tr key={p.id}>
                       <td className="text-muted">{p.date ? new Date(p.date).toLocaleDateString('en-IN') : ''}</td>
@@ -1556,6 +1666,7 @@ export default function PurchaseBills() {
                       <td style={{ textAlign: 'right' }}>{formatCurrency(t.taxable)}</td>
                       <td style={{ textAlign: 'right' }} className="text-muted">{formatCurrency(t.tax)}</td>
                       <td style={{ textAlign: 'right' }} className="font-bold">{formatCurrency(t.finalTotal)}</td>
+                      <td style={{ textAlign: 'right', color: bal > 0.005 ? 'var(--danger)' : 'var(--text-muted)' }}>{bal > 0.005 ? formatCurrency(bal) : '-'}</td>
                       {/* v1.10.69 - requested (#71 item 3, @sangwanmail-eng):
                           "the Status column should have a drop-down option,
                           similar to the Status drop-down available on the
@@ -1563,10 +1674,10 @@ export default function PurchaseBills() {
                           opening it, changing one field and saving. */}
                       <td>
                         <select className="status-select"
-                          value={p.paymentStatus || 'Unpaid'}
-                          style={{ background: PAYMENT_STATUS_COLORS[p.paymentStatus || 'Unpaid'].bg, color: PAYMENT_STATUS_COLORS[p.paymentStatus || 'Unpaid'].color, borderColor: PAYMENT_STATUS_COLORS[p.paymentStatus || 'Unpaid'].color + '44' }}
+                          value={st} aria-label={`Payment status of ${p.invoiceNumber}`}
+                          style={{ background: PAYMENT_STATUS_COLORS[st].bg, color: PAYMENT_STATUS_COLORS[st].color, borderColor: PAYMENT_STATUS_COLORS[st].color + '44' }}
                           onChange={e => changePaymentStatus(p, e.target.value)}>
-                          {PAYMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                          {PAYMENT_STATUSES.map(s => <option key={s} value={s}>{PURCHASE_STATUS_LABEL[s]}</option>)}
                         </select>
                       </td>
                       <td>
@@ -1575,6 +1686,8 @@ export default function PurchaseBills() {
                               Modal has a Download PDF button inside for
                               users who do want the file. */}
                           <button className="icon-btn" onClick={() => setViewPurchase(p)} title="View details (no download)"><Eye size={15} /></button>
+                          {/* v1.10.83 (#123) - record / see payments to the supplier. */}
+                          <button className="icon-btn icon-btn-green" onClick={() => setPayPurchase(p)} title={st === 'Paid' ? 'Payment history' : 'Record payment to supplier'} aria-label="Payments to supplier"><IndianRupee size={15} /></button>
                           <button className="icon-btn icon-btn-blue" onClick={() => openEdit(p)} title="Edit"><Edit3 size={15} /></button>
                           <button className="icon-btn icon-btn-red" onClick={() => handleDelete(p.id)} title="Delete"><Trash2 size={15} /></button>
                         </div>
@@ -1589,6 +1702,7 @@ export default function PurchaseBills() {
                   <td style={{ textAlign: 'right' }}>{formatCurrency(totalStats.taxable)}</td>
                   <td style={{ textAlign: 'right' }}>{formatCurrency(totalStats.tax)}</td>
                   <td style={{ textAlign: 'right' }}>{formatCurrency(totalStats.total)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatCurrency(totalStats.owed)}</td>
                   <td colSpan={2}></td>
                 </tr>
               </tfoot>

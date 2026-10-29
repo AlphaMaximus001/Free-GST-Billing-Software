@@ -15,6 +15,7 @@ import { fileURLToPath } from 'url';
 // v1.10.83 - same redaction as the browser's Problem log, for errors.log lines.
 import { redact } from './src/utils/errorReport.js';
 import { validateCashEntry, cleanCashEntry } from './src/utils/cashBook.js';
+import { validatePurchasePayments } from './src/utils/purchasePayments.js';
 import { templateTotals, clientYearToDate, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, businessKeyOf, getFinancialYearLabel, INVOICE_TYPES } from './src/utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -626,6 +627,11 @@ app.get('/api/purchases', (req, res) => {
 
 app.post('/api/purchases', (req, res) => {
   const purchase = req.body;
+  // v1.10.83 (#123) - payments to the supplier: each more than 0 with a date,
+  // and together not more than the bill (less TDS) by more than a rupee.
+  if (!purchase || typeof purchase !== 'object' || Array.isArray(purchase)) return errRes(res, 400, 'bad-request');
+  const problem = validatePurchasePayments(purchase);
+  if (problem) return res.status(400).json({ error: problem, code: 'bad-request' });
   if (!purchase.id) purchase.id = 'pur_' + Date.now();
   const filePath = path.join(DATA_DIR, 'purchases', safeFileName(purchase.id) + '.json');
   writeJSON(filePath, purchase);
