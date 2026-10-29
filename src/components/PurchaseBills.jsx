@@ -911,7 +911,10 @@ export default function PurchaseBills() {
         const last = cur._auto || {};
         if (isOursToReplace(cur.hsn, last.hsn)) cur.hsn = match.hsn;
         if (isOursToReplace(cur.rate, last.rate)) cur.rate = match.rate;
-        if (isOursToReplace(cur.taxPercent, last.taxPercent)) cur.taxPercent = match.taxPercent;
+        // A product with no GST rate saved keeps the row's default (18%), as
+        // the invoice screen does, instead of turning it into 0%.
+        const hasRate = match.taxPercent !== undefined && match.taxPercent !== null && match.taxPercent !== '';
+        if (hasRate && isOursToReplace(cur.taxPercent, last.taxPercent)) cur.taxPercent = match.taxPercent;
         if (isOursToReplace(cur.cessPercent, last.cessPercent)) cur.cessPercent = match.cessPercent;
         // v1.10.83 (#112) - unit only on a purchase order; bills have no unit field.
         if (prev.kind === 'po' && isOursToReplace(cur.unit, last.unit)) cur.unit = match.unit;
@@ -920,7 +923,7 @@ export default function PurchaseBills() {
         cur._auto = {
           hsn: match.hsn,
           rate: match.rate,
-          taxPercent: match.taxPercent,
+          taxPercent: cur.taxPercent,
           cessPercent: match.cessPercent,
           unit: match.unit,
         };

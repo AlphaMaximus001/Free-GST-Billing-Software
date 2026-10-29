@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   above the signature, or the stamp on the signature, with a preview. Every
   invoice design follows it.
 
+- **Purchase orders** (#112, thanks @vhoramunis9510). Turn on in Settings →
+  Features. Make a purchase order for a supplier (own number PO/26-27/0001
+  per business), print it, download the PDF or send it on WhatsApp / email.
+  **Convert to purchase bill** fills the bill in for you; the order shows
+  Open, Partly received or Received from what the bills received. Stock
+  changes only when the bill is saved.
 - **E-invoicing (IRN), offline** (#111, thanks @Sumit200507). Turn on
   *E-invoicing (IRN)* in Settings → Modules (off by default; only for
   businesses above ₹5 crore turnover). Download the e-invoice JSON for one
@@ -42,6 +48,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as you type (IGST for an inter-state bill), and the purchase register export
   has CGST, SGST and IGST columns instead of one tax column. CGST and SGST
   always add up to the tax exactly.
+
+### Fixed
+- **Purchase bills took 18% GST for every product picked on a new line**,
+  instead of the product's own rate (a 12% item was booked at 18%, giving the
+  wrong input tax credit). A product with no rate saved still gets 18%.
 
 ---
 
