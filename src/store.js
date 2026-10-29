@@ -1,7 +1,7 @@
 // File-based storage via local Express API server
 // All data persists as JSON files in the ./data/ folder
 
-import { getFinancialYearLabel, parseLocalDate, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, INVOICE_TYPES, savedPdfNameFor } from './utils';
+import { getFinancialYearLabel, parseLocalDate, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, INVOICE_TYPES, savedPdfNameFor, stockUpdates } from './utils';
 import { poCounterKey, formatPoNumber } from './utils/purchaseOrders';
 
 import { logProblem } from './utils/problemLog';
@@ -129,10 +129,7 @@ export const applyStockChanges = async (changes) => {
   if (!ids.length) return [];
   const products = await getAllProducts();
   const saved = [];
-  for (const id of ids) {
-    const p = products.find((x) => x.id === id);
-    if (!p) continue;
-    const next = { ...p, stock: Math.round(((Number(p.stock) || 0) + changes[id]) * 1000) / 1000 };
+  for (const next of stockUpdates(products, changes)) { // services left out (#121)
     await saveProduct(next);
     saved.push(next);
   }

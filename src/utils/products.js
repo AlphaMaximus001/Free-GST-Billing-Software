@@ -1,5 +1,5 @@
 // v1.10.77 (#85) - product helpers for bulk edit and the stock report.
-import { appliedStock, isCancelledBill } from '../utils.js';
+import { appliedStock, isCancelledBill, isServiceProduct } from '../utils.js';
 
 const num = (v) => (v === '' || v === null || v === undefined ? 0 : Number(v));
 
@@ -16,6 +16,9 @@ export const bulkRowToProduct = (product, edits) => {
     if (!Number.isFinite(num(merged[k]))) return { error: `${name}: ${k === 'stock' ? 'stock' : 'price'} must be a number` };
   }
   const sellingPrice = num(edits.sellingPrice ?? product.sellingPrice ?? product.rate);
+  // #121 - a service keeps no stock; a blank stock stays "not tracked" (it
+  // used to become 0, so editing a price made it "Out of Stock").
+  const blank = merged.stock === '' || merged.stock === null || merged.stock === undefined;
   return {
     product: {
       ...product,
@@ -26,7 +29,7 @@ export const bulkRowToProduct = (product, edits) => {
       rate: sellingPrice,
       taxPercent: gst,
       unit: merged.unit || 'Nos',
-      stock: num(merged.stock),
+      stock: isServiceProduct(merged) || blank ? undefined : num(merged.stock),
     },
   };
 };
@@ -38,9 +41,10 @@ export const bulkRowToProduct = (product, edits) => {
 // screen has no date, so it counts as if it happened today.
 // v1.10.83 (#115) - production entries dated after it are undone the same
 // way, from each entry's own stock record (raw materials back, made goods out).
+// v1.10.83 (#121) - services have no stock and are left out.
 // Returns Map(productId -> quantity).
 export const closingStock = (products, bills, purchases, asOf, productions = []) => {
-  const qty = new Map((products || []).map((p) => [p.id, Number(p.stock) || 0]));
+  const qty = new Map((products || []).filter((p) => !isServiceProduct(p)).map((p) => [p.id, Number(p.stock) || 0]));
   const byName = new Map((products || []).map((p) => [String(p.name || '').trim().toLowerCase(), p.id]));
   for (const pur of purchases || []) {
     if (!pur?.date || pur.date <= asOf) continue;

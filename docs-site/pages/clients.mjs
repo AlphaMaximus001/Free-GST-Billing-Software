@@ -223,21 +223,29 @@ export default [
 <h2>Importing clients from a spreadsheet</h2>
 <p>Moving from another program or an Excel list? ${ui('Import CSV')} adds many clients at once, one per row.</p>
 <ol class="steps">
-  <li><strong>Prepare the sheet</strong>In Excel or Google Sheets, put the column headings in the first row and one client per row below.</li>
-  <li><strong>Save as CSV</strong>In Excel, <b>File → Save As → CSV (Comma delimited)</b>. In Google Sheets, <b>File → Download → Comma-separated values</b>.</li>
-  <li><strong>Import</strong>Click ${ui('Import CSV')} on the Clients screen and choose the file.</li>
-  <li><strong>Check</strong>You see "Imported 12 client(s)", plus how many were skipped, and the new cards appear.</li>
+  <li><strong>Open the window</strong>Click ${ui('Import CSV')} on the Clients screen. The window <b>Import clients from CSV</b> opens.</li>
+  <li><strong>Get the sample file</strong>Click ${ui('Download sample file')}. <code>Clients-sample.csv</code> lands in your Downloads folder, with the right column headings and two demo clients.</li>
+  <li><strong>Fill it in</strong>Open it in Excel or Google Sheets. Replace the demo rows with your clients, one per row. Keep the first row (the headings) as it is.</li>
+  <li><strong>Save as CSV</strong>In Excel, <b>File → Save As → CSV UTF-8 (Comma delimited)</b> or <b>CSV (Comma delimited)</b>. In Google Sheets, <b>File → Download → Comma-separated values</b>.</li>
+  <li><strong>Choose the file</strong>Click ${ui('Choose CSV file')}. Nothing is saved yet: the window shows how many clients are ready and how many are already in your list (skipped).</li>
+  <li><strong>Import</strong>Click ${ui('Import')} (such as <b>Import 12</b>). You see "Imported 12 clients", and the new cards appear.</li>
 </ol>
-<p>The headings the app reads (small or capital letters):</p>
-<table>
+<p>The columns (headings in small or capital letters, in any order):</p>
+<div class="table-wrap"><table>
   <tr><th>Column heading</th><th>Holds</th></tr>
-  <tr><td><code>name</code> (or <code>client</code>, <code>client name</code>)</td><td>Required. Rows without a name are skipped.</td></tr>
-  <tr><td><code>address</code>, <code>state</code>, <code>gstin</code>, <code>email</code>, <code>phone</code></td><td>Optional</td></tr>
-</table>
-<pre><code>name,address,state,gstin,email,phone
-Sharma Traders,12 MG Road,Punjab,03AAAAA0000A1Z5,accounts@sharma.example,9876543210</code></pre>
-<p>Clients you already have (same name, any capitals) are skipped, and so are repeats inside the file, so importing the same file twice is safe. Other columns, such as city or PIN, are ignored: add them later with ${ui('Edit Client')}. Write the state in full, as in the app's list (Punjab, not PB). Imported GSTINs are not checked; open the client and click into the GSTIN box and out again to check one.</p>
-<div class="note tip"><strong>Something wrong?</strong><p>"CSV file is empty or has no data rows" or "Failed to parse CSV file": the file is not a plain CSV, or the headings are not in the first row. An <code>.xlsx</code> file renamed to <code>.csv</code> does not work. See <a href="troubleshooting.html#csv-import">A CSV import did not work</a>.</p><p>An address with a comma in it must be inside double quotes, <code>"12, MG Road"</code>. Excel does this for you when it saves as CSV.</p></div>
+  <tr><td><code>Name</code> (or <code>Client</code>, <code>Client Name</code>, <code>Customer</code>)</td><td>Required. Rows without a name are skipped.</td></tr>
+  <tr><td><code>GSTIN</code></td><td>Optional. Leave blank for a client without GST.</td></tr>
+  <tr><td><code>Phone</code> (or <code>Mobile</code>), <code>Email</code></td><td>Optional</td></tr>
+  <tr><td><code>Address</code></td><td>Optional</td></tr>
+  <tr><td><code>State</code></td><td>Optional. Write it in full, as in the app's list (Punjab, not PB).</td></tr>
+</table></div>
+<p>The sample file looks like this:</p>
+<pre><code>Name,GSTIN,Phone,Email,Address,State
+Demo Traders,27AAAAA0000A1Z5,9800000001,accounts@demo-traders.example,"Shop 4, Demo Market, Pune",Maharashtra
+Sample Studio,,9800000002,hello@sample-studio.example,"12 Sample Street, Kolkata",West Bengal</code></pre>
+<p>Clients you already have (same name, any capitals) are skipped, and so are repeats inside the file, so importing the same file twice is safe. Other columns, such as city or PIN, are ignored: add them later with ${ui('Edit Client')}. Imported GSTINs are not checked; open the client and click into the GSTIN box and out again to check one.</p>
+<div class="note info"><p><b>Old invoices</b> are imported on the Dashboard, with ${ui('CSV import / export')}: it can add their clients to this list at the same time. See <a href="dashboard.html#csv">Importing and exporting invoices as CSV</a>.</p></div>
+<div class="note tip"><strong>Something wrong?</strong><p>Nothing is read: the file is not a plain CSV, or the headings are not in the first row. An <code>.xlsx</code> file renamed to <code>.csv</code> does not work. See <a href="troubleshooting.html#csv-import">A CSV import did not work</a>.</p><p>An address with a comma in it must be inside double quotes, <code>"12, MG Road"</code>. Excel does this for you when it saves as CSV.</p></div>
 </section>
 `,
 },

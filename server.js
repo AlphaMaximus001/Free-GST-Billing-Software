@@ -452,6 +452,9 @@ app.get('/api/products', (req, res) => {
 app.post('/api/products', (req, res) => {
   const product = req.body;
   if (!product.id) product.id = 'prod_' + Date.now();
+  // v1.10.83 (#121) - a service has no stock, whoever saves it (a purchase
+  // bill adds quantities to every product on it).
+  if (product.kind === 'service') delete product.stock;
   const filePath = path.join(DATA_DIR, 'products', safeFileName(product.id) + '.json');
   writeJSON(filePath, product);
   res.json({ success: true, id: product.id });
@@ -487,6 +490,7 @@ function stockMoves(changes, skipMissing) {
     if (typeof change !== 'number' || !Number.isFinite(change)) throw { status: 400, code: 'bad-request' };
     const product = readJSON(file, null);
     if (!product) { if (skipMissing) continue; throw { status: 400, code: 'Product not found. Reload the page and try again.' }; }
+    if (product.kind === 'service') continue; // #121 - no stock to move
     out.push({ file, before: product, after: { ...product, stock: Math.round(((Number(product.stock) || 0) + change) * 1000) / 1000 } });
   }
   return out;

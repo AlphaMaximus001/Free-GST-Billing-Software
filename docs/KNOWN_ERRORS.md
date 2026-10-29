@@ -720,6 +720,33 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-068 - A service (and anything never counted) showed "Out of Stock"
+
+**Version:** every version up to v1.10.82 · fixed in v1.10.83
+**Reported by:** @apfx007 (GitHub issue #121)
+
+**Symptom** - "I added printing service and it shows out of stock." The
+Products list, the Dashboard low-stock strip, the bell and the invoice toast
+all treated it as goods with 0 in stock.
+
+**Cause** - products had no Goods/Service distinction, and a blank Stock box
+saved `stock: 0` (form, bulk edit, CSV import). The screens also disagreed
+about a missing stock: the Dashboard used `p.stock ?? 0` (out of stock), the
+bell `p.stock ?? 999` (fine).
+
+**Rule** - a product with `kind: 'service'` has no stock; a missing/blank stock
+means "not counted", never 0. Every place that shows or alerts on stock goes
+through `trackedStock` / `findLowStock` (src/utils.js); every stock move goes
+through `stockUpdates` (store.js applyStockChanges), which skips services; the
+server drops `stock` from a service on save and skips it in production moves.
+Never read `p.stock` directly for display or alerts.
+
+**Guard** - `scripts/services-test.mjs` (in `npm run test:unit`): invoice save,
+cancel, purchase and stock report skip a service; untracked stock is never low
+or out; the Products/Clients sample files import back with zero errors.
+
+---
+
 ## ERR-067 - "Drive C:\ is almost full. It has 0 MB free" on a nearly empty drive
 
 **Version:** v1.10.81 - v1.10.82 installers · fixed in v1.10.83

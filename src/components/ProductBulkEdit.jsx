@@ -8,6 +8,7 @@ import { Save, X } from 'lucide-react';
 import { getAllProducts, saveProduct } from '../store';
 import { toast } from './Toast';
 import { bulkRowToProduct } from '../utils/products';
+import { isServiceProduct } from '../utils';
 import HelpButton from './HelpButton';
 
 const FIELDS = [
@@ -80,7 +81,9 @@ export default function ProductBulkEdit({ products, units, onDone }) {
                   const v = edits[p.id]?.[k] ?? valueOf(p, k);
                   return (
                     <td key={k} style={{ padding: '0.3rem 0.4rem' }}>
-                      {type === 'unit' ? (
+                      {k === 'stock' && isServiceProduct(p) ? (
+                        <span className="text-muted" style={{ fontSize: '0.8rem' }} title="A service has no stock">Service</span>
+                      ) : type === 'unit' ? (
                         <select className="form-input" style={{ width: w, padding: '0.3rem' }} value={v || 'Nos'} aria-label={`${label} of ${p.name}`}
                           onChange={(e) => setCell(p, k, e.target.value)}>
                           {[...new Set([...(units || []).map((u) => u.label || u), v].filter(Boolean))].map((u) => <option key={u} value={u}>{u}</option>)}
