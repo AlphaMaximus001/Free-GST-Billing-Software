@@ -179,6 +179,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   new one no longer needs are removed (the Update button, the update scripts
   and the one-line install all do this). Your books, saved PDFs, the bin and
   the backups are never touched, and your data is still backed up first.
+- **The Windows installer said "Drive C:\ is almost full. It has 0 MB free"**
+  on a drive with plenty of space (some PCs do not report free space the way
+  the installer asked). It now asks Windows directly and never blocks when it
+  cannot tell.
+- **Opening the app no longer contacts Google**: its font is now built into
+  the app instead of loaded from Google Fonts each time, and the supporters
+  list is read only when it is shown.
+- **On a phone, the buttons at the top of a screen** (such as New Invoice on
+  the Dashboard) ran off the right edge; they now wrap.
 - **Stop Server did nothing on Mac and Linux** (the button was greyed out).
   It now stops the app there too.
 - **Windows: the first Open App could wait 90 seconds and give up** when
