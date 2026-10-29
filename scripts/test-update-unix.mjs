@@ -170,8 +170,10 @@ if (run('docker', ['version']).status !== 0) {
   console.error('\n  Docker is not running. Start Docker Desktop and try again.\n');
   process.exit(1);
 }
+// The app ZIP only: release-build/ also holds docs-v<ver>.zip (npm run
+// docs:zip), which is newer and has no app in it.
 const zipName = existsSync(OUT_DIR) && readdirSync(OUT_DIR)
-  .filter((f) => f.endsWith('.zip'))
+  .filter((f) => /^Free-GST-Billing-v[\d.]+\.zip$/.test(f))
   .map((f) => ({ f, t: statSync(join(OUT_DIR, f)).mtimeMs }))
   .sort((a, b) => b.t - a.t)[0]?.f;
 if (!zipName) {
