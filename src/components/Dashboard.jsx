@@ -1325,17 +1325,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         title="Dashboard"
         subtitle="Overview of your invoices"
         meta={`${bills.length} invoice${bills.length === 1 ? '' : 's'}`}>
-        <HelpButton title="Dashboard — how to use" doc="dashboard">
-          <ul style={{ paddingLeft: '1.1rem', margin: 0 }}>
-            <li><strong>New Invoice</strong> — start a fresh tax invoice / proforma / credit note / bill of supply / delivery challan.</li>
-            <li><strong>Filter row</strong> — search by client name or invoice number; filter by financial year, type, status and date range. <strong>Columns</strong> picks what the list shows.</li>
-            <li><strong>Row actions</strong> — 👁 View shows the invoice as it prints without opening the editor; Edit, ₹ Payment (records a payment and prints a receipt) and Convert sit beside it. The <strong>⋯</strong> menu has Duplicate, Print, WhatsApp, reminder, Email and Cancel. Cancelling keeps the invoice number but takes it out of totals and GST returns; undo it from the status dropdown.</li>
-            <li><strong>WhatsApp share — mobile vs. desktop:</strong> on Android / iPhone the PDF attaches automatically via the OS share sheet (works with WhatsApp, Signal, Telegram, anywhere). On desktop, browsers cannot hand a file to WhatsApp Web (a security rule), so the chat with the client opens with the invoice details and the PDF is downloaded: drag it into the chat. The client's saved phone number is used.</li>
-            <li><strong>Bulk actions</strong> — tick rows to mark them paid / unpaid / overdue, export them, combine them into one PDF, or cancel them. <strong>Quick print</strong> combines the filtered list into one PDF.</li>
-            <li><strong>Overdue banner</strong> — click it to jump to overdue invoices with one tap.</li>
-            <li><strong>Low-stock alert</strong> — appears when any product is at or below your threshold (Settings → Stock alert).</li>
-          </ul>
-        </HelpButton>
+        <HelpButton title="Dashboard — how to use" doc="dashboard" />
         <LockButton />
         <BulkCsvImport kind="sales" onDone={loadBills} />
         {einvoiceOn && (
@@ -1839,7 +1829,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       {paymentModal && (
         <div className="modal-overlay" onClick={() => setPaymentModal(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3 className="section-title">Record Payment</h3>
+            <h3 className="section-title">Record Payment <HelpButton title="Recording a payment" doc="dashboard#payments" size={16} style={{ marginLeft: 6 }} /></h3>
             <p className="text-muted" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>
               Invoice: <strong>{paymentModal.invoiceNumber}</strong> | Total: <strong>{formatCurrency(paymentModal.totalAmount, paymentModal.currency)}</strong>
               {(paymentModal.paidAmount || 0) > 0 && <> | Paid: <strong>{formatCurrency(paymentModal.paidAmount, paymentModal.currency)}</strong></>}

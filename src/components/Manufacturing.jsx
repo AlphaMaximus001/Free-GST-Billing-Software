@@ -14,6 +14,7 @@ import { unitCost, materialsNeeded, buildProduction, shortages } from '../utils/
 import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
 import TableExport from './TableExport';
+import HelpButton from './HelpButton';
 
 const num = { textAlign: 'right', whiteSpace: 'nowrap' };
 const muted = { fontSize: '0.78rem', color: 'var(--text-muted)' };
@@ -102,7 +103,7 @@ export function MakeModal({ products, currency, onClose, onSaved }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 720 }}>
-        <h3 className="section-title"><Factory size={18} style={{ verticalAlign: '-3px' }} /> Make (record production)</h3>
+        <h3 className="section-title"><Factory size={18} style={{ verticalAlign: '-3px' }} /> Make (record production) <HelpButton title="Manufacturing" doc="products#manufacturing" size={16} style={{ marginLeft: 6 }} /></h3>
         {madeHere.length === 0 ? (
           <div className="notice notice-note">No product has a raw materials list yet. Edit a product, tick <strong>Made here</strong> and add its raw materials first.</div>
         ) : (
@@ -214,7 +215,7 @@ export function ProductionList({ products, currency, reloadKey, onChanged }) {
   return (
     <div className="glass-panel" style={{ marginTop: '1.5rem' }}>
       <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-        <h3>Production</h3>
+        <h3>Production <HelpButton title="Manufacturing" doc="products#manufacturing" size={16} style={{ marginLeft: 6 }} /></h3>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <label style={muted} htmlFor="mfg-from">From</label>
           <input id="mfg-from" type="date" className="form-input" style={{ width: 'auto' }} value={from} onChange={(e) => setFrom(e.target.value)} />

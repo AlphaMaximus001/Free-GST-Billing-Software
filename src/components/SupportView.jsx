@@ -13,6 +13,7 @@ import useSupporters from './useSupporters';
 import WhatsNew from './WhatsNew';
 import SupportersList from './SupportersList';
 import ProblemLog from './ProblemLog';
+import HelpButton from './HelpButton';
 
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
 
@@ -79,7 +80,7 @@ export default function SupportView() {
     <div className="dashboard-container">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Support &amp; About</h1>
+          <h1 className="page-title">Support &amp; About <HelpButton title="Support & About" doc="support" size={16} style={{ marginLeft: 6 }} /></h1>
           <p className="page-subtitle">Who makes Free GST Billing, and how you can help it grow</p>
         </div>
       </div>

@@ -227,13 +227,7 @@ export default function RecurringInvoices() {
             <h1 className="page-title">Recurring Invoices</h1>
             <p className="page-subtitle">Auto-generate invoices for retainer clients</p>
           </div>
-          <HelpButton title="Recurring invoices — how to use" doc="recurring">
-            <ul style={{ paddingLeft: '1.1rem', margin: 0 }}>
-              <li><strong>Easiest</strong>: make the first invoice as usual and tick <em>Make this a recurring invoice</em> under Customize. Taxes, terms and options carry over.</li>
-              <li>Or use <strong>New Template</strong> here. <em>Every</em> and <em>Stop</em> set how often it repeats and when it ends.</li>
-              <li>Invoices are made automatically when the app starts and once a day. <strong>▶ Generate Now</strong> makes one straight away.</li>
-            </ul>
-          </HelpButton>
+          <HelpButton title="Recurring invoices — how to use" doc="recurring" />
         </div>
         <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> New Template</button>
       </div>

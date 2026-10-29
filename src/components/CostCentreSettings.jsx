@@ -8,6 +8,7 @@ import { getCostCentres, saveCostCentres } from '../store';
 import { businessKeyOf } from '../utils';
 import { centresForBusiness, centreLabel } from '../utils/costCentres';
 import { toast } from './Toast';
+import HelpButton from './HelpButton';
 
 const MAX_NAME = 60;
 const newId = () => `cc_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -58,7 +59,7 @@ export default function CostCentreSettings({ profile }) {
 
   return (
     <div className="glass-panel p-6 mb-6">
-      <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>Cost centres</h3>
+      <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>Cost centres <HelpButton title="Cost centres" doc="reports#cost-centres" size={16} style={{ marginLeft: 6 }} /></h3>
       <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>
         Your branches, sites or projects{profile?.businessName ? ` for ${profile.businessName}` : ''}. Pick one on an invoice, purchase bill or expense,
         then see each one's profit in Reports, <strong>By cost centre</strong>.

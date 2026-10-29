@@ -1005,15 +1005,7 @@ export default function PurchaseBills() {
             <h1 className="page-title">{poEnabled ? 'Purchases' : 'Purchase Bills'}</h1>
             <p className="page-subtitle">Track supplier invoices for ITC claims in GSTR-3B</p>
           </div>
-          <HelpButton title="Purchase Bills — how to use" doc="purchases">
-            <ul style={{ paddingLeft: '1.1rem', margin: 0 }}>
-              <li><strong>Add Purchase</strong> — record every supplier tax invoice you receive. The GST paid becomes your ITC (input tax credit) in GSTR-3B.</li>
-              <li><strong>Import from image (OCR)</strong> — snap the supplier's invoice with your phone. The app reads the supplier, GSTIN, invoice number, date, total and the item lines it can find, all on your computer. Check every field before saving.</li>
-              <li><strong>Interstate toggle</strong> — flip ON when the supplier is in a different state (they charged IGST) so ITC routes correctly.</li>
-              <li><strong>Payment status</strong> — Unpaid / Partial / Paid drives the "amount payable to suppliers" report.</li>
-              <li><strong>Print / PDF</strong>, <strong>Excel</strong> and <strong>CSV</strong> above the list: the purchase register with totals, for your CA at return time.</li>
-            </ul>
-          </HelpButton>
+          <HelpButton title="Purchase Bills — how to use" doc="purchases" />
         </div>
         {tab === 'orders' ? (
           <div className="flex gap-2">
@@ -1194,7 +1186,7 @@ export default function PurchaseBills() {
       {showForm && (
         <div className="modal-overlay" onClick={closeForm}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '720px' }}>
-            <h3 className="section-title">{isPo ? (editingId ? 'Edit purchase order' : 'New purchase order') : (editingId ? 'Edit Purchase Bill' : 'Add Purchase Bill')}</h3>
+            <h3 className="section-title">{isPo ? (editingId ? 'Edit purchase order' : 'New purchase order') : (editingId ? 'Edit Purchase Bill' : 'Add Purchase Bill')} <HelpButton title="Purchases" doc={isPo ? 'purchases#purchase-orders' : 'purchases#add-purchase'} size={16} style={{ marginLeft: 6 }} /></h3>
             {/* v1.10.83 (#112) - a bill made from a purchase order. */}
             {!isPo && fromPoNumber && (
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 0.75rem' }}>

@@ -39,6 +39,14 @@ const JUMP_NAV_SECTIONS = [
   ['section-data',     'Import/Export'],
   ['section-updates',  'Updates'],
 ];
+// v1.10.83 - the ? button opens the guide for the tab that is open.
+const SETTINGS_TAB_DOCS = {
+  'section-company': 'settings#company-details', 'section-profiles': 'settings#multiple-businesses',
+  'section-terms': 'settings#terms', 'section-print': 'print-settings', 'section-modules': 'settings#modules',
+  'section-stock': 'settings#stock', 'section-region': 'settings#region', 'section-lock': 'settings#lock',
+  'section-backups': 'backup', 'section-cloud': 'settings#google-drive', 'section-data': 'backup#export-import',
+  'section-updates': 'settings#updates',
+};
 
 export default function SettingsView({ onSaved }) {
   const [profile, setProfile] = useState({
@@ -46,11 +54,23 @@ export default function SettingsView({ onSaved }) {
     email: '', phone: '', bankName: '', accountNumber: '', ifsc: '',
     logo: '', logoHeight: 48, signature: '', signatureHeight: 60, stamp: '', stampHeight: 70, upiId: '', googleClientId: '', googleDriveFolder: 'GST Billing Invoices',
   });
-  // v1.10.36 — Scroll-spy: which section is currently in the viewport,
-  // so the corresponding pill lights up as the user scrolls. Cheap
-  // IntersectionObserver — a single observer watching all 11 sections;
-  // fires when any crosses the top-of-viewport band.
-  const [activeSection, setActiveSection] = useState(JUMP_NAV_SECTIONS[0][0]);
+  // v1.10.83 - Settings is tabbed: each tab shows only its own page (asked
+  // for: "instead of bigger setting pages it should load as tab pages").
+  // Hidden tabs stay mounted, so an unsaved change on one tab is kept when
+  // switching and the one Save bar still covers every tab. The open tab is
+  // remembered for this browser session.
+  const TAB_KEY = 'gst_settingsTab';
+  const [activeSection, setActiveSectionState] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(TAB_KEY);
+      if (JUMP_NAV_SECTIONS.some(([id]) => id === saved)) return saved;
+    } catch { /* storage blocked */ }
+    return JUMP_NAV_SECTIONS[0][0];
+  });
+  const setActiveSection = (id) => {
+    setActiveSectionState(id);
+    try { sessionStorage.setItem(TAB_KEY, id); } catch { /* storage blocked */ }
+  };
 
   // v1.10.55 — reported (#43, @sangwanmail-eng): "Some time details not save
   // after update in setting tab", and the title said there was no save button
@@ -80,15 +100,9 @@ export default function SettingsView({ onSaved }) {
   // share top: 0, so the save bar sat on top of the jump bar and hid it. The
   // jump bar now sticks just below the save bar, measured live because the
   // save bar wraps to two lines on narrow screens.
+  // v1.10.83 - its height only set where a scrolled-to section stopped; tabs
+  // open each page at the top, so that measurement went.
   const saveBarRef = useRef(null);
-  const [saveBarH, setSaveBarH] = useState(56);
-  useEffect(() => {
-    const el = saveBarRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(() => setSaveBarH(el.offsetHeight));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   // v1.10.56 — reported (#44, @sangwanmail-eng): "Firm profile setting not
   // saved. every time show popup".
@@ -126,29 +140,6 @@ export default function SettingsView({ onSaved }) {
   // saving, and any future drift in the dirty check turns straight into a
   // popup on every exit. The sticky bar already makes unsaved work visible
   // without interrupting anyone.
-  useEffect(() => {
-    const els = JUMP_NAV_SECTIONS
-      .map(([id]) => document.getElementById(id))
-      .filter(Boolean);
-    if (!els.length) return;
-    const io = new IntersectionObserver((entries) => {
-      // Multiple sections may be in view at once. Pick the top-most
-      // one that's still intersecting so the highlight tracks the
-      // section the user is actually reading.
-      const visible = entries
-        .filter(e => e.isIntersecting)
-        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-      if (visible?.target?.id) setActiveSection(visible.target.id);
-    }, {
-      // Fires when a section enters the top 40% band — feels natural
-      // while scrolling because the section header is usually the
-      // trigger point (not the entire panel).
-      rootMargin: '-10% 0px -50% 0px',
-      threshold: 0.01,
-    });
-    els.forEach(el => io.observe(el));
-    return () => io.disconnect();
-  }, []);
   const [saving, setSaving] = useState(false);
   const [termsTemplates, setTermsTemplates] = useState([]);
   const [editingTemplate, setEditingTemplate] = useState(null);
@@ -745,8 +736,9 @@ export default function SettingsView({ onSaved }) {
     setProfile(blank);
     markProfileSaved(blank);
     setTaxIdWarning('');
-    toast(current ? `${current} is safe in Business Profiles below - fill in the new company and press Save Profile` : 'Fill in the new company, then press Save Profile', 'info', 6000);
-    companyFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast(current ? `${current} is safe under the Profiles tab - fill in the new company and press Save Profile` : 'Fill in the new company, then press Save Profile', 'info', 6000);
+    setActiveSection('section-company');
+    setTimeout(() => companyFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   };
 
   // v1.10.75 - one Save for the whole page (asked for: "a global save button
@@ -815,18 +807,7 @@ export default function SettingsView({ onSaved }) {
               </span>
             </p>
           </div>
-          <HelpButton title="Settings — how to use" doc="settings">
-            <ul style={{ paddingLeft: '1.1rem', margin: 0 }}>
-              <li><strong>Company Details</strong> — this is the header block on every invoice. GSTIN drives place-of-supply detection.</li>
-              <li><strong>Multi-business profiles</strong> — Save as Profile keeps the current form as a switchable profile; switch between them from the business name at the top of the sidebar.</li>
-              <li><strong>Payment Accounts</strong> — add multiple bank / UPI accounts; ⭐ marks the default. Every inline change (add / edit / ⭐ / reorder / delete) auto-saves.</li>
-              <li><strong>Invoice Number Settings</strong> — brand prefix, financial-year suffix, padding. Live preview at the bottom.</li>
-              <li><strong>Print Settings</strong> — templates, colors, watermark, thermal font size, per-type prefix overrides.</li>
-              <li><strong>Backup Management</strong> — daily auto-backups kept 30 days. Restore any date, or Delete to reclaim disk. Trash bin keeps deleted invoices for 30 days.</li>
-              <li><strong>Google Drive</strong> — easiest: install Google Drive for Desktop and sync the Saved Invoices folder. Advanced: connect your own Google Client ID to upload each downloaded invoice PDF.</li>
-              <li><strong>Data Management</strong> — export all or part of your data to one backup file, and import it here or on another computer. Clients and products import from CSV on their own screens.</li>
-            </ul>
-          </HelpButton>
+          <HelpButton title="Settings" doc={SETTINGS_TAB_DOCS[activeSection] || 'settings'} />
         </div>
       </div>
 
@@ -848,6 +829,10 @@ export default function SettingsView({ onSaved }) {
           background: 'var(--bg-secondary)', // solid: content must not show through
           boxShadow: '0 4px 20px rgba(15, 23, 42, 0.08)',
         }}>
+        <style>{JUMP_NAV_SECTIONS.map(([id]) => id)
+          .concat('section-costcentres')
+          .filter((id) => id !== activeSection && !(id === 'section-costcentres' && activeSection === 'section-modules'))
+          .map((id) => `#${id}`).join(', ') + ' { display: none !important; }'}</style>
         <nav className="settings-jumpnav" aria-label="Settings sections" style={{
           display: 'flex', gap: '0.3rem', flexWrap: 'wrap', alignItems: 'center',
         }}>
@@ -855,15 +840,11 @@ export default function SettingsView({ onSaved }) {
             const active = activeSection === id;
             return (
               <a key={id} href={`#${id}`}
+                aria-current={active ? 'page' : undefined}
                 onClick={(e) => {
                   e.preventDefault();
-                  const el = document.getElementById(id);
-                  // Stop below the sticky bar, not underneath it.
-                  if (el) {
-                    const offset = saveBarH + 20;
-                    el.style.scrollMarginTop = `${offset}px`;
-                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
+                  setActiveSection(id);
+                  window.scrollTo({ top: 0 });
                 }}
                 style={{
                   fontSize: '0.76rem',

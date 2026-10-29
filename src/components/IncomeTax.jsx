@@ -220,13 +220,7 @@ export default function IncomeTax() {
             <h1 className="page-title">Income Tax Helper</h1>
             <p className="page-subtitle">FY {CURRENT_FY} · AY {CURRENT_AY} — Old vs New Regime, bank-statement import, ITR summary</p>
           </div>
-          <HelpButton title="Income tax — how to use" doc="income-tax">
-            <ul style={{ paddingLeft: '1.1rem', margin: 0 }}>
-              <li><strong>Regime Calculator</strong>: your income and deductions, old and new regime side by side.</li>
-              <li><strong>Presumptive</strong> (44AD / 44ADA / 44AE), <strong>Advance Tax</strong>, <strong>Bank Statement Import</strong> and the <strong>ITR Summary</strong> PDF.</li>
-              <li>Every figure is an estimate. Have your CA confirm it before filing.</li>
-            </ul>
-          </HelpButton>
+          <HelpButton title="Income tax — how to use" doc="income-tax" />
         </div>
       </div>
 

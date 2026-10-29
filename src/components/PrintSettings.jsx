@@ -367,14 +367,7 @@ export default function PrintSettings() {
             <Printer size={18} style={{ display: 'inline', verticalAlign: -3, marginRight: 6 }} />
             Print & PDF Settings
             <span style={{ marginLeft: 6, verticalAlign: -2, display: 'inline-block' }}>
-              <HelpButton title="Print & PDF settings — how to use" doc="print-settings" size={16}>
-                <ul style={{ paddingLeft: '1.1rem', margin: 0 }}>
-                  <li><strong>Business type</strong> sets up to a dozen settings for your kind of business in one click.</li>
-                  <li><strong>Visual style</strong> picks a design; everything below fine-tunes it.</li>
-                  <li>Changes save as you make them; the live preview shows the result.</li>
-                  <li>Each invoice can still change its own options under Customize.</li>
-                </ul>
-              </HelpButton>
+              <HelpButton title="Print & PDF settings — how to use" doc="print-settings" size={16} />
             </span>
           </h3>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>

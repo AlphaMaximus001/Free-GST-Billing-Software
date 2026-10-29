@@ -242,15 +242,7 @@ export default function InventoryView() {
             <h1 className="page-title">Products</h1>
             <p className="page-subtitle">Manage your products and services catalog</p>
           </div>
-          <HelpButton title="Products — how to use" doc="products">
-            <ul style={{ paddingLeft: '1.1rem', margin: 0 }}>
-              <li><strong>Add Product</strong>: name, HSN/SAC, purchase and selling price, GST %, unit and stock. Typing the name on an invoice fills the rest in.</li>
-              <li><strong>Stock</strong> goes down when you save an invoice and up when you save a purchase bill.</li>
-              <li><strong>Import CSV</strong>: columns <code>name, hsn, rate, gst%, unit, stock</code>.</li>
-              <li><strong>Low stock</strong> shows in amber, none in red. Set the level in Settings → Low-stock alerts.</li>
-              {mfgOn && <li><strong>Make</strong>: tick <em>Made here</em> on a product and list its raw materials, then Make records production. Delete an entry to put its stock back.</li>}
-            </ul>
-          </HelpButton>
+          <HelpButton title="Products — how to use" doc="products" />
         </div>
         {/* Wraps on a phone: with Make there are four buttons (v1.10.83, #115). */}
         <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>

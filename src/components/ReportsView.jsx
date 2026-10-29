@@ -207,16 +207,7 @@ export default function ReportsView() {
             <h1 className="page-title">Reports</h1>
             <p className="page-subtitle">Financial reports and receivables analysis</p>
           </div>
-          <HelpButton title="Reports — how to use" doc="reports">
-            <ul style={{ paddingLeft: '1.1rem', margin: 0 }}>
-              <li><strong>Profit &amp; Loss</strong>: sales against expenses, without GST, by year or month.</li>
-              <li><strong>Outstanding &amp; Aging</strong>: who owes you and how late, in 30-day groups.</li>
-              <li><strong>Party Outstanding</strong>: what each party owes, month by month (April-March or January-December), with totals. Print or CSV.</li>
-              <li><strong>Client Analytics</strong> and <strong>Product Performance</strong>: your best clients and items.</li>
-              {ccOn && <li><strong>By cost centre</strong>: sales, purchases, expenses and profit for each branch, site or project.</li>}
-              <li>Only real sales count: estimates, challans and cancelled invoices are left out, credit notes are subtracted.</li>
-            </ul>
-          </HelpButton>
+          <HelpButton title="Reports — how to use" doc="reports" />
         </div>
       </div>
 

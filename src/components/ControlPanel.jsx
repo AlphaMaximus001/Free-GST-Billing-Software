@@ -97,14 +97,7 @@ export default function ControlPanel() {
         subtitle="Manage the app — update, backup, restore, move to another PC — without touching batch files."
         meta={status?.launcherType ? `${status.launcherType.toUpperCase()} launcher` : null}
       >
-        <HelpButton title="Control Panel — how to use" doc="control-panel">
-          <ul style={{ paddingLeft: '1.1rem', margin: 0 }}>
-            <li><strong>Update Now</strong> backs up your data, then installs the latest version.</li>
-            <li><strong>Create Backup</strong> saves your data as a ZIP in Documents → FreeGSTBill Backups.</li>
-            <li><strong>Export for Move</strong> and <strong>Choose Backup ZIP</strong> move your books to another PC.</li>
-            <li><strong>Stop Server</strong> stops the app; open it again from the launcher.</li>
-          </ul>
-        </HelpButton>
+        <HelpButton title="Control Panel — how to use" doc="control-panel" />
       </PageHeader>
 
       {scriptsUnavailable && (

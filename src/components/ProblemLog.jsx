@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { getProblems, clearProblems, onProblemsChanged, copyText, openReport } from '../utils/problemLog';
 import { knownProblemFor, matchKnownProblem, reportText, KNOWN_PROBLEMS, TROUBLESHOOTING_URL } from '../utils/errorReport';
 import { toast } from './Toast';
+import HelpButton from './HelpButton';
 
 const when = (iso) => {
   const d = new Date(iso);
@@ -37,7 +38,7 @@ export default function ProblemLog() {
     <div className="glass-panel" style={{ padding: '1.25rem 1.5rem', marginBottom: '1.25rem' }} id="problem-log">
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div>
-          <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Problem log</h3>
+          <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Problem log <HelpButton title="Problem log" doc="troubleshooting#problem-log" size={16} style={{ marginLeft: 6 }} /></h3>
           <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             Problems the app ran into on this computer, with private details (GSTIN, PAN, phone, email, UPI ID, account numbers) removed.
             Nothing is sent anywhere unless you click Report.

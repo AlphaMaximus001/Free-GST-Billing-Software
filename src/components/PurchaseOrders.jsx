@@ -9,6 +9,7 @@ import { purchaseTotals, poStatus, PO_STATUS_LABELS } from '../utils/purchaseOrd
 import { getPrintSettings } from '../utils/printSettings';
 import { openWhatsAppShare } from '../utils/share';
 import { toast } from './Toast';
+import HelpButton from './HelpButton';
 
 const STATUS_COLORS = {
   open: { bg: 'rgba(37, 99, 235, 0.14)', color: '#3b82f6' },
@@ -219,7 +220,7 @@ export default function PurchaseOrders({ orders, purchases, ownerProfile, onNew,
       </div>
 
       <div className="glass-panel">
-        <div className="table-header"><h3>Purchase orders</h3></div>
+        <div className="table-header"><h3>Purchase orders <HelpButton title="Purchase orders" doc="purchases#purchase-orders" size={16} style={{ marginLeft: 6 }} /></h3></div>
         {filtered.length === 0 ? (
           <div className="empty-state">
             <ClipboardList size={48} />
@@ -293,7 +294,7 @@ export default function PurchaseOrders({ orders, purchases, ownerProfile, onNew,
           <div className="modal-overlay" onClick={close}>
             <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 720 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 className="section-title" style={{ margin: 0 }}>Purchase order · {po.poNumber}</h3>
+                <h3 className="section-title" style={{ margin: 0 }}>Purchase order · {po.poNumber} <HelpButton title="Purchase orders" doc="purchases#purchase-orders" size={16} style={{ marginLeft: 6 }} /></h3>
                 <button className="icon-btn" onClick={close} title="Close" aria-label="Close"><X size={18} /></button>
               </div>
               <div style={{ fontSize: '0.85rem', ...muted, marginBottom: '1rem' }}>
