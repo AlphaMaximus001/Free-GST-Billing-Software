@@ -3321,6 +3321,11 @@ kbd {
 
 /* ========= Stats Grid 4-col ========= */
 .stats-grid-4 { grid-template-columns: repeat(4, 1fr); }
+/* v1.10.83 - the total cards scrolled sideways on a phone and squeezed on a
+   small laptop: as many columns as fit, down to one. */
+@media (max-width: 1100px) {
+  .stats-grid, .stats-grid-4 { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)) !important; }
+}
 
 .stat-icon-amber { background: rgba(245, 158, 11, 0.08); color: #f59e0b; }
 .stat-value-amber { color: #d97706; }
