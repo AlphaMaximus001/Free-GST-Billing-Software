@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { FileText, Download, Upload, ExternalLink, CheckCircle, ChevronDown, ChevronRight, AlertTriangle, BookOpen, BarChart3 } from 'lucide-react';
-import { getAllBills, getAllExpenses, getAllPurchases, getProfile } from '../store';
-import { formatCurrency, INVOICE_TYPES, getStateCode, formatDateGST, getFilingPeriod, hsnUqc, getFYOptions, belongsToProfile, toCsvLine, isCancelledBill, b2clThreshold, GST_PORTAL_RATES, setOffITC, splitLineTax, roundQty, placeOfSupplyLabel, countsAsSales, parseLocalDate } from '../utils';
+import { getAllBills, getAllExpenses, getAllPurchases, getProfile, getEnabledModules } from '../store';
+import { formatCurrency, INVOICE_TYPES, getStateCode, formatDateGST, getFilingPeriod, hsnUqc, getFYOptions, belongsToProfile, toCsvLine, isCancelledBill, b2clThreshold, GST_PORTAL_RATES, setOffITC, splitLineTax, roundQty, placeOfSupplyLabel, countsAsSales, parseLocalDate, isModuleEnabled } from '../utils';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
 
@@ -1583,7 +1583,8 @@ export default function GSTReturns() {
         {[
           { id: 'gstr1', label: 'GSTR-1', icon: BarChart3 },
           { id: 'gstr3b', label: 'GSTR-3B', icon: FileText },
-          { id: 'gstr2b', label: 'GSTR-2B Reconciliation', icon: CheckCircle },
+          // v1.10.83 - Settings → Features → GSTR-2B matching off hides this tab.
+          ...(isModuleEnabled('gstr2b', getEnabledModules()) ? [{ id: 'gstr2b', label: 'GSTR-2B Reconciliation', icon: CheckCircle }] : []),
           { id: 'tds', label: 'TDS / TCS Report', icon: FileText },
           { id: 'guide', label: 'Filing Guide', icon: BookOpen },
         ].map(tab => (

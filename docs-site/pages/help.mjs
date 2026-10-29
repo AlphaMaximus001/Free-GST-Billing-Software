@@ -15,7 +15,7 @@ export default [
 <p>From top to bottom:</p>
 <ul>
   <li><strong>Your business</strong>, with a pencil to edit it. If you have more than one, click the name to <a href="#switch-business">switch</a>.</li>
-  <li><strong>The screens</strong>: Dashboard, New Invoice, Clients, Products, Expenses, Purchases, Recurring, Receipts, Reports, GST Returns, Income Tax, and <strong>User Guide</strong>, which opens this documentation in your browser (it needs internet). Features you <a href="settings.html#modules">turn off</a> disappear from here.</li>
+  <li><strong>The screens</strong>: Dashboard, New Invoice, Clients, Products, Expenses, Purchases, Recurring, Receipts, Reports, GST Returns, Income Tax, and <strong>User Guide</strong>, which opens this documentation in your browser (it needs internet). Features you <a href="settings.html#features">turn off</a> disappear from here.</li>
   <li><strong>Update to v…</strong>, when a new version is out.</li>
   <li><strong>Notifications</strong>, <strong>Dark Mode</strong> or <strong>Light Mode</strong>, <a href="#support"><strong>Support &amp; About</strong></a>, <strong>Control Panel</strong> and <strong>Settings</strong>.</li>
   <li>At the bottom, <b>App Ready</b> when all is well.</li>
