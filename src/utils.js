@@ -2362,3 +2362,13 @@ export const paymentStatusFor = (bill, paid) => {
   if (due > 0 && paid >= due - 0.005) return 'paid';
   return paid > 0.005 ? 'partial' : 'unpaid';
 };
+
+// v1.10.83 (#117) - the purchase tax as the bill shows it: IGST between
+// states, otherwise CGST + SGST, half each. SGST takes the odd paisa, so the
+// two always add up to the tax exactly (filing needs the heads separately).
+export function splitPurchaseTax(tax, interstate) {
+  const t = Math.round((Number(tax) || 0) * 100) / 100;
+  if (interstate) return { cgst: 0, sgst: 0, igst: t };
+  const cgst = Math.round(t * 50) / 100;
+  return { cgst, sgst: Math.round((t - cgst) * 100) / 100, igst: 0 };
+}

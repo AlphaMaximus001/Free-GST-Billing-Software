@@ -172,7 +172,7 @@ export default function SupportView() {
                   </div>
                 </div>
               )}
-              <SupportersList names={tracker.thanks} />
+              <SupportersList people={tracker.people} names={tracker.thanks} count={tracker.supporters} />
             </div>
           </div>
         </div>

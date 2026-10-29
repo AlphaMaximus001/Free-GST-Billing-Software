@@ -36,6 +36,20 @@ const listed = !anonymous;
 // the person off the list and the count (when it was their only payment).
 const removeName = undo && args.includes('--remove-name');
 const newPerson = !undo && (anonymous || !thanks.includes(cleanName));
+const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+// "people": each named supporter with what they gave in all, and when they
+// last gave (v1.10.83: the Support page shows the amount next to the name).
+// A repeat payment adds to their amount and moves them to the end (newest).
+const people = Array.isArray(raw.people) ? raw.people.filter((p) => p && typeof p.name === 'string') : [];
+const prev = people.find((p) => p.name === cleanName);
+let nextPeople = people;
+if (listed && !undo) {
+  const merged = { name: cleanName, amount: Math.round((Number(prev?.amount) || 0) + amount), date: todayIso };
+  nextPeople = [...people.filter((p) => p !== prev), merged];
+} else if (undo && prev) {
+  const left = Math.round((Number(prev.amount) || 0) - amount);
+  nextPeople = removeName || left <= 0 ? people.filter((p) => p !== prev) : people.map((p) => (p === prev ? { ...p, amount: left } : p));
+}
 const next = {
   ...raw,
   totalReceived: Math.round((Number(raw.totalReceived) || 0) + (undo ? -amount : amount)),
@@ -43,7 +57,8 @@ const next = {
   thanks: removeName
     ? thanks.filter((n) => n !== cleanName)
     : (!undo && listed && !thanks.includes(cleanName) ? [...thanks, cleanName] : thanks),
-  updated: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+  people: nextPeople,
+  updated: todayIso,
 };
 if (next.totalReceived < 0) { console.error('That would make the total negative; nothing changed.'); process.exit(1); }
 // The same check the app makes, so a file the app would refuse is never written.

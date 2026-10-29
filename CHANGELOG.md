@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.83] - unreleased
+
+### Added
+- **Supporters list with amounts:** Support & About shows "Thank you to our
+  N supporters - see all"; one click opens the full list with each name, the
+  amount and the date, newest first, with a search once the list is long.
+- **Signature and stamp layout** (#117, thanks @CamClinic): Settings →
+  Business Profile → *Signature and stamp layout*: side by side, the stamp
+  above the signature, or the stamp on the signature, with a preview. Every
+  invoice design follows it.
+
+### Changed
+- **Purchases show CGST + SGST** (#117): the purchase form shows the tax split
+  as you type (IGST for an inter-state bill), and the purchase register export
+  has CGST, SGST and IGST columns instead of one tax column. CGST and SGST
+  always add up to the tax exactly.
+
+---
+
 ## [1.10.82] - 2026-10-29
 
 **Mac: the launcher opens again (#120).** A quick fix, released straight away

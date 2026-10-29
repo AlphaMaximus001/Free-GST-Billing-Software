@@ -157,7 +157,12 @@
         }
         // Newest are last in the file: the latest 10, newest first (the app's
         // Support page has the full list with a search).
-        var names = (Array.isArray(d.thanks) ? d.thanks : []).map(function (x) { return t(x, 60); }).filter(Boolean).reverse();
+        // With the amount when the file has it (people), else the names alone.
+        var givers = (Array.isArray(d.people) ? d.people : []).map(function (p) {
+          var nm = p && t(p.name, 60); var amt = p && n(p.amount, 1e9);
+          return nm ? nm + (amt !== null ? ' (' + inr(amt) + ')' : '') : '';
+        }).filter(Boolean);
+        var names = (givers.length ? givers : (Array.isArray(d.thanks) ? d.thanks : []).map(function (x) { return t(x, 60); }).filter(Boolean)).reverse();
         if (names.length) {
           var more = names.length - 10;
           var th = $('.supporters-thanks', sup);
