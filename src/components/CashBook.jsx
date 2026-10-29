@@ -3,7 +3,7 @@
 // invoices, receipts and expenses shows here read-only (see utils/cashBook.js).
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Banknote, ArrowDownLeft, ArrowUpRight, Edit3, Trash2, Search, X, Save, ExternalLink } from 'lucide-react';
-import { getAllCashEntries, saveCashEntry, deleteCashEntry, getAllBills, getAllReceipts, getAllExpenses, getAllClients, getProfile } from '../store';
+import { getAllCashEntries, saveCashEntry, deleteCashEntry, getAllBills, getAllReceipts, getAllExpenses, getAllPurchases, getAllClients, getProfile } from '../store';
 import { formatCurrency, belongsToProfile, localToday, parseLocalDate } from '../utils';
 import { CASH_CATEGORIES, validateCashEntry, linkedCashLines, ownCashLines, cashBookView, cashSummary, periodRange } from '../utils/cashBook';
 import { toast } from './Toast';
@@ -12,7 +12,7 @@ import HelpButton from './HelpButton';
 import TableExport from './TableExport';
 
 const PERIODS = [['month', 'This month'], ['lastMonth', 'Last month'], ['fy', 'This financial year'], ['all', 'All dates'], ['custom', 'Choose dates']];
-const SOURCE_SCREEN = { receipts: 'Receipts', dashboard: 'the Dashboard', expenses: 'Expenses' };
+const SOURCE_SCREEN = { receipts: 'Receipts', dashboard: 'the Dashboard', expenses: 'Expenses', purchases: 'Purchases' };
 const emptyForm = () => ({ type: 'in', amount: '', name: '', note: '', category: '', date: localToday() });
 const showDate = (d) => (d ? parseLocalDate(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
 const inOut = (type, on) => ({
@@ -35,13 +35,13 @@ export default function CashBook({ onOpenView }) {
 
   const load = async () => {
     try {
-      const [own, bills, receipts, expenses, clients, prof] = await Promise.all([
-        getAllCashEntries(), getAllBills(), getAllReceipts(), getAllExpenses(), getAllClients().catch(() => []), getProfile().catch(() => null),
+      const [own, bills, receipts, expenses, purchases, clients, prof] = await Promise.all([
+        getAllCashEntries(), getAllBills(), getAllReceipts(), getAllExpenses(), getAllPurchases().catch(() => []), getAllClients().catch(() => []), getProfile().catch(() => null),
       ]);
       const mine = (rows) => (rows || []).filter((r) => belongsToProfile(r, prof));
       setProfile(prof);
       setEntries(mine(own));
-      setLinked(linkedCashLines({ bills: mine(bills), receipts: mine(receipts), expenses: mine(expenses) }));
+      setLinked(linkedCashLines({ bills: mine(bills), receipts: mine(receipts), expenses: mine(expenses), purchases: mine(purchases) }));
       // Names to pick from: clients (shared by every business) and names used here before.
       setNames([...new Set([...(clients || []).map((c) => c.name), ...mine(own).map((e) => e.name)].filter(Boolean))].sort());
     } catch {

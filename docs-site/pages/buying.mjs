@@ -23,23 +23,25 @@ export default [
   <tr><td>${ui('Add Purchase')}</td><td>Opens a blank purchase bill. See <a href="#add-purchase">Adding a purchase bill</a>.</td></tr>
 </table></div>
 
-<h3>The three totals</h3>
-<p><b>Total Purchases</b> is the full value of the bills shown, with GST, cess and round-off. <b>GST (ITC Eligible)</b> is the GST on those bills (CGST + SGST + IGST, without cess): the input tax credit they give you. <b>Entries</b> is how many bills are shown. All three follow the search and filters below them, so picking last year shows last year's totals.</p>
+<h3>The four totals</h3>
+<p><b>Total Purchases</b> is the full value of the bills shown, with GST, cess and round-off. <b>Owed to suppliers</b> is what you still have to pay on those bills (see <a href="#owed-to-suppliers">What you owe suppliers</a>). <b>GST (ITC Eligible)</b> is the GST on those bills (CGST + SGST + IGST, without cess): the input tax credit they give you. <b>Entries</b> is how many bills are shown. All four follow the search and filters below them, so picking last year shows last year's totals.</p>
 
 <h3>Search and filters</h3>
 <ul>
   <li><b>Search supplier, invoice...</b>: type part of a supplier's name, their invoice number or their GSTIN.</li>
   <li><b>Year</b>: the current financial year (April to March) to start. Pick one of the last five years, or <b>All years</b>.</li>
+  <li><b>All bills</b> / <b>Unpaid / Partly paid</b> / <b>Paid</b>: pick <b>Unpaid / Partly paid</b> to see only the bills you still have to pay.</li>
   <li><b>Cost centre</b>: only when <a href="reports.html#cost-centres">cost centres</a> are turned on. <b>All cost centres</b>, <b>No cost centre</b>, or one branch, site or project.</li>
-  <li>The red ${ui('✕')} clears the search and the cost centre. The year stays as it is.</li>
+  <li>The red ${ui('✕')} clears the search, the status and the cost centre. The year stays as it is.</li>
 </ul>
 
 <h3>Purchase Records</h3>
-<p>The table lists <b>Date</b>, <b>Supplier</b>, <b>GSTIN</b>, <b>Invoice No</b>, <b>Taxable</b> (value before GST), <b>Tax</b> (GST), <b>Total</b>, <b>Status</b> and <b>Actions</b>, newest first, with a <b>Total</b> row at the bottom. The ${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} buttons at the top of the table save the <a href="#export">purchase register</a>.</p>
+<p>The table lists <b>Date</b>, <b>Supplier</b>, <b>GSTIN</b>, <b>Invoice No</b>, <b>Taxable</b> (value before GST), <b>Tax</b> (GST), <b>Total</b>, <b>Balance due</b> (what is still to pay, in red; a dash when nothing is), <b>Status</b> and <b>Actions</b>, newest first, with a <b>Total</b> row at the bottom. The ${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} buttons at the top of the table save the <a href="#export">purchase register</a>.</p>
 <div class="table-wrap"><table>
   <tr><th>On each row</th><th>What it does</th></tr>
-  <tr><td><b>Status</b> dropdown</td><td>Unpaid, Paid or Partial. Change it right here; it saves at once. See <a href="#payment-status">Paying suppliers</a>.</td></tr>
+  <tr><td><b>Status</b> dropdown</td><td>Unpaid, Partly paid or Paid. Picking Paid or Unpaid saves at once; Partly paid opens the payment window for the amount. See <a href="#mark-paid">Marking a bill paid from the list</a>.</td></tr>
   <tr><td>Eye</td><td>Opens the bill to look at, without downloading anything. See <a href="#view-bill">Viewing a bill</a>.</td></tr>
+  <tr><td>${ui('₹')} (green)</td><td>Records a payment to the supplier, and shows the payments already made. See <a href="#record-payment">Recording a payment to a supplier</a>.</td></tr>
   <tr><td>Pencil</td><td>Opens the bill in the form to change it.</td></tr>
   <tr><td>Bin</td><td>Deletes the bill, after asking. Its quantities are taken back out of stock (see <a href="#stock">What saving does to your products</a>). GST credit already claimed in a return you filed stays as filed.</td></tr>
 </table></div>
@@ -57,13 +59,16 @@ export default [
   <li>the <b>Supplier</b> box: name, address and GSTIN;</li>
   <li>the items: <b>#</b>, <b>Description</b>, <b>HSN</b>, <b>Qty</b>, <b>Rate</b>, <b>GST%</b> and <b>Amount</b> (quantity × rate, plus GST);</li>
   <li>the totals: <b>Taxable</b>, then <b>CGST</b> and <b>SGST</b> (half each) or <b>IGST</b>, <b>Cess</b> and <b>Round-off</b> when there are any, and the <b>TOTAL</b>;</li>
+  <li><b>Less: TDS</b> and <b>Paid to supplier</b> when you keep back TDS, then <b>Paid</b> (the payments added up) and <b>Balance due</b>;</li>
+  <li><b>Payments made</b>: each payment's date, amount, mode and reference;</li>
   <li>the note, if the bill has one.</li>
 </ul>
 <div class="table-wrap"><table>
   <tr><th>Button</th><th>What it does</th></tr>
   <tr><td>${ui('Close')}</td><td>Closes the window. Clicking outside it does the same.</td></tr>
+  <tr><td>${ui('Payments')}</td><td>Opens the payment window to record, change or delete a payment. See <a href="#record-payment">Recording a payment to a supplier</a>.</td></tr>
   <tr><td>${ui('Edit')}</td><td>Opens the bill in the form.</td></tr>
-  <tr><td>${ui('Download PDF')}</td><td>Saves a one-page A4 <b>PURCHASE BILL</b> PDF named <code>Purchase-</code><i>invoice no</i><code>-</code><i>date</i><code>.pdf</code>, with the supplier, the items, the tax split and the total. Long item names wrap onto more lines instead of being cut. The coloured lines follow your PDF accent colour in <a href="print-settings.html#colours">print settings</a>.</td></tr>
+  <tr><td>${ui('Download PDF')}</td><td>Saves a one-page A4 <b>PURCHASE BILL</b> PDF named <code>Purchase-</code><i>invoice no</i><code>-</code><i>date</i><code>.pdf</code>, with the supplier, the items, the tax split and the total, then the payments made, <b>Paid</b> and <b>Balance due</b>. Long item names wrap onto more lines instead of being cut. The coloured lines follow your PDF accent colour in <a href="print-settings.html#colours">print settings</a>.</td></tr>
 </table></div>
 <p>This PDF is your own record of the bill. It is not a tax invoice: the supplier's bill is.</p>
 </section>
@@ -74,7 +79,7 @@ export default [
 <div class="table-wrap"><table>
   <tr><th>Field</th><th>What to put in</th></tr>
   <tr><td><b>Date *</b></td><td>The date on the supplier's bill. Today to start. This decides which month's GSTR-3B the credit goes into.</td></tr>
-  <tr><td><b>Payment Status</b></td><td>Unpaid (to start), Paid or Partial. See <a href="#payment-status">Paying suppliers</a>.</td></tr>
+  <tr><td><b>Payment Status</b></td><td>Unpaid (to start) or Paid. Paid records one payment for the whole amount. To record what you actually paid (a part payment, UPI, cash), save the bill and use the green ${ui('₹')} button in the list. Once a bill has payments, this box only shows its status. See <a href="#payment-status">Paying suppliers</a>.</td></tr>
   <tr><td><b>Supplier Name *</b></td><td>Required. Suppliers from your earlier bills are suggested as you type. Picking one fills in their GSTIN, address and <b>Inter-state purchase</b> from their last bill.</td></tr>
   <tr><td><b>Supplier GSTIN</b></td><td>The supplier's 15-character GST number, from the top of their bill. Typing the full GSTIN ticks or unticks <b>Inter-state purchase</b> for you (see <a href="#interstate">Suppliers in another state</a>). Leave it blank for an unregistered supplier.</td></tr>
   <tr><td><b>Supplier Address (optional)</b></td><td>Street, city, state. Printed on the purchase bill PDF.</td></tr>
@@ -86,7 +91,7 @@ export default [
 <p>Under the fields come the <a href="#purchase-items">Items</a>, the running totals and <a href="#round-off">Apply round-off</a>.</p>
 <ol class="steps">
   <li><strong>Supplier</strong>Type the supplier's name. If you have bought from them before, pick them from the list: GSTIN and address fill in.</li>
-  <li><strong>Bill details</strong>Set the <b>Date</b> and type the <b>Invoice Number</b> from their bill. Set <b>Payment Status</b> if you have already paid.</li>
+  <li><strong>Bill details</strong>Set the <b>Date</b> and type the <b>Invoice Number</b> from their bill. Leave <b>Payment Status</b> on Unpaid and record the payment after saving (<a href="#record-payment">see how</a>), or pick Paid if you paid it all and do not need the details.</li>
   <li><strong>Items</strong>Add one row for each line on their bill: name, HSN, quantity, rate before GST, and GST rate. See <a href="#purchase-items">Items on the bill</a>.</li>
   <li><strong>Check the total</strong>The strip under the items shows Taxable, CGST and SGST (or IGST), Cess and Total. Compare them with the supplier's bill. If only the paise differ, tick <b>Apply round-off</b>.</li>
   <li><strong>Save</strong>Click ${ui('Save')} (${ui('Update')} when editing). ${ui('Cancel')}, or clicking outside the form, closes it without saving.</li>
@@ -108,6 +113,7 @@ export default [
   <li><strong>Rate or amount</strong>Check the <b>Rate %</b>: the TDS is worked out on the taxable value (before GST), and the amount box shows it as a hint. To use an exact figure instead, type it in the amount box.</li>
   <li><strong>Check</strong>The strip shows <b>Less TDS</b> and <b>Paid to supplier</b> (the bill total less the TDS): that is what you pay the supplier. The bill's total itself does not change, and nor does the GST credit.</li>
 </ol>
+<p>When you <a href="#record-payment">record payments</a> on this bill, they are measured against <b>Paid to supplier</b>, not the total: paying that amount makes the bill <b>Paid</b>, and its <b>Balance due</b> is what is left of it.</p>
 <p>The view and the PDF of the bill show the TDS and <b>Paid to supplier</b> under the total. Every bill with TDS is listed in <a href="reports.html#tds-on-purchases">Reports, TDS &amp; TCS</a>, totalled by section and quarter, for depositing the TDS and filing your Form 26Q. You need a TAN to deduct TDS; ask your CA whether a payment needs it.</p>
 </section>
 
@@ -167,10 +173,95 @@ export default [
 
 <section id="payment-status">
 <h2>Paying suppliers</h2>
-<p>Each bill is <b>Unpaid</b>, <b>Paid</b> or <b>Partial</b> (part paid). Set it in the form, or change it straight from the coloured <b>Status</b> dropdown in the list: <b>Unpaid</b> in amber, <b>Paid</b> in green, <b>Partial</b> in purple. Picking a new status saves it at once with the message <b>Marked paid</b> (or unpaid, partial). Nothing else on the bill changes.</p>
+<p>Each time you pay a supplier, record the payment on their bill: how much, when, and how (cash, UPI, bank transfer, cheque, card). You can pay a bill in parts, and record as many payments as you made. The app then shows what each bill, and each supplier, still needs to be paid.</p>
+<p>Each bill has a status, shown in colour in the <b>Status</b> column of the list:</p>
+<div class="table-wrap"><table>
+  <tr><th>Status</th><th>Means</th></tr>
+  <tr><td><b>Unpaid</b> (amber)</td><td>No payment recorded yet. The whole amount is still to pay.</td></tr>
+  <tr><td><b>Partly paid</b> (purple)</td><td>Some payments are recorded, but they add up to less than the bill. <b>Balance due</b> shows what is left.</td></tr>
+  <tr><td><b>Paid</b> (green)</td><td>The payments add up to the bill (less any TDS you keep back). Nothing is due.</td></tr>
+</table></div>
+<p>You do not set the status by hand: it follows the payments. Record a payment and it changes; delete one and it changes back.</p>
 <figure><img src="${img('purchase-status.png')}" alt="Purchase Records with a Status dropdown on each row"></figure>
-<p>The status is a reminder for you and is printed on the purchase register. It does not change the GST credit: credit depends on the bill, not on whether you have paid it yet. (By law you must pay the supplier within 180 days to keep the credit.) There is no field for how much was paid on a Partial bill; write it in the <b>Note</b>.</p>
-<p>To see what you still owe, pick <b>Unpaid</b> bills by sorting the register in Excel, or look down the Status column.</p>
+<p>The status does not change the GST credit: credit depends on the bill, not on whether you have paid it yet. (By law you must pay the supplier within 180 days to keep the credit.)</p>
+<div class="note info"><strong>Bills from before payments could be recorded</strong>
+<p>A bill you marked <b>Paid</b> in an older version has no payments on it. It stays <b>Paid</b> and owes nothing; you do not need to do anything. A bill marked <b>Partial</b> stays Partly paid, but the app does not know how much was paid, so its Balance due shows the whole amount until you record the payments you made.</p></div>
+</section>
+
+<section id="record-payment">
+<h3>Recording a payment to a supplier</h3>
+<p>In <b>Purchase Records</b>, find the bill and click the green ${ui('₹')} button under <b>Actions</b> (or open the bill with the eye and click ${ui('Payments')}). The window <b>Record payment to supplier</b> opens. At the top it shows the bill number and supplier, the <b>Total</b>, <b>Less TDS</b> if you keep back TDS, what is <b>Paid</b> so far and the <b>Balance</b> still to pay.</p>
+<ol class="steps">
+  <li><strong>Amount paid</strong>It starts at the balance still to pay. Leave it to pay the bill off, or type what you actually paid, such as 5000.</li>
+  <li><strong>Payment date</strong>Today to start. Change it to the day the money left you.</li>
+  <li><strong>Payment mode</strong>Cash, UPI, Bank transfer, Cheque, Card or Other.</li>
+  <li><strong>Reference / cheque no.</strong>Optional: the UTR or UPI reference from your bank, or the cheque number.</li>
+  <li><strong>Note</strong>Optional, anything you want to remember.</li>
+  <li><strong>Save</strong>Click ${ui('Record Payment')}. The message says how much was recorded and what is left, for example "Payment of ₹5,000.00 recorded · ₹6,800.00 left to pay".</li>
+</ol>
+<div class="table-wrap"><table>
+  <tr><th>Field</th><th>Details</th></tr>
+  <tr><td><b>Amount paid *</b></td><td>More than 0, paise allowed. It cannot be more than the balance still to pay (a rupee over is allowed for rounding).</td></tr>
+  <tr><td><b>Payment date *</b></td><td>The day you paid.</td></tr>
+  <tr><td><b>Payment mode</b></td><td>Bank transfer to start. Pick <b>Cash</b> for cash: it then shows in the <a href="#payments-cash-book">Cash book</a> too.</td></tr>
+  <tr><td><b>Reference / cheque no.</b></td><td>Up to 60 letters.</td></tr>
+  <tr><td><b>Note (optional)</b></td><td>Up to 300 letters.</td></tr>
+</table></div>
+<p>After saving, the list shows the new <b>Balance due</b> and status straight away.</p>
+<div class="note tip"><strong>Something wrong?</strong>
+<p><b>"That is more than the ₹... still to pay on this bill"</b>: the amount is more than the balance. Check the amount, or the payments already recorded (they are listed under <b>Payment History</b> in the same window). If you really paid the supplier more, the extra is an advance against their next bill: record only the bill's balance here and note the rest.</p>
+<p><b>"Enter an amount more than 0"</b> or <b>"Enter the payment date"</b>: fill in that box.</p>
+<p><b>"Could not save the payment. Try again."</b>: the app could not reach its data. See <a href="troubleshooting.html#saving">Saving problems</a>.</p></div>
+</section>
+
+<section id="part-payments">
+<h3>Part payments</h3>
+<p>Pay a bill in as many parts as you like. Each part is one payment. For example, a bill of ₹11,800:</p>
+<ol class="steps">
+  <li><strong>First part</strong>Click ${ui('₹')}, type 5000, pick <b>UPI</b>, add the UPI reference and click ${ui('Record Payment')}. The bill is now <b>Partly paid</b> and its Balance due is ₹6,800.</li>
+  <li><strong>The rest</strong>Later, click ${ui('₹')} again. The amount already says 6800. Pick <b>Cash</b> and click ${ui('Record Payment')}. The bill is now <b>Paid</b>, and the ₹6,800 shows in the Cash book as money out.</li>
+</ol>
+<p>Payments made to a supplier in one go for several bills: record one payment on each bill, for the part of the money that went to it.</p>
+</section>
+
+<section id="payment-history">
+<h3>Payment history: changing or deleting a payment</h3>
+<p>Every payment on a bill is listed under <b>Payment History</b> in the payment window, oldest first: date, amount, mode, and the reference and note. The status of the bill is under the list. The same payments show in the bill's view (eye) and on its PDF, under <b>Payments made</b>.</p>
+<ul>
+  <li><b>Change a payment</b>: click its pencil. The boxes above fill with that payment and the title becomes <b>Edit payment</b>. Change what you need and click ${ui('Save payment')}, or ${ui('Cancel edit')} to leave it as it was.</li>
+  <li><b>Delete a payment</b>: click its red bin. The app asks first, saying the amount and date. Click ${ui('Delete payment')}. The bill goes back to Partly paid or Unpaid, and a cash payment leaves the Cash book.</li>
+</ul>
+</section>
+
+<section id="mark-paid">
+<h3>Marking a bill paid from the list</h3>
+<p>The <b>Status</b> dropdown on each row is a shortcut:</p>
+<ul>
+  <li><b>Paid</b> records one payment for the whole balance, dated today, mode <b>Other</b> and noted "Marked paid", and says <b>Marked paid</b>. Use it when you do not need the details. Mode Other is not counted as cash, so it does not show in the Cash book.</li>
+  <li><b>Unpaid</b> takes back that "Marked paid" payment. Payments you recorded yourself stay: the bill then stays Partly paid and the message says so; delete them from the ${ui('₹')} window if they were wrong.</li>
+  <li><b>Partly paid</b> opens the payment window, because a part payment needs its amount.</li>
+</ul>
+<p>Choosing <b>Paid</b> in the <a href="#add-purchase">bill form</a> does the same as choosing it here.</p>
+</section>
+
+<section id="owed-to-suppliers">
+<h3>What you owe suppliers</h3>
+<p>Four places show what is still to pay:</p>
+<ul>
+  <li>The <b>Owed to suppliers</b> card above the list: the balance due on all the bills shown (it follows the year, search and filters; pick <b>All years</b> for everything).</li>
+  <li>The <b>Balance due</b> column, with its total at the bottom. Pick <b>Unpaid / Partly paid</b> in the filters to see only those bills.</li>
+  <li>The purchase register (${ui('Print / PDF')}, ${ui('Excel')}, ${ui('CSV')}), which has <b>Paid</b> and <b>Balance due</b> columns. See <a href="#export">For your accountant</a>.</li>
+  <li><a href="reports.html#supplier-outstanding">Reports, Party Outstanding</a> with <b>You owe suppliers</b>: one row per supplier, month by month, like Tally.</li>
+</ul>
+<p>The balance of a bill is its total, less TDS you keep back, less the payments recorded. A bill marked Paid before payments could be recorded owes nothing.</p>
+</section>
+
+<section id="payments-cash-book">
+<h3>Cash payments and the Cash book</h3>
+<p>A payment with mode <b>Cash</b> shows in the <a href="cash-book.html#from-elsewhere">Cash book</a> by itself, as money out, labelled <b>Purchase bill</b> <i>number</i> <b>payment</b>, with the supplier's name and the reference. It is counted once. Do not also add it in the Cash book.</p>
+<p>To change or delete it, click its label in the Cash book (it opens Purchases), then use the ${ui('₹')} button on the bill. The Cash book follows.</p>
+<p>If you added supplier cash payments to the Cash book by hand before this version, and now also record them on the bill, delete your own Cash book entry so the money is not counted twice.</p>
+<p>UPI, bank transfer, cheque, card and Other payments are not cash, so they do not show in the Cash book.</p>
 </section>
 
 <section id="stock">
@@ -224,8 +315,8 @@ export default [
 
 <section id="export">
 <h2>For your accountant</h2>
-<p>The ${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} buttons at the top of <b>Purchase Records</b> save the <b>Purchase register</b>: the bills shown, after the search, year and cost centre filters, oldest first, with a <b>Total</b> row. Your business name is at the top.</p>
-<p>Columns: <b>Date</b>, <b>Supplier</b>, <b>GSTIN</b>, <b>Invoice No</b>, <b>Taxable Amount</b>, <b>CGST</b>, <b>SGST</b>, <b>IGST</b>, <b>Cess</b>, <b>Inter-state</b> (Y or N), <b>Round-off</b>, <b>Total</b>, <b>Status</b> and <b>Note</b>.</p>
+<p>The ${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} buttons at the top of <b>Purchase Records</b> save the <b>Purchase register</b>: the bills shown, after the search, year, status and cost centre filters, oldest first, with a <b>Total</b> row. Your business name is at the top.</p>
+<p>Columns: <b>Date</b>, <b>Supplier</b>, <b>GSTIN</b>, <b>Invoice No</b>, <b>Taxable Amount</b>, <b>CGST</b>, <b>SGST</b>, <b>IGST</b>, <b>Cess</b>, <b>Inter-state</b> (Y or N), <b>Round-off</b>, <b>Total</b>, <b>Paid</b> (payments to the supplier), <b>Balance due</b>, <b>Status</b> and <b>Note</b>.</p>
 <ul>
   <li>${ui('Print / PDF')} opens the register on its own page in landscape. Choose your printer, or <b>Save as PDF</b>. If nothing opens, allow pop-ups for the app (the message <b>"Allow pop-ups for this page to print the report"</b> appears).</li>
   <li>${ui('Excel')} downloads an <code>.xlsx</code> file, with numbers as numbers.</li>

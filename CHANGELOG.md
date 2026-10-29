@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.10.83] - unreleased
 
 ### Added
+- **Pay your suppliers on the purchase bill** (#123, thanks @neelind11). The
+  green ₹ button on a purchase bill records a payment to the supplier: amount
+  (starts at what is still owed, the total less any TDS you keep back), date,
+  Cash / UPI / Bank transfer / Cheque / Card / Other, reference or cheque
+  number, and a note. Pay in parts, as many times as you like; change or
+  delete a payment from its Payment History. The bill shows **Unpaid**,
+  **Partly paid** or **Paid** by itself, the list has a *Balance due* column,
+  an *Unpaid / Partly paid* filter and an *Owed to suppliers* card, and the
+  bill's view and PDF list the payments and the balance. Cash payments show
+  in the Cash book as money out, once. Reports → Party Outstanding has a new
+  *You owe suppliers* view, supplier by supplier, month by month. Bills you
+  marked Paid before stay Paid; *Paid* in the Status dropdown now records one
+  payment for the balance, and *Unpaid* takes it back.
 - **"Is it safe?"** A short *Safe and private* note on the first welcome
   screen and on Support & About (your data stays on this computer, no account,
   works offline, open source), linking to a new help page that answers the

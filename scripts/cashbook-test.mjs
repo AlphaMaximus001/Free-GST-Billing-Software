@@ -91,6 +91,29 @@ console.log('\n[cash book] Expenses');
   eq(lines.map((l) => [l.key, l.type, l.amount, l.name, l.label]), [['expense:e1', 'out', 120, 'Tea', 'Expense']], 'Only the cash expense, as money out');
 }
 
+console.log('\n[cash book] Payments to suppliers on purchase bills (#123)');
+{
+  const purchase = (id, payments) => ({ id, invoiceNumber: `GS/${id}`, supplierName: 'Gupta Steel', date: '2026-10-05', payments });
+  const purchases = [
+    purchase('1', [
+      { id: 'pp_upi', amount: 5000, date: '2026-10-10', mode: 'upi' },
+      { id: 'pp_cash', amount: 6800, date: '2026-10-12', mode: 'cash', reference: 'Vch 12', note: 'Balance', recordedAt: '2026-10-12T10:00:00Z' },
+    ]),
+    // Mark as paid: mode Other, how it was paid is unknown, so not cash.
+    purchase('2', [{ id: 'pp_auto', amount: 900, date: '2026-10-13', mode: 'other', auto: true }]),
+    // A bill from before payments existed, marked Paid: nothing to show.
+    { id: '3', invoiceNumber: 'OLD-1', supplierName: 'Arora', paymentStatus: 'Paid' },
+  ];
+  const lines = linkedCashLines({ purchases });
+  eq(lines.map((l) => [l.key, l.type, l.amount, l.label, l.name, l.note, l.view]),
+    [['purchase:1:pp_cash', 'out', 6800, 'Purchase bill GS/1 payment', 'Gupta Steel', 'Vch 12 · Balance', 'purchases']],
+    'Only the cash payment shows, once, as money out');
+  // With everything else in the book too, the supplier payment is still counted once.
+  const all = linkedCashLines({ purchases, expenses: [{ id: 'e1', date: '2026-10-12', amount: 50, paymentMode: 'Cash', description: 'Tea' }] });
+  eq([all.filter((l) => l.source === 'purchase').length, sum(all)], [1, -6850], 'Counted once alongside other cash');
+  eq(linkedCashLines({ purchases: [purchase('4', [{ amount: 300, date: '2026-10-14', mode: 'Cash' }])] })[0].key, 'purchase:4:2026-10-14:300', 'An old payment without an id still gets a steady key');
+}
+
 console.log('\n[cash book] Balance and periods');
 {
   const own = ownCashLines([
