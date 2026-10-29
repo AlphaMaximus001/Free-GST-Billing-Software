@@ -16,6 +16,7 @@
 import React from 'react';
 import { filledOrderDetails, getStateCode, printedSubtotal, roundQty } from '../utils';
 import SignatureImages from './SignatureImages';
+import { purposeCodeText } from '../utils/purposeCodes';
 
 const LINE = '#1f2937';
 const B = `1px solid ${LINE}`;
@@ -143,6 +144,7 @@ function BankLines({ ctx, tally }) {
     [tally ? `Branch & ${sellerCC.bankLabel || 'IFS Code'}` : (sellerCC.bankLabel || 'IFSC'), [account?.branch, account?.ifsc || profile.ifsc].filter(Boolean).join(' & ')],
     ['SWIFT', account?.swift || profile.swift],
     ['IBAN', account?.iban],
+    ['Purpose code', ctx.purposeCode && purposeCodeText(ctx.purposeCode)],
   ].filter(([, v]) => v);
   return (
     <div {...blockProps}>

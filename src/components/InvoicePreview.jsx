@@ -7,6 +7,7 @@ import { getEnabledModules } from '../store';
 import { getPrintSettings, getLabel, formatCurrencyEx, formatDate } from '../utils/printSettings';
 import InvoiceGridLayout, { HsnSummaryTable } from './InvoiceGridLayout';
 import { exportDeclaration } from '../utils/lut';
+import { purposeCodeText } from '../utils/purposeCodes';
 
 // v1.10.36 — Optional `previewOnly` prop suppresses the internal
 // `id="invoice-preview"`. The parent's on-screen preview keeps the id
@@ -128,6 +129,9 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   // A PayPal / Wise / Payoneer link on the payment account, printed on
   // invoices in a foreign currency (UPI cannot take one).
   const paymentLink = currencySymbol !== baseCurrency ? String(account?.paymentLink || '').trim() : '';
+  // The RBI purpose code a client abroad quotes on the transfer: the invoice's
+  // own, else the payment account's.
+  const purposeCode = clientAbroad || currencySymbol !== baseCurrency ? String(options.purposeCode || account?.purposeCode || '').trim() : '';
 
   // v1.10.4 — Single read of print settings per render. Prior code
   // called getPrintSettings() at 6 different points, each hitting
@@ -1075,7 +1079,7 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
     shortDate: formatShortDate,
     isServices: (options.invoiceMode || 'goods') === 'services',
     docLabel: ({ quotation: 'Quotation', proforma: 'Proforma', 'credit-note': 'Credit Note', 'delivery-challan': 'Challan' })[invoiceType] || 'Invoice',
-    placeOfSupply: placeOfSupplyText, clientAbroad, clientCountry, clientTaxIdLabel, paymentLink,
+    placeOfSupply: placeOfSupplyText, clientAbroad, clientCountry, clientTaxIdLabel, paymentLink, purposeCode,
     shipTo: shipToParty,
     sig: gridSig,
     notices: gridNotices,
@@ -1490,6 +1494,7 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
                 {(account?.ifsc || profile.ifsc) && <p><span className="inv-detail-label">{sellerCC.bankLabel || 'IFSC'}:</span> {account?.ifsc || profile.ifsc}</p>}
                 {(account?.swift || profile.swift) && <p><span className="inv-detail-label">SWIFT/BIC:</span> {account?.swift || profile.swift}</p>}
                 {account?.iban && <p><span className="inv-detail-label">IBAN:</span> {account.iban}</p>}
+                {purposeCode && <p><span className="inv-detail-label">Purpose code:</span> {purposeCodeText(purposeCode)}</p>}
                 {profile.pan && isIndia && <p><span className="inv-detail-label">PAN:</span> {profile.pan}</p>}
               </div>
             </div>

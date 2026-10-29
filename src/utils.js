@@ -1849,6 +1849,8 @@ export const createEmptyAccount = (label = 'New account') => ({
   // Gulf) and a PayPal / Wise / Payoneer link, printed on foreign-currency invoices.
   iban: '',
   paymentLink: '',
+  // RBI purpose code for payments from abroad (utils/purposeCodes.js).
+  purposeCode: '',
   upiId: '',
   isDefault: false,
   isActive: true,

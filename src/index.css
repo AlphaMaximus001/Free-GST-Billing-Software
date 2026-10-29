@@ -1546,6 +1546,18 @@ textarea.form-input { resize: vertical; min-height: 60px; }
   font-size: 0.85rem;
 }
 .line-item-field .form-label { margin-bottom: 0.3rem; font-size: 0.7rem; }
+/* v1.10.83 - the item name wraps and grows instead of being cut off; drag the
+   corner to make it taller. */
+.line-item-field textarea.line-item-name {
+  min-width: 0;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  resize: vertical;
+  overflow: hidden;
+  min-height: 2.1rem;
+  font-family: inherit;
+}
 .line-item-delete { justify-content: flex-end; padding-bottom: 0.35rem; min-width: 0; }
 
 /* Product auto-search dropdown */

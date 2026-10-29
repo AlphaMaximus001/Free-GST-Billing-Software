@@ -22,6 +22,7 @@ import { BusinessTypePanel, FeaturesPanel, useFeatureDraft } from './FeatureSett
 import { rekeyCentres } from '../utils/costCentres';
 import InvoiceNumberSettings from './InvoiceNumberSettings';
 import SignatureImages, { SIGN_LAYOUTS } from './SignatureImages';
+import { PURPOSE_CODES } from '../utils/purposeCodes';
 import { getBackupsList, restoreBackup, triggerBackup, deleteBackup, getTrashedBills, restoreTrashedBill, purgeTrashedBill, runUpdateNow, saveBill, applyStockChanges, getBackupFolder, setBackupFolder } from '../store';
 
 // v1.10.36 — Section order for the jump-nav pill bar. Keeping this at
@@ -1255,6 +1256,7 @@ export default function SettingsView({ onSaved }) {
                           {a.ifsc && <span>{bankCC.bankLabel || 'IFSC'} {a.ifsc}</span>}
                           {a.swift && <span> · SWIFT {a.swift}</span>}
                           {a.iban && <span> · IBAN {a.iban}</span>}
+                          {a.purposeCode && <span> · Purpose code {a.purposeCode}</span>}
                           {a.paymentLink && <span> · 🔗 {a.paymentLink}</span>}
                           {a.upiId && <span> · 📱 {a.upiId}</span>}
                         </div>
@@ -1350,6 +1352,16 @@ export default function SettingsView({ onSaved }) {
                         <input type="text" className="form-input" value={editingAccount.iban || ''}
                           onChange={e => setEditingAccount(a => ({ ...a, iban: e.target.value.toUpperCase() }))}
                           placeholder="Only if a foreign bank gave you one" />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Purpose code for payments from abroad (optional) <HelpButton title="Purpose codes" doc="settings#paid-from-abroad" size={14} /></label>
+                        <input type="text" className="form-input" list="purpose-codes" value={editingAccount.purposeCode || ''}
+                          onChange={e => setEditingAccount(a => ({ ...a, purposeCode: e.target.value.toUpperCase().trim() }))}
+                          placeholder="e.g. P0802 for software work" />
+                        <datalist id="purpose-codes">
+                          {PURPOSE_CODES.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
+                        </datalist>
+                        <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>The RBI code for what you are paid for. Printed with these bank details on invoices to clients abroad, so they can quote it on the transfer. Your bank can confirm it.</small>
                       </div>
                       <div className="form-group">
                         <label className="form-label">Online payment link (optional)</label>

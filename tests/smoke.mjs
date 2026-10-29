@@ -271,10 +271,10 @@ try {
     .fill('Smoke Test Client');
   await sleep(500);
   await page.keyboard.press('Escape');           // dismiss the client suggestion list
-  // The line-item name box carries no placeholder, so target it through its
-  // row: `.line-item-row` -> first text input, then the row's numeric fields.
+  // The line-item name box (a growing textarea since v1.10.83), found through
+  // its row, then the row's numeric fields.
   const row = page.locator('.line-item-row').first();
-  await row.locator('input[type="text"]').first().fill('Test item');
+  await row.locator('textarea.line-item-name').first().fill('Test item');
   await sleep(400);
   await page.keyboard.press('Escape');           // dismiss product suggestions
   const rowNums = row.locator('input[type="number"]');
@@ -1590,7 +1590,7 @@ try {
     await page.getByRole('button', { name: /Delivery charges/ }).first().click();
     await sleep(800);
     check('v77 #87 Delivery charges adds a line with SAC 996812',
-      (await page.locator('input[value="Delivery charges"]').count()) > 0 && (await page.locator('input[value="996812"]').count()) > 0);
+      (await page.locator('textarea.line-item-name').evaluateAll((els) => els.some((e) => e.value === 'Delivery charges'))) && (await page.locator('input[value="996812"]').count()) > 0);
 
     // #88 a short invoice is one page in every design
     await openDraft(seamDraft(1));

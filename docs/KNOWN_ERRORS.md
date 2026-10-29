@@ -720,6 +720,34 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-069 - A client abroad, billed in dollars, got a domestic invoice with no LUT
+
+**Version:** every version up to v1.10.82 · fixed in v1.10.83
+**Reported by:** the maintainer, on their own books (2026-10-30)
+
+**Symptom** - "I am trying a foreign client invoice, I don't see where it
+will add the LUT." The invoice was in $, but it asked for a state, charged
+IGST, and showed no LUT box and no "Outside India".
+
+**Cause** - the client form starts with Country = India, so a client abroad
+was saved as Indian ("GTB Pro Cleaning Canada" had country India, another had
+none). Export, LUT and place of supply follow the client's *country*
+(`isExportOrSez`, utils/lut.js); switching the currency to $ by hand changes
+only the currency, so the invoice stayed domestic and nothing said why.
+
+**Rule** - an invoice is an export because of where the client is, never
+because of its currency. When the two disagree (foreign currency, client in
+India, not SEZ) the screen says so and offers *Set the client's country*,
+which jumps to the Country box. Never infer the country from the currency:
+an Indian client can pay in dollars.
+
+**Guard** - checked by hand on the demo (USD + Indian client shows the
+warning; its button focuses Country; Canada turns on the LUT box and
+"Outside India (export)"). The export test itself is covered by
+`scripts/lut-tds-test.mjs`.
+
+---
+
 ## ERR-068 - A service (and anything never counted) showed "Out of Stock"
 
 **Version:** every version up to v1.10.82 · fixed in v1.10.83

@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.10.83] - unreleased
 
 ### Added
+- **Purpose code for payments from abroad.** Each payment account can hold
+  an RBI purpose code (for example P0802 software consultancy, P1006
+  business consultancy, P1099 other services), picked from a list or typed.
+  It prints with the bank details, next to SWIFT, on invoices to clients
+  abroad or in a foreign currency, so the client can quote it on the
+  transfer. One invoice can use another code (*Purpose code (RBI)* on the
+  invoice).
 - **Remove the app in one click.** *Control Panel → Remove…* uninstalls the
   app with its Desktop, Start-menu and start-up icons (Mac: the app in
   Applications; Linux: the menu entry). Tick boxes choose what else goes:
@@ -162,6 +169,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once the rest arrives. You can also record the TDS on its own.
 
 ### Changed
+- **A services invoice shows only what services need.** In Services mode
+  (where the Freelancer / consultant type starts every invoice), these are
+  left out: the Unit column (while the unit is not printed), *Delivery
+  charges*, *Ship to*, and the goods boxes under *Order, dispatch &
+  reference details*. A line discount is just an amount or a percent, and
+  the whole-bill discount sits behind *+ Discount on the whole bill*.
+  Anything already filled in still shows; Goods or Mixed brings every box
+  back.
+- **The item box grows with the text.** A long item name wraps and stays
+  readable, and the box can be dragged taller. Enter still adds the next
+  row. The box is also wider.
 - **GST returns, income tax and the TDS & TCS report count invoices billed in
   dollars, euros... in rupees**, at the exchange rate saved on each invoice.
   An invoice in another currency without a rate is listed so you can add it,
@@ -187,6 +205,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wording.
 
 ### Fixed
+- **Billing a client abroad in dollars, with the client saved as in India,
+  gave a domestic invoice with no LUT.** The client form starts on India, so
+  clients abroad were often saved that way. The invoice now says *Billing in
+  USD to a client in India?* with a button to the client's Country box.
+  Setting it makes the invoice an export: "Outside India", the LUT, no IGST.
 - **"Out of Stock" on things whose stock was never entered.** A product with
   a blank stock is now "not counted" (shown as a dash), not 0; the Dashboard
   low-stock strip, the bell and the products list all agree. A blank Stock box

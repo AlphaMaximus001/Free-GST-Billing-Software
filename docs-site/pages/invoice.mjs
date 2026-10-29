@@ -84,6 +84,15 @@ export default [
 <p>Your own custom units show in every mode. The choice is remembered for your next invoice.</p>
 <p><b>A service with no quantity (a fixed fee).</b> Keep the line's quantity at 1 and type the fee as the rate. Then click ${ui('Customize')} and untick <b>Qty column</b> (see <a href="invoice-options.html#show-items">Items table</a>): the invoice prints the item and its amount with no Qty column. Untick <b>Rate column</b> too if you want only the amount. Totals and GST do not change. The choice carries on to your next new invoices, so tick it again for an invoice that needs quantities; invoices already saved keep their own setting.</p>
 <p>In <b>Services</b> mode the unit list starts with the units services use most: Hrs, Day, Month, Project and Nos. The HSN/SAC box of each line is labelled <b>SAC</b>, and the unit is not printed next to the quantity unless you turn it on (see <a href="invoice-options.html#show-items">Unit next to Qty</a>).</p>
+<p><b>A Services invoice shows only what services need.</b> The <b>Freelancer / consultant</b> business type starts every invoice in Services mode. There, the screen leaves out:</p>
+<ul>
+  <li>the <b>Unit</b> column, while the unit is not printed;</li>
+  <li>the ${ui('Delivery charges')} button;</li>
+  <li>the <b>Ship to</b> box;</li>
+  <li>the goods boxes under <b>Order, dispatch &amp; reference details</b> (vehicle no, delivery note, dispatch, destination, terms of delivery). The PO number, service period and work details stay.</li>
+</ul>
+<p>The <b>Discount</b> on a line is just an amount or a percent, and the discount on the whole bill is behind ${ui('+ Discount on the whole bill')}. Anything already filled in still shows. Click <b>📦 Goods</b> or <b>🔀 Mixed</b> to get every box back.</p>
+<p><b>Long item names.</b> The item box grows as you type, so a long name stays readable. Drag its bottom corner to make it taller. Press <kbd>Enter</kbd> to add the next row; a name stays on one line. Use ${ui('+ Add description')} for more detail under the item.</p>
 </section>
 
 <section id="billed-to">

@@ -11,6 +11,7 @@ import { useCostCentres } from './useCostCentres';
 import { CostCentreSelect } from './CostCentrePicker';
 import { centreFields } from '../utils/costCentres';
 import { isExportOrSez, lutCoversDate, normaliseLutArn, fyOf } from '../utils/lut';
+import { PURPOSE_CODES } from '../utils/purposeCodes';
 import { baseCurrencyOf, currencyForClient, isForeignClient } from '../utils/fx';
 import InvoiceCurrency from './InvoiceCurrency';
 import PrintPreviewModal from './PrintPreviewModal';
@@ -180,6 +181,8 @@ const DEFAULT_OPTIONS = {
 // from, the defaults - as paymentAccountSnapshot already is.
 // v1.10.83 - tdsRecorded (TDS recorded with a payment) is per-invoice too.
 const LUT_OPTION_KEYS = ['isLUT', 'lutArn', 'lutFy', 'lutManual', 'tdsRecorded'];
+// v1.10.83 - order-detail boxes that only goods use (hidden on a services invoice).
+const GOODS_ONLY_DETAILS = ['vehicleNo', 'deliveryNote', 'deliveryNoteDate', 'dispatchDocNo', 'dispatchedThrough', 'destination', 'deliveryTerms'];
 const stripLutOptions = (o) => { LUT_OPTION_KEYS.forEach((k) => { delete o[k]; }); return o; };
 const lutOptionsOf = (o) => Object.fromEntries(LUT_OPTION_KEYS.filter((k) => k in (o || {})).map((k) => [k, o[k]]));
 
@@ -244,6 +247,15 @@ const currencySymbolFor = (code) =>
 // re-render on every arrow-key press.
 function SuggestingInput({ item, suggestions, onFieldChange, onSelectProduct, onSetProductSearch, currency }) {
   const [activeIdx, setActiveIdx] = useState(-1);
+  // v1.10.83 - the name box grows with the text (and can be dragged taller), so
+  // a long item name can be read and edited in full.
+  const boxRef = useRef(null);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + 2}px`;
+  }, [item.name]);
   // Reset the highlighted suggestion when the query changes so ArrowDown
   // starts from the top rather than continuing a stale index.
   useEffect(() => { setActiveIdx(-1); }, [item.name, suggestions.length]);
@@ -252,6 +264,8 @@ function SuggestingInput({ item, suggestions, onFieldChange, onSelectProduct, on
     if (pick) onSelectProduct(item.id, pick);
   };
   const handleKey = (e) => {
+    // A name is one line: Enter never breaks it (the row's Enter-adds-a-row still runs).
+    if (e.key === 'Enter' && !e.shiftKey && activeIdx < 0) e.preventDefault();
     if (!suggestions.length) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -274,9 +288,9 @@ function SuggestingInput({ item, suggestions, onFieldChange, onSelectProduct, on
   };
   return (
     <>
-      <input type="text" className="form-input" value={item.name}
+      <textarea ref={boxRef} rows={1} className="form-input line-item-name" value={item.name}
         placeholder="Item"
-        onChange={(e) => onFieldChange(item.id, 'name', e.target.value)}
+        onChange={(e) => onFieldChange(item.id, 'name', e.target.value.replace(/\s*\n\s*/g, ' '))}
         onBlur={() => setTimeout(() => onSetProductSearch({ itemId: null, query: '' }), 200)}
         onKeyDown={handleKey}
         autoComplete="off" />
@@ -327,7 +341,7 @@ const LineItem = memo(function LineItem({
   };
   return (
     <div className="line-item-row" data-item-id={item.id} onKeyDown={handleRowKeyDown}>
-      <div className="line-item-field" style={{ flex: 2.5, position: 'relative' }}>
+      <div className="line-item-field" style={{ flex: 2.5, minWidth: 220, position: 'relative' }}>
         {/* v1.10.74 - was "Description", which clashed with "+ Add description" below. */}
         <label className="form-label">Item</label>
         {/* v1.10.37 — Keyboard nav on product suggestions. Reported:
@@ -381,9 +395,10 @@ const LineItem = memo(function LineItem({
           onFocus={(e) => e.target.select()}
           onChange={(e) => onFieldChange(item.id, 'quantity', clampNonNeg(e.target.value))} />
       </div>
-      <div className="line-item-field" style={{ flex: 0.9 }}>
+      {/* v1.10.83 - a services invoice that does not print the unit has no unit column. */}
+      {(invoiceMode !== 'services' || invoiceOptionOn(invoiceOptions, 'showItemUnit')) && <div className="line-item-field" style={{ flex: 0.9 }}>
         <label className="form-label">Unit</label>
-        <select className="form-input" value={item.unit || 'Nos'}
+        <select className="form-input" value={item.unit || getDefaultUnitForMode(invoiceMode)}
           onChange={(e) => {
             if (e.target.value === '__custom__') { onAddCustomUnit(item.id); return; }
             if (e.target.value.startsWith('__remove__::')) {
@@ -410,7 +425,7 @@ const LineItem = memo(function LineItem({
             <option key={`rm-${u.label}`} value={`__remove__::${u.label}`}>− Remove "{u.label}"</option>
           ))}
         </select>
-      </div>
+      </div>}
       <div className="line-item-field" style={{ flex: 1.2 }}>
         <label className="form-label">Rate{currency && currency !== 'INR' ? ` (${currencySymbolFor(currency)})` : ''}</label>
         <input type="number" min="0" step="any" className="form-input" value={item.rate}
@@ -418,7 +433,7 @@ const LineItem = memo(function LineItem({
           onChange={(e) => onFieldChange(item.id, 'rate', clampNonNeg(e.target.value))} />
       </div>
       {invoiceOptions.showDiscount && (
-        <div className="line-item-field" style={{ flex: 1.8, minWidth: 200 }}>
+        <div className="line-item-field" style={invoiceMode === 'services' ? { flex: 1.2, minWidth: 130 } : { flex: 1.8, minWidth: 200 }}>
           <label className="form-label">Discount</label>
           {/* v1.10.22 — two-mode discount: fixed rupees OR percent-of-line.
               v1.10.23 — wider min-width so value + mode selector stay
@@ -443,7 +458,7 @@ const LineItem = memo(function LineItem({
             {/* Base only meaningful for fixed-mode. Percent of any base is
                 mathematically identical (proportional), so hide the
                 selector when type='percent' to avoid dead UI. */}
-            {item.discountType !== 'percent' && (
+            {item.discountType !== 'percent' && invoiceMode !== 'services' && (
               <select className="form-input"
                 value={item.discountBase || 'net'}
                 onChange={(e) => { onFieldChange(item.id, 'discountBase', e.target.value); onFieldChange(item.id, 'withTaxRule', 2); }}
@@ -1503,6 +1518,11 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
 
   // v1.10.77 (#87) - one delivery-charges line per invoice (see deliveryChargeLine).
   const hasDeliveryCharge = items.some((i) => i.isCharge);
+  // v1.10.83 - a services invoice (the freelancer type starts in it) shows only
+  // what services need: no delivery charges, ship-to or dispatch boxes, no unit
+  // column unless the unit is printed, and the whole-bill discount behind a click.
+  const servicesMode = (invoiceOptions.invoiceMode || 'goods') === 'services';
+  const [wholeDiscountOpen, setWholeDiscountOpen] = useState(false);
   const addDeliveryCharge = () => {
     if (hasDeliveryCharge) return;
     setItems((prev) => [...prev, deliveryChargeLine(prev)]);
@@ -4281,8 +4301,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                   onChange={(e) => setClient({ ...client, address: e.target.value })} placeholder="Street address, locality" />
               </div>
               <div className="form-group">
-                <label className="form-label">Country</label>
-                <select className="form-input" value={client.country || profile?.country || 'India'}
+                <label className="form-label" htmlFor="client-country">Country</label>
+                <select id="client-country" className="form-input" value={client.country || profile?.country || 'India'}
                   onChange={(e) => {
                     setClient({ ...client, country: e.target.value, state: '' });
                     // v1.10.83 - a client abroad: their currency, on a new invoice.
@@ -4428,6 +4448,36 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                   </div>
                 );
               })()}
+              {/* v1.10.83 - a foreign currency but the client is saved in India
+                  (the client form starts on India): the invoice is then billed as
+                  domestic, with no LUT. Say so, and take them to the Country box. */}
+              {(invoiceOptions.currency || baseCurrency) !== baseCurrency && baseCurrency === 'INR'
+                && !isForeignClient(client, profile) && !client?.isSEZ && !readOnlyDoc && (
+                <div className="form-group full-width notice notice-warn" style={{ padding: '0.6rem 0.85rem', borderRadius: 6, display: 'block', fontSize: '0.82rem', lineHeight: 1.5 }}>
+                  <strong>Billing in {invoiceOptions.currency} to a client in India?</strong> If {client?.name || 'this client'} is abroad, set their country. The invoice then becomes an export: the place of supply prints &quot;Outside India&quot;, your LUT applies (no IGST), and your SWIFT and purpose code print.{' '}
+                  <button type="button" className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', marginTop: 4 }}
+                    onClick={() => { const el = document.getElementById('client-country'); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.focus(); }}>
+                    Set the client's country
+                  </button>
+                </div>
+              )}
+              {/* v1.10.83 - the RBI purpose code the client quotes on the wire;
+                  blank uses the payment account's (Settings → Payment accounts). */}
+              {(isForeignClient(client, profile) || (invoiceOptions.currency || baseCurrency) !== baseCurrency) && baseCurrency === 'INR' && (() => {
+                const accountCode = getAccountById(profile, invoiceOptions.selectedAccountId)?.purposeCode || '';
+                return (
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="purpose-code">Purpose code (RBI) <HelpButton title="Purpose codes" doc="settings#paid-from-abroad" size={14} /></label>
+                    <input id="purpose-code" type="text" className="form-input" list="purpose-codes-inv" disabled={readOnlyDoc}
+                      value={invoiceOptions.purposeCode || ''}
+                      onChange={(e) => setInvoiceOptions(prev => ({ ...prev, purposeCode: e.target.value.toUpperCase().trim() }))}
+                      placeholder={accountCode ? `${accountCode} (from your bank account)` : 'e.g. P0802 software, P1006 consulting'} />
+                    <datalist id="purpose-codes-inv">
+                      {PURPOSE_CODES.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
+                    </datalist>
+                  </div>
+                );
+              })()}
               {invoiceOptions.showPlaceOfSupply && (() => {
                 const posOpts = getStatesForCountry(profile?.country);
                 return (
@@ -4458,7 +4508,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
               {/* v1.10.11 — Ship-to = Bill-to checkbox. When unchecked,
                    4 shipping fields appear. Rendered next to the billing
                    block in the PDF preview. */}
-              <div className="form-group full-width" style={{ marginTop: '0.5rem', padding: '0.6rem 0.85rem', background: 'var(--bg-secondary)', borderRadius: 6 }}>
+              {(!servicesMode || details.shipToSameAsBilling === false) && <div className="form-group full-width" style={{ marginTop: '0.5rem', padding: '0.6rem 0.85rem', background: 'var(--bg-secondary)', borderRadius: 6 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none', fontSize: '0.88rem' }}>
                   <input type="checkbox" checked={details.shipToSameAsBilling !== false}
                     onChange={e => setDetails({ ...details, shipToSameAsBilling: e.target.checked })}
@@ -4503,12 +4553,15 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                     </div>
                   </div>
                 )}
-              </div>
+              </div>}
 
               {/* v1.10.73 - order, dispatch and reference details: the boxes on a
                   Tally-style invoice. Optional; closed unless one is filled. */}
               {(() => {
                 const filled = ORDER_DETAIL_FIELDS.filter(f => String(details[f.key] || '').trim()).length;
+                // v1.10.83 - a services invoice has no vehicle or dispatch; those
+                // boxes show only if one is already filled.
+                const fields = ORDER_DETAIL_FIELDS.filter(f => !servicesMode || !GOODS_ONLY_DETAILS.includes(f.key) || String(details[f.key] || '').trim());
                 const periodBackwards = details.periodFrom && details.periodTo && details.periodTo < details.periodFrom;
                 return (
                   <details className="form-group full-width" open={filled > 0 || undefined}
@@ -4516,10 +4569,10 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                     <summary style={{ cursor: 'pointer', fontSize: '0.88rem', userSelect: 'none' }}>
                       <strong>Order, dispatch &amp; reference details</strong>
                       <HelpButton title="Order, dispatch and reference details" doc="invoices#order-details" size={16} />
-                      <span style={{ color: 'var(--text-muted)' }}> (optional{filled ? `, ${filled} filled` : ''}) - buyer's order no, vehicle no, service period, work details</span>
+                      <span style={{ color: 'var(--text-muted)' }}> (optional{filled ? `, ${filled} filled` : ''}) - {servicesMode ? "client's PO no, service period, work details" : "buyer's order no, vehicle no, service period, work details"}</span>
                     </summary>
                     <div className="grid grid-cols-2 gap-3" style={{ marginTop: '0.6rem' }}>
-                      {ORDER_DETAIL_FIELDS.map(f => (
+                      {fields.map(f => (
                         <div key={f.key} className={`form-group${f.wide ? ' full-width' : ''}`}>
                           <label className="form-label" style={{ fontSize: '0.78rem' }}>{f.label}</label>
                           <input type={f.type || 'text'} className="form-input" value={details[f.key] || ''}
@@ -4581,7 +4634,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
             ))}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <button className="btn btn-secondary mt-2" onClick={addItem}><Plus size={18} /> Add Item</button>
-              {!hasDeliveryCharge && (
+              {!hasDeliveryCharge && !servicesMode && (
                 <button type="button" className="btn btn-secondary mt-2" onClick={addDeliveryCharge}
                   title="Adds a 'Delivery charges' line, taxed at the goods' GST rate (composite supply)">
                   <Truck size={16} /> Delivery charges
@@ -4597,6 +4650,13 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
             {/* v1.10.22 — invoice-level (whole-bill) discount. Sits below
                 the line items so it reads as "…and then take X off the
                 whole bill". Zero value = no line renders in the preview. */}
+            {/* v1.10.83 - a services invoice keeps it behind one click until used. */}
+            {servicesMode && !wholeDiscountOpen && !Number(invoiceOptions.invoiceDiscountValue) ? (
+              <button type="button" className="btn-link" onClick={() => setWholeDiscountOpen(true)}
+                style={{ marginTop: '0.75rem', background: 'none', border: 0, padding: 0, cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                + Discount on the whole bill
+              </button>
+            ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: '0.75rem', flexWrap: 'wrap' }}>
               <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Discount on total (whole bill) <HelpButton title="Discounts" doc="invoices#discounts" size={16} /></label>
               <input type="number" min="0" step="any" className="form-input"
@@ -4615,6 +4675,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 Applied after tax. For GST-compliant pre-tax discount, use per-line discount instead.
               </span>
             </div>
+            )}
           </div>
 
           {/* Terms */}
