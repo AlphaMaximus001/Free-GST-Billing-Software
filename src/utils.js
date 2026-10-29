@@ -1866,6 +1866,7 @@ export const MENU_ITEMS = [
   { id: 'purchases', label: 'Purchases', module: 'purchases', section: 'main', help: 'Bills from your suppliers, for stock and input tax credit.' },
   { id: 'recurring', label: 'Recurring', module: 'recurring', section: 'main', help: 'Invoices that repeat every week, month or year.' },
   { id: 'receipts', label: 'Receipts', module: 'receipts', section: 'main', help: 'Payment receipts for money you receive.' },
+  { id: 'cashbook', label: 'Cash book', module: 'cashBook', section: 'main', help: 'Cash in and out with names and notes, and the cash in hand.' },
   { id: 'reports', label: 'Reports', module: 'reports', section: 'main', help: 'Sales, profit and loss, dues and stock reports.' },
   { id: 'filing', label: 'GST returns', module: 'gstReturns', section: 'main', indiaOnly: true, help: 'GSTR-1 and GSTR-3B files, with a filing guide.' },
   { id: 'incometax', label: 'Income tax', module: 'incomeTax', section: 'main', indiaOnly: true, help: 'Old vs new regime calculator and bank statement import.' },

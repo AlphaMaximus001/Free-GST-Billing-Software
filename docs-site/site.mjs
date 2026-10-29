@@ -48,7 +48,7 @@ export const SEO = {
 export const NAV = [
   { title: 'Start here', pages: ['index', 'install', 'install-mac', 'install-linux', 'update', 'first-run', 'first-invoice'] },
   { title: 'Invoicing', pages: ['invoices', 'invoice-options', 'thermal-printing', 'dashboard'] },
-  { title: 'Clients, stock and payments', pages: ['clients', 'products', 'receipts', 'recurring'] },
+  { title: 'Clients, stock and payments', pages: ['clients', 'products', 'receipts', 'cash-book', 'recurring'] },
   { title: 'Buying', pages: ['purchases', 'expenses'] },
   { title: 'Tax and reports', pages: ['gst-returns', 'reports', 'income-tax'] },
   { title: 'Setting up', pages: ['settings', 'print-settings', 'backup', 'control-panel'] },

@@ -25,6 +25,8 @@ for (const t of BUSINESS_TYPES) {
 eq(modulesForType('nope'), null, 'unknown type gives nothing');
 eq(applyBusinessType('nope', { reports: false }), { reports: false }, 'unknown type changes nothing');
 
+for (const t of BUSINESS_TYPES) eq(shown(t.id, 'cashBook'), true, `${t.id}: cash book on (every business handles cash)`);
+
 console.log('Freelancer');
 for (const id of ['inventory', 'purchases', 'purchaseOrders', 'manufacturing']) eq(shown('freelancer', id), false, `freelancer: ${id} off`);
 for (const id of ['recurring', 'receipts', 'expenses', 'gstReturns', 'tdsTcs', 'incomeTax']) eq(shown('freelancer', id), true, `freelancer: ${id} on`);
@@ -81,7 +83,8 @@ eq(orderedMenu([]).map(m => m.id), def, 'no saved order = default');
 eq(orderedMenu(['ghost', 'reports']).map(m => m.id)[0], 'reports', 'saved first item comes first, unknown ids ignored');
 eq(orderedMenu(undefined).length, MENU_ITEMS.length, 'bad saved order is safe');
 let o = moveMenuItem([], 'reports', -1);
-eq(o.indexOf('reports') < o.indexOf('receipts'), true, 'Reports moved above Receipts');
+const aboveReports = def[def.indexOf('reports') - 1];
+eq(o.indexOf('reports') < o.indexOf(aboveReports), true, `Reports moved above ${aboveReports}`);
 eq(moveMenuItem(o, 'reports', +1), def, 'moving back down restores');
 eq(moveMenuItem([], 'dashboard', -1), def, 'first item cannot go up');
 eq(moveMenuItem([], 'guide', +1), def, 'last of the top part cannot jump into the bottom part');

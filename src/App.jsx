@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { Home, FileText, Settings, Plus, Users, Package, BarChart3, Wallet, RefreshCw, Receipt, BookOpen, Moon, Sun, Download, X, ShoppingCart, ChevronDown, Building2, Pencil, HelpCircle, Search, Command, Bell, Calculator, HardDrive, Menu, Heart } from 'lucide-react';
+import { Home, FileText, Settings, Plus, Users, Package, BarChart3, Wallet, RefreshCw, Receipt, BookOpen, Moon, Sun, Download, X, ShoppingCart, ChevronDown, Building2, Pencil, HelpCircle, Search, Command, Bell, Calculator, HardDrive, Menu, Heart, Banknote } from 'lucide-react';
 import { getAllProfiles, saveProfile, getEnabledModules, getMenuOrder, onMenuChanged, getAllBills, getAllProducts, getStockAlertSettings, getAllClients, runUpdateNow, getLockStatus } from './store';
 import { isModuleEnabled, getUpcomingFilings, countsAsSales, localToday, toLocalIsoDate, DOCS_URL } from './utils';
 import { orderedMenu } from './utils/businessTypes';
@@ -31,6 +31,7 @@ const ReportsView = lazy(() => import('./components/ReportsView'));
 const ExpenseTracker = lazy(() => import('./components/ExpenseTracker'));
 const RecurringInvoices = lazy(() => import('./components/RecurringInvoices'));
 const ReceiptVoucher = lazy(() => import('./components/ReceiptVoucher'));
+const CashBook = lazy(() => import('./components/CashBook'));
 const GSTReturns = lazy(() => import('./components/GSTReturns'));
 const IncomeTax = lazy(() => import('./components/IncomeTax'));
 const PurchaseBills = lazy(() => import('./components/PurchaseBills'));
@@ -74,7 +75,7 @@ function App() {
       const params = new URLSearchParams(window.location.search);
       const v = params.get('view');
       // v1.10.74 - 'controlpanel' added so ?view=controlpanel deep links work too.
-      const valid = ['dashboard', 'new', 'clients', 'inventory', 'expenses', 'purchases', 'recurring', 'receipts', 'reports', 'filing', 'incometax', 'settings', 'controlpanel', 'support'];
+      const valid = ['dashboard', 'new', 'clients', 'inventory', 'expenses', 'purchases', 'recurring', 'receipts', 'cashbook', 'reports', 'filing', 'incometax', 'settings', 'controlpanel', 'support'];
       if (v && valid.includes(v)) {
         // Strip the query string so a refresh doesn't keep snapping back to
         // the shortcut target — only the *first* navigation honours it.
@@ -526,7 +527,7 @@ function App() {
   // If the user just disabled the module backing the current view, kick them to dashboard
   // so they don't land on an empty page after toggling.
   useEffect(() => {
-    const map = { new: 'invoicing', clients: 'clients', inventory: 'inventory', expenses: 'expenses', purchases: 'purchases', recurring: 'recurring', receipts: 'receipts', reports: 'reports', filing: 'gstReturns', incometax: 'incomeTax' };
+    const map = { new: 'invoicing', clients: 'clients', inventory: 'inventory', expenses: 'expenses', purchases: 'purchases', recurring: 'recurring', receipts: 'receipts', cashbook: 'cashBook', reports: 'reports', filing: 'gstReturns', incometax: 'incomeTax' };
     const moduleForView = map[currentView];
     if (moduleForView && !isModuleEnabled(moduleForView, enabledModules)) {
       setCurrentView('dashboard');
@@ -545,6 +546,7 @@ function App() {
     purchases: { icon: ShoppingCart, label: 'Purchases' },
     recurring: { icon: RefreshCw, label: 'Recurring' },
     receipts: { icon: Receipt, label: 'Receipts' },
+    cashbook: { icon: Banknote, label: 'Cash book' },
     reports: { icon: BarChart3, label: 'Reports' },
     filing: { icon: BookOpen, label: 'GST Returns' },
     incometax: { icon: Calculator, label: 'Income Tax' },
@@ -1061,6 +1063,9 @@ function App() {
         )}
         {currentView === 'receipts' && (
           <ReceiptVoucher key={businessKey} />
+        )}
+        {currentView === 'cashbook' && (
+          <CashBook key={businessKey} onOpenView={setCurrentView} />
         )}
         {currentView === 'reports' && (
           <ReportsView key={businessKey} />

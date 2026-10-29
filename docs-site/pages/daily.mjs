@@ -593,4 +593,91 @@ Website Maintenance,998314,5000,18,Month,0</code></pre>
 </section>
 `,
 },
+// =============================================================================
+{
+  slug: 'cash-book',
+  title: 'Cash book',
+  lead: 'Every rupee that comes in or goes out in cash, with names and notes, and how much cash you should have in the drawer right now.',
+  body: `
+<section id="what-it-is">
+<h2>What the cash book is for</h2>
+<p>Use it for cash that does not belong on an invoice or a bill: money taken at the counter, an advance from a customer, salary paid in cash, tea and snacks, auto fare, money you take home, or cash you deposit in the bank. Each entry is either <b>Money in</b> or <b>Money out</b>, with an amount, a date, a name (who or what) and a note if you like.</p>
+<p>Open it from ${ui('Cash book')} in the sidebar. If you do not see it, tick <b>Cash book</b> under <b>Menu</b> in <a href="settings.html#features">Settings, Features</a> and save. It is on to start, whatever your business type.</p>
+<p>Each business has its own cash book, like its expenses and receipts. Switching the business at the top of the sidebar shows that business's cash.</p>
+</section>
+
+<section id="opening-balance">
+<h2>Start with the cash you have today</h2>
+<p>Count the cash in your drawer (or cash box) on the day you start, then add it as your first entry:</p>
+<ol class="steps">
+  <li><strong>Money in</strong>Make sure ${ui('Money in')} is selected (it turns green).</li>
+  <li><strong>Amount</strong>Type the cash you counted, such as 12500.</li>
+  <li><strong>Category</strong>Click the Category box and pick <b>Opening balance</b>.</li>
+  <li><strong>Save</strong>Press Enter or click ${ui('Save')}.</li>
+</ol>
+<p>From then on, <b>Cash in hand</b> is this amount plus everything that comes in, less everything that goes out.</p>
+</section>
+
+<section id="add-entry">
+<h2>Adding an entry</h2>
+<p>The form is at the top of the screen, so you can add one entry after another without opening anything.</p>
+<ol class="steps">
+  <li><strong>In or out</strong>Click ${ui('Money in')} (green) for cash you received, or ${ui('Money out')} (red) for cash you paid.</li>
+  <li><strong>Amount</strong>Required. More than 0, in rupees and paise.</li>
+  <li><strong>Name</strong>Who paid you or whom you paid, or what it was for: "Ramesh", "Milk", "Auto". Your clients' names, and names you used before, appear as you type.</li>
+  <li><strong>Category</strong>Optional. Pick one of Opening balance, Sales, Advance, Salary, Tea &amp; snacks, Transport, Owner drawing, Deposit to bank or Other, or type your own.</li>
+  <li><strong>Date</strong>Today to start. Change it for an entry you forgot yesterday.</li>
+  <li><strong>Note</strong>Optional, anything you want to remember.</li>
+  <li><strong>Save</strong>Press Enter in any box, or click ${ui('Save')}.</li>
+</ol>
+<p>The entry appears in the list, and the amount, name, category and note are cleared for the next one. Money in or out and the date stay as they were, so ten counter sales in a row are quick.</p>
+<p>If something is missing you see a message saying what to fix, such as "Enter an amount more than 0", and nothing is saved.</p>
+</section>
+
+<section id="from-elsewhere">
+<h2>Cash already recorded in the app</h2>
+<p>You do not type cash in twice. These show in the cash book on their own, with a small dashed label saying where they came from:</p>
+<div class="table-wrap"><table>
+  <tr><th>Label</th><th>Where it was made</th><th>Shows when</th></tr>
+  <tr><td>Invoice INV-5 payment</td><td>A payment recorded on the <a href="dashboard.html#payments">Dashboard</a></td><td>The payment mode is Cash</td></tr>
+  <tr><td>Receipt RCP/26-27/0012</td><td>A <a href="receipts.html">payment receipt</a></td><td>The payment mode is Cash</td></tr>
+  <tr><td>Expense</td><td>An <a href="expenses.html">expense</a></td><td>The payment mode is Cash (money out)</td></tr>
+</table></div>
+<p>These lines cannot be edited or deleted in the cash book. Click the label to go to the screen it was made on, and change it there; the cash book follows.</p>
+<p><strong>Counted once.</strong> Recording a payment on the Dashboard also makes a receipt, and a receipt against an invoice also records a payment on it. It is the same money, so the cash book shows it once, as the receipt.</p>
+<p><strong>Purchase bills</strong> do not record how they were paid. When you pay a supplier in cash, add it here as ${ui('Money out')} with the supplier's name.</p>
+<p>Invoices and receipts in another currency (export invoices in dollars, for example) are left out: the cash book is in rupees.</p>
+</section>
+
+<section id="cash-in-hand">
+<h2>Cash in hand and the totals</h2>
+<p>The cards at the top show:</p>
+<ul>
+  <li><b>Cash in hand</b>: all money in, less all money out, up to today. It turns red if it goes below zero, which usually means an entry is missing or the opening balance was not added.</li>
+  <li><b>Today</b>: cash in and out today.</li>
+  <li><b>This month</b>: cash in and out since the 1st.</li>
+</ul>
+<p>Count the drawer at the end of the day and compare it with Cash in hand. If they differ, look for an entry you forgot.</p>
+</section>
+
+<section id="list">
+<h2>The list and the running balance</h2>
+<p>The list is oldest first, like a paper cash book. Each line shows the date, name and note, category (or where it came from), the amount under <b>Money in</b> or <b>Money out</b>, and the <b>Balance</b>: the cash you had after that line.</p>
+<p>The first line, <b>Opening balance (brought forward)</b>, is the cash you had when the chosen dates begin. The last line, <b>Closing balance</b>, is the cash at the end of them, with the total in and out.</p>
+<p>Use the pencil to change one of your entries (it opens in the form at the top; click ${ui('Update')}), and the bin to delete it. Deleting asks first and cannot be undone.</p>
+</section>
+
+<section id="filters">
+<h2>Choosing dates and searching</h2>
+<p>The dates box shows <b>This month</b> to start. You can also choose <b>Last month</b>, <b>This financial year</b> (1 April to 31 March), <b>All dates</b>, or <b>Choose dates</b> to pick a from and to date.</p>
+<p>The search box finds lines by name, note, category, where they came from, or amount. While you search, the totals at the bottom add up only the lines found; each line still shows its real balance. The ${ui('X')} button clears the search and goes back to This month.</p>
+</section>
+
+<section id="export">
+<h2>Print, PDF and Excel</h2>
+<p>${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} above the list save the lines shown, with the dates and search you chose: the opening balance, each line with its balance, and the total. To make a PDF, click ${ui('Print / PDF')} and choose <b>Save as PDF</b> as the printer. The CSV opens in Excel too.</p>
+<p>Your cash book is also saved in your backups. In <a href="backup.html#export-import">Export Backup</a> it travels with <b>Expenses</b>.</p>
+</section>
+`,
+},
 ];

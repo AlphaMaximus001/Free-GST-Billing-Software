@@ -244,7 +244,7 @@ export default [
 <section id="export-import">
 <h2>Export everything to one file</h2>
 <p>In <b>Settings, Data Management</b>, ${ui('Export Backup…')} lets you tick what to include; everything is ticked to start:</p>
-<p>active business profile, all business profiles, invoices, clients, products, expenses, purchase bills, recurring invoices, receipts, terms templates, app settings, and local preferences such as custom units and theme.</p>
+<p>active business profile, all business profiles, invoices, clients, products, expenses (with the cash book), purchase bills, recurring invoices, receipts, terms templates, app settings, and local preferences such as custom units and theme.</p>
 <p>${ui('Download Backup')} saves <code>freegstbill-backup-<i>date</i>.json</code>. Tick <b>Also save a copy to my Google Drive</b> if you have connected Drive.</p>
 <p>${ui('Import Backup…')} reads a backup file and shows what is in it, with a count for each part, before anything changes. Tick the parts to restore and click ${ui('Restore selected')}. Records in the file replace the matching records in the app; anything you did not tick is left alone. Export your current data first, just in case.</p>
 </section>
