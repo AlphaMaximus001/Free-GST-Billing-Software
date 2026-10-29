@@ -750,7 +750,7 @@ If the app saves you time, you can help keep it going:
 |----------|--------|
 | **Where is my data stored?** | In a `data/` folder on your computer as plain JSON files. No server, no cloud, no database. |
 | **Can anyone access my invoices?** | No. The app runs on `localhost` — not accessible from the internet or other computers. |
-| **What if I uninstall?** | Your `data/` folder stays untouched. Reinstall anytime and everything is still there. |
+| **What if I uninstall?** | **Control Panel → Remove…** removes the app and its icons in one click. Tick boxes choose whether your data, PDFs and backups go too; by default your `data/` folder stays, and reinstalling brings everything back. |
 | **Do I need internet?** | Only for the first install (`npm install`). After that, everything works offline. |
 | **How do I backup?** | Settings → Export Data → save JSON file. Import on any machine. |
 

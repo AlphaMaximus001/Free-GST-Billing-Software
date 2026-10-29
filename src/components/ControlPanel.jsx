@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, RefreshCw, Package, FolderOpen, HardDrive, StopCircle, Upload, AlertCircle, CheckCircle } from 'lucide-react';
+import { Download, RefreshCw, Package, FolderOpen, HardDrive, StopCircle, Upload, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
 import PageHeader from './PageHeader';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
@@ -22,6 +22,9 @@ export default function ControlPanel() {
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(null); // action name currently in flight
   const [lastResult, setLastResult] = useState(null);
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [removeOpts, setRemoveOpts] = useState({ data: false, pdfs: false, backups: false });
+  const [removed, setRemoved] = useState(null);
 
   useEffect(() => {
     fetch('/api/control-panel/status')
@@ -69,6 +72,55 @@ export default function ControlPanel() {
       setBusy(null);
     }
   };
+
+  const removeApp = async () => {
+    const { data, pdfs, backups } = removeOpts;
+    if (data && !window.confirm(backups
+      ? 'Delete all your invoices, clients, products, settings and every backup? Nothing will be left, and this cannot be undone.'
+      : 'Delete your invoices, clients, products and settings from this computer? A last copy is saved in the backups folder first.')) return;
+    setBusy('remove');
+    try {
+      const r = await fetch('/api/control-panel/uninstall', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data, pdfs, backups, confirm: 'REMOVE' }),
+      });
+      const result = await r.json();
+      if (!result.ok) { toast(`Remove failed — ${result.error}`, 'error'); return; }
+      // The app is gone: drop its offline copy too, so this tab cannot show it again.
+      try {
+        for (const reg of await navigator.serviceWorker?.getRegistrations?.() || []) await reg.unregister();
+        for (const key of await caches.keys()) await caches.delete(key);
+      } catch { /* nothing cached */ }
+      setRemoved({ ...removeOpts, kept: result.kept });
+    } catch (e) {
+      toast(`Remove failed — ${e.message}`, 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (removed) {
+    return (
+      <div className="dashboard-container">
+        <div className="glass-panel p-6" style={{ maxWidth: 560, margin: '3rem auto' }}>
+          <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <CheckCircle size={22} color="#22c55e" /> Free GST Billing is being removed
+          </h2>
+          <p>The app has closed and its files and icons are being deleted. You can close this window.</p>
+          {removed.kept && (
+            <p>
+              Kept: {[!removed.data && 'your invoices, clients and settings', !removed.pdfs && 'your saved invoice PDFs'].filter(Boolean).join(' and ')},
+              in <code>{removed.kept}</code>. Installing the app into the same folder again brings them back.
+            </p>
+          )}
+          {removed.data && !removed.backups && (
+            <p>A last copy of your data was saved in <code>Documents/FreeGSTBill Backups</code> as <code>before-removal-…</code>.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const prettyAction = (a) => ({
     backup: 'Backup', update: 'Update', restore: 'Restore', move: 'Move export',
@@ -181,7 +233,55 @@ export default function ControlPanel() {
           onClick={() => launchScript('stop')}
           variant="danger"
         />
+        <ActionCard
+          icon={<Trash2 size={22} />}
+          title="Remove the App" doc="control-panel#remove"
+          body="Uninstalls the app and its icons from this computer. You choose whether your data, PDFs and backups go too."
+          buttonLabel={status && !status.canRemove ? 'Not available here' : 'Remove…'}
+          disabled={!!busy || !status?.canRemove}
+          onClick={() => { setRemoveOpen(true); setTimeout(() => document.getElementById('remove-app')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}
+          variant="danger"
+        />
       </div>
+
+      {removeOpen && status?.canRemove && (
+        <div id="remove-app" className="glass-panel p-6" style={{ marginTop: '1.5rem', border: '1px solid #dc2626' }}>
+          <h3 style={{ margin: '0 0 0.4rem' }}>Remove Free GST Billing from this computer</h3>
+          <p style={{ margin: '0 0 0.8rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Tick what else should be deleted. Anything not ticked stays in <code>{status.appFolder}</code>.
+          </p>
+          <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
+            <label style={{ opacity: 0.7 }}><input type="checkbox" checked disabled /> The app, its icons and shortcuts (always removed)</label>
+            {[
+              ['data', 'My invoices, clients, products and settings (and the daily backups inside the app)'],
+              ['pdfs', 'Saved invoice PDFs (the Saved Invoices and Trash folders)'],
+              ['backups', 'All backup files in Documents/FreeGSTBill Backups'],
+            ].map(([key, text]) => (
+              <label key={key}>
+                <input type="checkbox" checked={removeOpts[key]}
+                  onChange={e => setRemoveOpts(o => ({ ...o, [key]: e.target.checked }))} /> {text}
+              </label>
+            ))}
+          </div>
+          {removeOpts.data && !removeOpts.backups && (
+            <p style={{ fontSize: '0.82rem', margin: '0.8rem 0 0' }}>A last copy of your data is saved in <code>Documents/FreeGSTBill Backups</code> first.</p>
+          )}
+          {removeOpts.data && removeOpts.backups && (
+            <p style={{ fontSize: '0.82rem', margin: '0.8rem 0 0', color: '#ef4444' }}><b>Nothing will be left. This cannot be undone.</b> Export a backup first if you may want your books again.</p>
+          )}
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+            <button className="btn btn-secondary" disabled={!!busy}
+              onClick={() => setRemoveOpts({ data: true, pdfs: true, backups: true })}>Select everything</button>
+            <button className="btn" style={{ background: '#dc2626', color: '#fff' }} disabled={!!busy} onClick={removeApp}>
+              {busy === 'remove' ? 'Removing…' : 'Remove the app'}
+            </button>
+            <button className="btn btn-secondary" disabled={!!busy} onClick={() => setRemoveOpen(false)}>Cancel</button>
+          </div>
+          <p style={{ fontSize: '0.78rem', margin: '0.8rem 0 0', color: 'var(--text-muted)' }}>
+            Copies in a second backup folder you chose in Settings are not touched. Delete them by hand if you want.
+          </p>
+        </div>
+      )}
 
       {/* Last action result */}
       {lastResult && (

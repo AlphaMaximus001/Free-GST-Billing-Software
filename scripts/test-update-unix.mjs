@@ -235,6 +235,16 @@ try {
       record(false, `${image}: all ${expected} checks ran`, `${lines.length} did`);
     }
   }
+
+  // v1.10.83 - Control Panel -> Remove the app (uninstall-unix.sh).
+  console.log(`  --- ${IMAGES.slim}: remove the app`);
+  mkdirSync(join(work, 's'), { recursive: true });
+  copyFileSync(join(REPO_ROOT, 'release-templates', '_system-scripts', 'uninstall-unix.sh'), join(work, 's', 'uninstall-unix.sh'));
+  copyFileSync(join(REPO_ROOT, 'scripts', 'test-uninstall-unix.sh'), join(work, 'test-uninstall-unix.sh'));
+  const rm = run('docker', ['run', '--rm', '-v', `${work}:/work`, IMAGES.slim, 'sh', '-c', 'ln -s /work/s /s && sh /work/test-uninstall-unix.sh']);
+  const rmLines = (rm.stdout || '').split('\n').filter((l) => /^(PASS|FAIL) /.test(l));
+  for (const l of rmLines) record(l.startsWith('PASS'), `remove: ${l.slice(5)}`);
+  if (rmLines.length !== 13) record(false, 'remove: all 13 checks ran', `${rmLines.length} did ${rm.stderr || ''}`);
 } catch (err) {
   record(false, 'test harness completed', err.message);
 } finally {

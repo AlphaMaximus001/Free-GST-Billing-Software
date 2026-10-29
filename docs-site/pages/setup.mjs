@@ -678,6 +678,7 @@ export default [
   <tr><td>Open Data Folder</td><td>${ui('Open')}</td><td>Opens the folder with your bills, clients, products and settings.</td></tr>
   <tr><td>Open Backups Folder</td><td>${ui('Open')}</td><td>Opens <code>Documents\\FreeGSTBill Backups</code>.</td></tr>
   <tr><td><a href="#stop">Stop Server</a></td><td>${ui('Stop Server')}</td><td>Stops the app. Open it again from the launcher or shortcut.</td></tr>
+  <tr><td><a href="#remove">Remove the App</a></td><td>${ui('Remove…')}</td><td>Uninstalls the app. You tick whether your data, PDFs and backups are deleted too.</td></tr>
 </table></div>
 <p>After each action a panel shows whether it worked, with the details underneath if something went wrong. See <a href="#result">The result panel</a>. Each button is explained step by step below.</p>
 <figure><img src="assets/img/app-control-panel.png" alt="The Control Panel." loading="lazy"><figcaption>The Control Panel.</figcaption></figure>
@@ -761,6 +762,24 @@ export default [
 </ol>
 <p><b>Is it safe?</b> Yes. Everything is saved as you work, so nothing already saved is lost. A bill still being typed and not saved is not kept. If the app runs as a service or in Docker, it may start again by itself.</p>
 <p><b>Something wrong?</b> If it will not start again, see <a href="troubleshooting.html#cannot-connect">Failed to fetch, App Not Running</a> and <a href="troubleshooting.html#not-answered">the server has not answered</a>. Mac and Linux: <a href="troubleshooting.html#mac">Mac</a>, <a href="troubleshooting.html#linux">Linux and NAS</a>.</p>
+</section>
+
+<section id="remove">
+<h3>Remove the App</h3>
+<p><b>What it does.</b> Uninstalls Free GST Billing from this computer in one go: the app, its Desktop and Start-menu icons (Mac: the app in Applications; Linux: the menu entry) and the start-with-computer entry. You choose what else goes.</p>
+<ol>
+  <li>Click ${ui('Remove…')}. A list opens below the cards.</li>
+  <li>Tick what to delete as well. Nothing is ticked at first, so by default <b>only the program goes and your books stay</b>:
+    <ul>
+      <li><b>My invoices, clients, products and settings</b>: the data folder, with the daily backups inside it.</li>
+      <li><b>Saved invoice PDFs</b>: the <code>Saved Invoices</code> and <code>Trash</code> folders.</li>
+      <li><b>All backup files</b> in <code>Documents\\FreeGSTBill Backups</code>.</li>
+    </ul>
+    ${ui('Select everything')} ticks all three, for a computer you are giving away.</li>
+  <li>Click ${ui('Remove the app')}. If your data is ticked, it asks once more. The app closes and the page says it is being removed. Close the window.</li>
+</ol>
+<p><b>Is it safe?</b> If you delete your data but keep the backups, a last copy, <code>before-removal-<i>date</i>.zip</code> (Mac and Linux: <code>.tar.gz</code>), is saved in <code>Documents\\FreeGSTBill Backups</code> first. If that copy cannot be made, your data is kept. Whatever you keep stays in the app folder; install the app into the same folder again and it is all there. Other files you put in the app folder yourself are not touched, and neither is a second backup folder you chose in Settings.</p>
+<p><b>Something wrong?</b> <b>Not available here</b> means the app is running from source code or an old ZIP; see <a href="install.html#uninstall">Removing the app</a> for the other ways. On Windows, if a file is in use, a message names the folder to delete by hand after a restart.</p>
 </section>
 
 <section id="result">

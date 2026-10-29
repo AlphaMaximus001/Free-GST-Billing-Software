@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.10.83] - unreleased
 
 ### Added
+- **Remove the app in one click.** *Control Panel → Remove…* uninstalls the
+  app with its Desktop, Start-menu and start-up icons (Mac: the app in
+  Applications; Linux: the menu entry). Tick boxes choose what else goes:
+  your invoices, clients and settings; saved PDFs; the backups folder.
+  *Select everything* ticks all three. Nothing is ticked at first, so by
+  default your books stay and reinstalling brings them back. Deleting the
+  data while keeping backups saves a last copy first; if that copy fails,
+  the data is kept.
 - **Products: Goods or Service.** The product form asks *This is a: Goods
   (stock counted) / Service (no stock)*. A service has no stock box and is
   never counted: selling it, buying it on a purchase bill, importing it or

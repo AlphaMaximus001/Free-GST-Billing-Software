@@ -153,7 +153,8 @@ ${which}
 <section id="uninstall">
 <h2>Removing the app</h2>
 <p><strong>Back up your data first</strong> if you may want it again. See <a href="backup.html#export-import">Export everything to one file</a>.</p>
-<p>Then press ${key('Windows', 'R')}, paste this line and press ${key('Enter')}:</p>
+<p><b>The easy way:</b> in the app, open ${ui('Control Panel')} and use ${ui('Remove…')}. Tick what else to delete (your data, PDFs, backups) and click ${ui('Remove the app')}. See <a href="control-panel.html#remove">Remove the App</a>.</p>
+<p><b>Or with one line:</b> press ${key('Windows', 'R')}, paste this line and press ${key('Enter')}:</p>
 <pre><code>${WIN_REMOVE}</code></pre>
 <p>It stops the app and removes it and its icons. Your invoices, clients and settings are kept unless you type <code>DELETE</code> when it asks (and even then a last copy goes to <code>Documents\\FreeGSTBill Backups</code>).</p>
 <p>By hand: in the launcher, ${ui('More options')} → ${ui('Stop the app')}, then delete the app folder and the <b>Free GST Billing</b> shortcuts on the Desktop and in the Start menu. Nothing is installed into Windows itself.</p>
@@ -198,7 +199,8 @@ ${which}
 
 <section id="uninstall-mac">
 <h2>Removing the app</h2>
-<p>Paste this into Terminal and press ${key('Return')}:</p>
+<p><b>The easy way:</b> in the app, open ${ui('Control Panel')} and use ${ui('Remove…')}, then tick what else to delete. See <a href="control-panel.html#remove">Remove the App</a>.</p>
+<p><b>Or</b> paste this into Terminal and press ${key('Return')}:</p>
 <pre><code>${UNIX_REMOVE}</code></pre>
 <p>It removes the app and its icon. Your invoices are kept unless you type <code>DELETE</code> when it asks. If the app is in the Dock, drag it out.</p>
 </section>

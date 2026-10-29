@@ -1385,6 +1385,7 @@ app.get('/api/check-update', async (req, res) => {
 // when running from the source repo.
 // ============================================================
 import { spawn } from 'child_process';
+import os from 'os';
 
 const isWindows = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
@@ -1485,6 +1486,8 @@ app.get('/api/control-panel/status', (req, res) => {
     dataSizeBytes: dataSize,
     port: activePort,
     launcherType: controlScriptDir ? (isWindows ? 'hta' : (isMac ? 'command' : 'sh')) : 'none',
+    canRemove: path.basename(__dirname) === '_system' && !!pickScript('uninstall'),
+    appFolder: path.dirname(__dirname),
   });
 });
 
@@ -1528,6 +1531,42 @@ app.post('/api/control-panel/launch-script', async (req, res) => {
   const script = pickScript(action);
   const result = await runControlScript(script);
   res.json(result);
+});
+
+// v1.10.83 - Remove the app, with the user choosing what goes. The program
+// and its icons always go; data, saved PDFs and the backups folder only when
+// ticked. The script runs from a temp copy, waits for this server to exit
+// (node.exe locks its own folder on Windows), then deletes. Only an installed
+// copy (_system/) can be removed: in the source repo this would delete the repo.
+app.post('/api/control-panel/uninstall', async (req, res) => {
+  const { data, pdfs, backups, confirm } = req.body || {};
+  if (confirm !== 'REMOVE') { res.status(400).json({ ok: false, error: 'Not confirmed' }); return; }
+  const script = pickScript('uninstall');
+  if (path.basename(__dirname) !== '_system' || !script) {
+    res.json({ ok: false, error: 'Remove works only in the installed app (the folder with _system in it).' });
+    return;
+  }
+  try {
+    const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'fgsb-remove-')), path.basename(script));
+    fs.copyFileSync(script, tmp);
+    const [cmd, args] = isWindows
+      ? ['powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', tmp,
+        '-Sys', __dirname, '-ServerPid', String(process.pid),
+        ...(data ? ['-Data'] : []), ...(pdfs ? ['-Pdfs'] : []), ...(backups ? ['-Backups'] : [])]]
+      : ['sh', [tmp, __dirname, String(process.pid), data ? 'data' : '', pdfs ? 'pdfs' : '', backups ? 'backups' : '']];
+    // Windows: the script hands itself to WMI and exits, so wait for that and
+    // stay running if it failed. Unix: a detached child outlives the server.
+    const child = spawn(cmd, args, { detached: !isWindows, stdio: 'ignore', windowsHide: true });
+    if (isWindows) {
+      const code = await new Promise(resolve => { child.on('exit', resolve); child.on('error', () => resolve(-1)); });
+      if (code !== 0) { res.json({ ok: false, error: `Could not start the remove step (code ${code}). Nothing was removed.` }); return; }
+    } else child.unref();
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+    return;
+  }
+  res.json({ ok: true, kept: !data || !pdfs ? __dirname : null });
+  setTimeout(() => process.exit(0), 400);
 });
 
 // ========================
