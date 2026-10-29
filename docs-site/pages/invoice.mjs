@@ -164,6 +164,22 @@ export default [
 <p><b>The number jumped</b>, for example from 0007 to 0009: another invoice, a quotation of the same series or a restored backup used it. Numbers are only taken on save, never by opening the screen.</p></div>
 </section>
 
+<section id="lut">
+<h3>Exports and SEZ supplies under a LUT</h3>
+<p>When the client is <b>abroad</b> (its country is not India) or is an <b>SEZ unit or developer</b> (the SEZ tick on the client), a box appears in Invoice Details: <b>Export under LUT (no IGST)</b>, or <b>SEZ supply under LUT (no IGST)</b>.</p>
+<ul>
+  <li><strong>Ticked</strong>: the supply is zero-rated. No IGST (and no cess) is charged, the items keep their GST rate for the returns, and the total is the taxable value. The invoice prints, word for word, the declaration Rule 46 requires: <i>SUPPLY MEANT FOR EXPORT/SUPPLY TO SEZ UNIT OR SEZ DEVELOPER FOR AUTHORISED OPERATIONS UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX - LUT ARN AD290426123456X (FY 2026-27)</i>. Every invoice design prints it, the thermal receipt too.</li>
+  <li><strong>Not ticked</strong>: IGST is charged ("with payment of IGST"), which you claim back later as a refund. The invoice prints the matching declaration <i>…ON PAYMENT OF INTEGRATED TAX</i>.</li>
+</ul>
+<p>On a new invoice the box is ticked for you when your business has a LUT saved in <a href="settings.html#lut">Settings, Company</a> for the financial year of the invoice date. Untick it to charge IGST instead. An invoice saved earlier keeps its own choice. The ARN and year are copied onto the invoice when you tick it, so a new LUT next year never changes an old invoice.</p>
+<p>Under the box:</p>
+<ul>
+  <li><b>Have a LUT?</b> appears when no LUT is saved. It explains why to file one (no tax to pay and wait for), and links to <a href="gst-basics.html#lut">how to file it</a> (form GST RFD-11, free, once a financial year). You can still tick the box if you have a LUT and have not added it yet; the declaration then prints without the ARN.</li>
+  <li><b>⚠ Your saved LUT is for FY …</b> appears when the saved LUT is for another year than the invoice date. File the new year's LUT and update Settings.</li>
+</ul>
+<p>The tick also decides the GST returns and the e-invoice: SEZ invoices go in GSTR-1 as <b>SEZ without payment</b> (SEWOP) or <b>with payment</b> (SEWP), and the e-invoice file uses EXPWOP / SEZWOP or EXPWP / SEZWP. Exports abroad still go in Table 6A on the portal by hand, see <a href="gst-returns.html#top-bar">the warnings above the tabs</a>. The E-Way Bill file uses 0% rates under a LUT. More on export invoices: <a href="gst-basics.html#export-invoice">What to print on an export or SEZ invoice</a>.</p>
+</section>
+
 <section id="ship-to">
 <h3>Ship to: a different delivery address</h3>
 <p><b>Ship to same as bill-to address</b> is ticked to start, so the invoice has only a BILL TO block. When the goods go somewhere else, such as a site, a warehouse or the client's customer, untick it and fill in:</p>
@@ -308,7 +324,7 @@ export default [
   <li><strong>194Q</strong> (and 206C(1H) on invoices before April 2025) only applies above ₹50 lakh a year with that client. The app adds up what you have already billed the client this financial year, and charges only the part above ₹50 lakh.</li>
   <li><strong>Every other section</strong>, such as 194C, 194J or CGST section 52, applies from the first rupee. Tick it only when the rules say it applies to this client.</li>
 </ul>
-<p>Invoices with TDS or TCS are summed in <a href="gst-returns.html#tds-tcs">the TDS / TCS report</a>. Have your CA confirm which sections and rates apply to you.</p>
+<p>Invoices with TDS or TCS are listed in <a href="reports.html#tds-tcs">Reports, TDS &amp; TCS</a>, where you also tick off each TDS certificate, and summed in <a href="gst-returns.html#tds-tcs">the GST Returns TDS / TCS tab</a>. A client deducted TDS you did not put on the invoice? Record it with the payment: see <a href="dashboard.html#payment-tds">TDS when recording a payment</a>. Have your CA confirm which sections and rates apply to you.</p>
 </section>
 
 <section id="tcs">
@@ -316,7 +332,7 @@ export default [
 <p>Tick <b>TCS — Tax Collected at Source</b> (marked <i>Adds to invoice total</i>), then pick the section:</p>
 <div class="table-wrap"><table>
   <tr><th>Section</th><th>Starting rate</th><th>Worked out on</th></tr>
-  <tr><td>CGST 52 — E-commerce operator</td><td>1%</td><td>The taxable value, without GST</td></tr>
+  <tr><td>CGST 52 — E-commerce operator</td><td>0.5% (since 10 July 2024; it was 1%. Invoices made earlier keep their rate)</td><td>The taxable value, without GST</td></tr>
   <tr><td>206C(1) — Tendu leaves / scrap / minerals (varies)</td><td>1% (type the right rate for your goods)</td><td>The amount including GST</td></tr>
   <tr><td>Custom rate</td><td>Type it</td><td>The amount including GST</td></tr>
 </table></div>
@@ -462,7 +478,7 @@ export default [
 </ol>
 <div class="note tip"><strong>Something wrong?</strong>
 <p><b>"Set your GSTIN in Settings first"</b>: your own GSTIN is missing in <a href="settings.html#company-details">Settings</a>. <b>"Add at least one item with a quantity and rate first."</b>: the invoice has no real item yet.</p>
-<p><b>Nothing downloads.</b> The file needs your own PIN code (in Settings, Company details) and the client's PIN code (in Billed To). Fill both in and click again. The file uses the client's billing address, not the Ship to address, so check the delivery details on the portal.</p></div>
+<p><b>"Your business PIN code is missing"</b> or <b>"The client's PIN code is missing"</b>: the file needs both 6-digit PIN codes. Yours is in <a href="settings.html#company-details">Settings, Company Details</a>; the client's is <b>PIN Code</b> under Billed To on the invoice (or on the client in Clients). Fill it in and click again. The file uses the client's billing address, not the Ship to address, so check the delivery details on the portal.</p></div>
 </section>
 
 <section id="autosave">

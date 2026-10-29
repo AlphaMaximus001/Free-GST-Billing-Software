@@ -466,13 +466,13 @@ export default [
 
 <section id="nil-return">
 <h2>NIL returns</h2>
-<p>If a period has no invoices and no expenses, an amber banner says: "No invoices or expenses found — file a NIL return on the GST portal. NIL returns are mandatory."</p>
-<p>A NIL return is only right when you had no sales, no credit to claim, no tax due and no reverse-charge purchases. The banner does not look at purchase bills: if you bought anything with GST in the period, file a <em>regular</em> return to claim the credit, not a NIL one.</p>
+<p>If a period has no invoices, no purchase bills and no expenses, an amber banner says: "No invoices, purchase bills or expenses found — file a NIL return on the GST portal. NIL returns are mandatory."</p>
+<p>A NIL return is only right when you had no sales, no credit to claim, no tax due and no reverse-charge purchases. A period with a purchase bill has credit to claim, so the banner does not appear: file a <em>regular</em> GSTR-3B for it. (A NIL GSTR-1 may still be right if you sold nothing.)</p>
 <ol class="steps">
   <li><strong>Open the NIL guide</strong>On the Filing Guide tab, click ${ui('NIL Return (No Sales)')}. The box <b>When to File NIL Return</b> lists the conditions.</li>
   <li><strong>File NIL GSTR-1 first</strong>Follow <b>NIL GSTR-1 — File First (Even with Zero Sales)</b>: open GSTR-1, check every table is empty, and file.</li>
   <li><strong>Then NIL GSTR-3B</strong>Follow <b>NIL GSTR-3B — File After NIL GSTR-1</b>: check all values are zero, submit and file.</li>
-  <li><strong>Or by SMS</strong>NIL returns can also be filed by SMS to 14409 from your registered mobile, confirmed with an OTP. The <b>NIL Return Quick Summary</b> box mentions it; the portal's own help gives the exact message for each return (it names the return, such as R1 or 3B, then your GSTIN and the period).</li>
+  <li><strong>Or by SMS</strong>NIL returns can also be filed by SMS to <b>14409</b> from the authorised signatory's registered mobile. Send <code>NIL R1 &lt;GSTIN&gt; &lt;MMYYYY&gt;</code> for GSTR-1, <code>NIL 3B &lt;GSTIN&gt; &lt;MMYYYY&gt;</code> for GSTR-3B, or <code>NIL C8 &lt;GSTIN&gt; &lt;MMYYYY&gt;</code> for CMP-08, for example <code>NIL 3B 29ABCDE1234F1ZW 092026</code>. A quarterly return uses the quarter's last month. You get a code back: reply <code>CNF 3B &lt;code&gt;</code> (or CNF R1, CNF C8) within 30 minutes. The <b>NIL Return Quick Summary</b> box shows the same formats. Source: the GST portal's <a href="https://tutorial.gst.gov.in/userguide/returns/faq_nilreturngstr3b.htm" rel="noopener">SMS filing FAQs</a>.</li>
   <li><strong>Mark both filed</strong>Click the R1 and 3B pills at the top.</li>
 </ol>
 <p>File on time even with nothing to report: late fees still apply, and not filing for six months can get your GSTIN cancelled.</p>

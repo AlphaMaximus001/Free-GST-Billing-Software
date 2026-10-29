@@ -73,6 +73,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entries are listed per business with a date filter; deleting one puts its
   stock back exactly (to change one, delete it and enter it again). The stock
   report counts production by its date.
+- **Exports and SEZ supplies under a LUT:** Settings → Company has a new box
+  for your LUT (the Letter of Undertaking, form GST RFD-11, filed free on the
+  GST portal each financial year): its ARN and the year it covers. An invoice
+  for a client abroad or an SEZ client then shows *Export / SEZ supply under
+  LUT (no IGST)*, ticked by itself when your LUT covers the invoice date: no
+  IGST is charged and every invoice design prints the declaration Rule 46
+  requires, with your LUT's ARN. Untick it to charge IGST instead (the "on
+  payment of integrated tax" declaration prints). No LUT saved? The box
+  explains in one line why it is worth filing and links to the guide. GSTR-1,
+  the e-invoice file and the E-Way Bill follow the tick.
+- **Reports → TDS & TCS:** TDS your clients deducted from your sales (with a
+  *Certificate* tick per invoice, to match against Form 16A / Form 26AS), TCS
+  you collected, and TDS you deducted from suppliers, with totals by client,
+  section and quarter. Choose a financial year, a quarter or your own dates;
+  every list prints and downloads as Excel or CSV.
+- **TDS on purchase bills:** tick *TDS deducted* on a purchase bill, pick the
+  section (the rate fills in, or type the amount) and the bill shows *Paid to
+  supplier* = total less TDS, on screen and on its PDF.
+- **Client paid less because of TDS?** The Record Payment window has *Client
+  deducted TDS*: pick the section and rate, and the invoice is marked Paid
+  once the rest arrives. You can also record the TDS on its own.
 
 ### Changed
 - **Settings opens as tabs**: one page per tab (Business type, Company,
@@ -86,6 +107,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as you type (IGST for an inter-state bill), and the purchase register export
   has CGST, SGST and IGST columns instead of one tax column. CGST and SGST
   always add up to the tax exactly.
+- **TCS under CGST section 52 starts at 0.5%** (the rate since 10 July 2024;
+  it was 1%). Invoices already made keep the rate they were made with.
+- **The Export / International (LUT) terms preset** now uses the exact Rule 46
+  wording.
 
 ### Fixed
 - **Purchase bills took 18% GST for every product picked on a new line**,
@@ -98,6 +123,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   app moved to.
 - **The Windows install line failed on some older Windows 10 PCs** that do
   not use the newer secure connection by default. The line now turns it on.
+- **E-Way Bill did nothing** when your or the client's PIN code was missing.
+  It now says which PIN code is missing and where to fill it in.
+- **"Cancel this invoice?" said to undo it from the status dropdown**; undo is
+  the *Undo cancel* arrow on the row. The message now says so.
+- **Send reminder showed on open quotations and proformas.** Only invoices
+  that are owed money offer a payment reminder now.
+- **The NIL return banner ignored purchase bills:** a period with purchases
+  has input tax credit to claim, so it is not a NIL GSTR-3B. The banner now
+  appears only when there are no invoices, purchase bills or expenses.
+- **The NIL-by-SMS hint left out the return type.** It now gives the GST
+  portal's exact formats: `NIL R1`, `NIL 3B` or `NIL C8`, then the GSTIN and
+  the period, sent to 14409.
+
 
 ---
 
