@@ -18,6 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   above the signature, or the stamp on the signature, with a preview. Every
   invoice design follows it.
 
+- **Manufacturing (bill of materials)** (#115, thanks @infoaimautomation-ui).
+  Turn it on in Settings → Features. Tick *Made here* on a product and list
+  its raw materials and the quantity per unit; the app shows the cost per
+  unit from purchase prices. **Make** on the Products screen records
+  production: raw materials go down and the finished product goes up in one
+  step, with a clear warning if anything would go below zero. Production
+  entries are listed per business with a date filter; deleting one puts its
+  stock back exactly (to change one, delete it and enter it again). The stock
+  report counts production by its date.
+
 ### Changed
 - **Purchases show CGST + SGST** (#117): the purchase form shows the tax split
   as you type (IGST for an inter-state bill), and the purchase register export
