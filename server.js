@@ -12,6 +12,8 @@ import { fileURLToPath } from 'url';
 // invoice-level discount, and round-off. Previously the recurring auto-fire
 // re-implemented totals inline and silently reintroduced every bug the
 // v1.10.1 extraction fixed. Same source of truth now.
+// v1.10.83 - same redaction as the browser's Problem log, for errors.log lines.
+import { redact } from './src/utils/errorReport.js';
 import { templateTotals, clientYearToDate, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, businessKeyOf, getFinancialYearLabel, INVOICE_TYPES } from './src/utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -91,9 +93,22 @@ app.use((req, res, next) => {
 
 // Ensure data directory and sub-directories exist
 const DIRS = ['bills', 'clients', 'templates', 'products', 'expenses', 'recurring', 'receipts', 'profiles', 'purchases'];
-for (const dir of DIRS) {
-  const dirPath = path.join(DATA_DIR, dir);
-  if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+// v1.10.83 - a data folder the app may not write to (inside Program Files, a
+// read-only drive, antivirus "controlled folder access") or a full disk used
+// to crash here with a raw stack trace the launcher never showed. Say it in
+// words, then stop: nothing can be saved, so starting would only lose work.
+try {
+  for (const dir of DIRS) {
+    const dirPath = path.join(DATA_DIR, dir);
+    if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+  }
+} catch (err) {
+  const why = err.code === 'ENOSPC' ? 'The disk is full. Free some space and open the app again.'
+    : (err.code === 'EACCES' || err.code === 'EPERM') ? 'The app is not allowed to write to its data folder. Move the app folder to Documents (not Program Files), or allow it in your antivirus.'
+      : `The data folder could not be created (${err.code || err.message}).`;
+  console.error(`\n  Free GST Billing cannot start: ${why}\n  Data folder: ${DATA_DIR}\n  Help: https://dicecodes.com/free-gst-software-documentation/troubleshooting.html#${err.code === 'ENOSPC' ? 'disk-full' : 'no-permission'}\n`);
+  try { fs.appendFileSync(path.join(DATA_DIR, 'errors.log'), `[${new Date().toISOString()}] [startup] ${why} ${err.code || ''}\n`, 'utf-8'); } catch { /* the folder is the problem */ }
+  process.exit(1);
 }
 
 // Helper: safe filename from ID (replace slashes, etc.)
@@ -135,6 +150,12 @@ function isPathInside(resolved, root) {
 // EACCES/EPERM strings that hint at server structure). Server-side
 // logs the full detail; client sees a stable code + generic phrase.
 function errRes(res, status, code, err) {
+  // v1.10.83 - a full disk or a refused write is something the user can fix,
+  // so it gets its own wording (the Problem log links it to the fix).
+  if (code === 'server-error' && err) {
+    if (err.code === 'ENOSPC') code = 'disk-full';
+    else if (err.code === 'EACCES' || err.code === 'EPERM') code = 'no-permission';
+  }
   if (err) {
     try {
       const ts = new Date().toISOString();
@@ -150,6 +171,8 @@ function errRes(res, status, code, err) {
     'forbidden': 'Refused',
     'invalid-path': 'Invalid path',
     'payload-too-large': 'Request body too large',
+    'disk-full': 'The disk is full: free some space and try again',
+    'no-permission': 'The app is not allowed to write to its data folder',
   };
   return res.status(status).json({ error: MESSAGES[code] || code, code });
 }
@@ -187,12 +210,34 @@ function readAllFromDir(dir) {
   const results = fs.readdirSync(dirPath)
     .filter(f => f.endsWith('.json'))
     .map(f => {
-      try { return JSON.parse(fs.readFileSync(path.join(dirPath, f), 'utf-8')); }
-      catch { return null; }
+      try {
+        // A file saved by Notepad / PowerShell 5.1 starts with a byte-order
+        // mark, which JSON.parse refuses: it is not damage, so read past it.
+        const v = JSON.parse(fs.readFileSync(path.join(dirPath, f), 'utf-8').replace(/^\uFEFF/, ''));
+        // v1.10.83 - "null", a number or a list is as damaged as a broken file:
+        // the screens expect an object and crashed on anything else.
+        if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+      } catch { /* reported below */ }
+      reportDamagedFile(dir, f);
+      return null;
     })
     .filter(Boolean);
   dirCache[dir] = { at: Date.now(), value: results };
   return results;
+}
+
+// v1.10.83 - one damaged file (power cut mid-save, a disk error, a hand
+// edit) is skipped so everything else still loads - it always was - but now
+// it is named once in errors.log, which the in-app Problem log shows with the
+// fix "restore it from a backup". Once per file per run, not every 5s read.
+const reportedDamaged = new Set();
+function reportDamagedFile(dir, file) {
+  const key = `${dir}/${file}`;
+  if (reportedDamaged.has(key)) return;
+  reportedDamaged.add(key);
+  const msg = `Skipped damaged file data/${key} (not valid JSON) - restore it from a backup`;
+  console.warn(`  ${msg}`);
+  logFatal(msg, 'data');
 }
 
 // Helper: read a single JSON file
@@ -1040,6 +1085,50 @@ app.get('/api/version', (req, res) => {
   res.json({ current: pkg.version });
 });
 
+// v1.10.83 - the browser's Problem log copies each entry here, so errors.log
+// holds both sides of a failure. Redacted again (never trust the sender), one
+// line per entry, capped fields, and at most 30 a minute so a looping screen
+// cannot fill the disk (rotateErrorsIfLarge caps the file as well).
+const clientErrorTimes = [];
+app.post('/api/client-errors', (req, res) => {
+  const now = Date.now();
+  while (clientErrorTimes.length && now - clientErrorTimes[0] > 60_000) clientErrorTimes.shift();
+  if (clientErrorTimes.length >= 30) return res.status(429).json({ error: 'Too many reports', code: 'rate-limited' });
+  const b = req.body;
+  if (!b || typeof b !== 'object' || Array.isArray(b)) return errRes(res, 400, 'bad-request');
+  const field = (v, n) => ((typeof v === 'string' || typeof v === 'number') ? redact(String(v)).replace(/\s*[\r\n]+\s*/g, ' | ').slice(0, n) : '');
+  const message = field(b.message, 500);
+  if (!message) return errRes(res, 400, 'bad-request');
+  clientErrorTimes.push(now);
+  const api = b.api && typeof b.api === 'object'
+    ? `${field(b.api.method, 10)} ${field(String(b.api.path || '').split('?')[0], 120)} -> ${Number(b.api.status) || 0} ` : '';
+  const stack = field(b.stack, 1500);
+  const line = `[${new Date().toISOString()}] [client:${field(b.kind, 20) || 'error'}] v${field(b.version, 20)} screen=${field(b.view, 30)} ${api}${message}${stack ? ` | ${stack}` : ''} | ${field(b.browser, 80)}`;
+  try {
+    rotateErrorsIfLarge();
+    fs.appendFileSync(ERRORS_LOG, line + '\n', 'utf-8');
+  } catch { /* disk full or read-only: the browser keeps its copy */ }
+  res.json({ ok: true });
+});
+
+// v1.10.83 - read-only tail of errors.log for the Problem log page: last 100
+// lines, each redacted and cut to 500 characters. Reads only the last 64 KB.
+app.get('/api/errors-log', (req, res) => {
+  try {
+    if (!fs.existsSync(ERRORS_LOG)) return res.json({ lines: [] });
+    const size = fs.statSync(ERRORS_LOG).size;
+    const len = Math.min(size, 64 * 1024);
+    const buf = Buffer.alloc(len);
+    const fd = fs.openSync(ERRORS_LOG, 'r');
+    try { fs.readSync(fd, buf, 0, len, size - len); } finally { fs.closeSync(fd); }
+    let lines = buf.toString('utf-8').split(/\r?\n/);
+    if (len < size) lines = lines.slice(1); // first line is cut in half
+    res.json({ lines: lines.filter((l) => l.trim()).slice(-100).map((l) => redact(l).slice(0, 500)) });
+  } catch (err) {
+    errRes(res, 500, 'server-error', err);
+  }
+});
+
 // Naive semver compare — returns +1 if a > b, -1 if a < b, 0 if equal.
 // "1.4.10" > "1.4.2" correctly (numeric parts), unlike a string compare.
 function compareSemver(a, b) {
@@ -1811,8 +1900,9 @@ function logFatal(err, source = 'fatal') {
 // running server keeps serving healthy requests. Per Node best-practice,
 // uncaughtException leaves the process in an unknown state, so we write the
 // log and let the OS / a wrapper script decide whether to restart.
-process.on('uncaughtException', (err) => logFatal(err, 'uncaughtException'));
-process.on('unhandledRejection', (err) => logFatal(err, 'unhandledRejection'));
+// v1.10.83 - and say so in the console window, not only in the file.
+process.on('uncaughtException', (err) => { console.error(`  Unexpected error (the app keeps running): ${err?.message || err}`); logFatal(err, 'uncaughtException'); });
+process.on('unhandledRejection', (err) => { console.error(`  Unexpected error (the app keeps running): ${err?.message || err}`); logFatal(err, 'unhandledRejection'); });
 
 // Note: /api/health used to live below the SPA catch-all here, so the
 // catch-all was swallowing every request to it and returning "No such
@@ -1834,10 +1924,12 @@ function startServer(port) {
     console.log(`  Data stored in: ${DATA_DIR}\n`);
   });
   server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE' && port < STARTING_PORT + MAX_PORT_SCAN) {
+    // v1.10.83 - EACCES too: Windows reserves port ranges for Hyper-V / WSL
+    // and refuses them with "access denied" rather than "in use".
+    if ((err.code === 'EADDRINUSE' || err.code === 'EACCES') && port !== 0 && port < STARTING_PORT + MAX_PORT_SCAN) {
       console.log(`  Port ${port} is busy, trying ${port + 1}...`);
       startServer(port + 1);
-    } else if (err.code === 'EADDRINUSE') {
+    } else if ((err.code === 'EADDRINUSE' || err.code === 'EACCES') && port !== 0) {
       // We've exhausted the scan range. Tell the OS to pick anything free — at
       // this point the user has 50+ apps fighting for the 47371-47421 range,
       // which we treat as "do whatever works" rather than failing to start.

@@ -3,13 +3,30 @@
 
 import { getFinancialYearLabel, parseLocalDate, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, INVOICE_TYPES, savedPdfNameFor } from './utils';
 
+import { logProblem } from './utils/problemLog';
+
 const API = '/api';
 
+// v1.10.83 - failures that are nobody's expected answer go to the Problem
+// log: no answer at all (server stopped) and 5xx. 4xx is left alone - a 409
+// duplicate number or a 404 is an answer the caller handles. Method, path and
+// status only, never the request body (it holds invoices and clients).
+const logApiProblem = (options, url, status, message) => {
+  logProblem({ kind: 'api', message, api: { method: options.method || 'GET', path: url, status } });
+};
+
 async function apiFetch(url, options = {}) {
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    });
+  } catch (e) {
+    logApiProblem(options, url, 0, e?.message || 'Network error');
+    if (e && typeof e === 'object') e.problemLogged = true;
+    throw e;
+  }
   if (!res.ok) {
     // Preserve server-provided error message (used e.g. for 409 duplicate
     // invoice number). Attach status so callers can branch on it.
@@ -18,6 +35,10 @@ async function apiFetch(url, options = {}) {
     const err = new Error(body?.error || `API error: ${res.status}`);
     err.status = res.status;
     err.body = body;
+    if (res.status >= 500) {
+      logApiProblem(options, url, res.status, err.message);
+      err.problemLogged = true;
+    }
     throw err;
   }
   return res.json();

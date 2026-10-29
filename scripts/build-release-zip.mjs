@@ -147,6 +147,10 @@ for (const f of includeAtSystem) {
 // file is the whole fix. The rest of src/ stays out.
 mkdirSync(join(SYSTEM, 'src'), { recursive: true });
 copyFileSync(join(REPO_ROOT, 'src', 'utils.js'), join(SYSTEM, 'src', 'utils.js'));
+// v1.10.83 - the server redacts errors.log lines with the Problem log's own
+// rules (standalone too). assertServerImportsResolve() below checks it.
+mkdirSync(join(SYSTEM, 'src', 'utils'), { recursive: true });
+copyFileSync(join(REPO_ROOT, 'src', 'utils', 'errorReport.js'), join(SYSTEM, 'src', 'utils', 'errorReport.js'));
 
 copyDirRecursive(join(REPO_ROOT, 'dist'), join(SYSTEM, 'dist'));
 // Only ship the scripts that postinstall / release-time need — not the

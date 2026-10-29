@@ -100,68 +100,296 @@ export default [
   slug: 'troubleshooting',
   title: 'Troubleshooting and questions',
   nav: 'Troubleshooting',
-  lead: 'The problems people run into most, what causes each one, and how to fix it.',
+  lead: 'Every message the app, the launcher and the installer can show, what it means, and the steps to fix it yourself.',
   body: `
-<section id="files-missing">
-<h2>The launcher says files are missing, or to extract the ZIP</h2>
-<p>The launcher was opened from inside the ZIP, or the ZIP was only partly extracted. Close it, right-click the ZIP, choose ${ui('Extract All…')}, and open the launcher from the extracted folder. Keep the launcher and the <code>_system</code> folder together. See <a href="install.html#extract-first">Extract the ZIP before opening anything</a>.</p>
+<p>Find your message below (<kbd>Ctrl</kbd> + <kbd>F</kbd> helps; on a Mac <kbd>⌘</kbd> + <kbd>F</kbd>). Your data is safe in every case listed here.</p>
+<p><a href="#installing">Installing</a> · <a href="#starting">Starting</a> · <a href="#updating">Updating</a> · <a href="#saving">Saving and working</a> · <a href="#printing">Printing and PDFs</a> · <a href="#gst-returns-problems">GST and returns</a> · <a href="#backups">Backups</a> · <a href="#mac">Mac</a> · <a href="#linux">Linux and NAS</a> · <a href="#problem-log">Problem log</a> · <a href="#questions">Questions</a></p>
+
+<section id="installing">
+<h2>Installing</h2>
+<p>Messages from the launcher and the black install window, the first time you set the app up.</p>
 </section>
 
-<section id="mac-blocked">
-<h2>The Mac will not open the launcher</h2>
-<ul>
-  <li><strong>"could not be executed because you do not have appropriate access privileges"</strong>: open <b>Terminal</b> (Applications → Utilities), type <code>chmod +x </code> with a space after it, drag <b>Free GST Billing - MAC</b> into the Terminal window, press Enter, and open the file again. Downloads from v1.10.82 do not need this.</li>
-  <li><strong>"cannot be opened because Apple cannot check it for malicious software"</strong> or <strong>"unidentified developer"</strong>: the app is not signed by Apple. Hold <kbd>Control</kbd>, click <b>Free GST Billing - MAC</b>, choose <b>Open</b>, then <b>Open</b> again. Only the first time. Or use <b>System Settings → Privacy &amp; Security → Open Anyway</b>.</li>
-  <li><strong>"Node.js is not installed"</strong> or <strong>too old</strong>: install Node.js LTS from <a href="https://nodejs.org">nodejs.org</a> (or <code>brew install node@20</code>), then open the launcher again.</li>
-</ul>
+<section id="files-missing">
+<h3>"Please extract the ZIP first" or "Some files are missing"</h3>
+<p>You may see: <strong>"Please extract the ZIP first"</strong>, <strong>"Some files are missing"</strong>, <strong>"The _system folder is not next to this launcher"</strong>, <strong>"_system folder is missing. Please re-extract the ZIP or re-download from GitHub."</strong> (Mac and Linux), <strong>"Missing file: start-windows.ps1"</strong> or <strong>"Could not find start-windows.ps1"</strong>.</p>
+<p>The launcher was opened from inside the ZIP, or the ZIP was only partly extracted, so the rest of the app is not next to it.</p>
+<ol>
+  <li>Close the launcher.</li>
+  <li>Right-click the ZIP and choose ${ui('Extract All…')}.</li>
+  <li>Open the extracted <b>Free-GST-Billing</b> folder and double-click the launcher there. Keep the launcher and the <code>_system</code> folder together.</li>
+  <li>Still missing? Download the ZIP again; the download may have been cut short.</li>
+</ol>
+<p>See <a href="install.html#extract-first">Step 2: Unzip (extract) it</a>.</p>
 </section>
 
 <section id="windows-protected">
-<h2>Windows blocked the launcher</h2>
-<p>Click ${ui('More info')}, then ${ui('Run anyway')}. If it still will not open, right-click the launcher, choose ${ui('Properties')} and tick ${ui('Unblock')}. See <a href="install.html#windows-protected">"Windows protected your PC"</a>.</p>
+<h3>"Windows protected your PC"</h3>
+<p>Windows shows this the first time for any program without a paid certificate. Nothing is wrong.</p>
+<ol>
+  <li>Click ${ui('More info')}, then ${ui('Run anyway')}.</li>
+  <li>If it still will not open, right-click the launcher, choose ${ui('Properties')}, tick ${ui('Unblock')} and click ${ui('OK')}.</li>
+</ol>
+<p>See <a href="install.html#windows-protected">"Windows protected your PC"</a>.</p>
 </section>
 
 <section id="install-failed">
-<h2>The install stopped with an error</h2>
+<h3>The install stopped with an error</h3>
+<p>The black window shows <strong>PROBLEM:</strong> and what went wrong. Fix it, then click ${ui('Install')} again; it carries on where it stopped.</p>
 <ul>
-  <li><strong>"Could not download Node.js"</strong> or <strong>"could not install the app's dependencies"</strong>: the first install needs the internet. Check the connection, or a work proxy or firewall, and click ${ui('Install')} again. It carries on where it stopped.</li>
-  <li><strong>"Node.js was downloaded but will not run"</strong>: antivirus probably removed it. Add the app's folder to your antivirus exclusions, or install Node.js yourself from <a href="https://nodejs.org">nodejs.org</a>, then click ${ui('Install')} again.</li>
-  <li><strong>"The Node.js on this PC (v6...) is too old"</strong>, <strong><code>npm ERR!</code></strong>, or a file named <code>npm-debug.log</code> in the <code>_system</code> folder: the PC has an old Node.js. From v1.10.81 the app sets up a current one in its own folder by itself. On an older version: install Node.js LTS from <a href="https://nodejs.org">nodejs.org</a>, delete the <code>_system\node_modules</code> folder (the <code>_system</code> folder is hidden: in File Explorer, <b>View → Show → Hidden items</b>), and click ${ui('Install')} again. Never delete the <code>data</code> folder.</li>
-  <li><strong>"Free GST Billing is already installed on this computer, in: ..."</strong>: you extracted a new ZIP into a new folder. Your invoices are in the folder it names. Open that copy from your Desktop shortcut and use ${ui('More options')} → ${ui('Update to the latest version')}; the new folder can be deleted.</li>
-  <li><strong>"The app cannot write to its own folder"</strong>: it is inside <code>C:\Program Files</code>, on a read-only drive, or blocked by antivirus. Move the Free-GST-Billing folder to Documents or <code>D:\</code> and open it from there.</li>
-  <li><strong>"Drive ... is almost full"</strong>: the install needs about 400 MB free. Empty the Recycle Bin or delete old downloads, then try again.</li>
-  <li><strong>"Windows can install Node.js LTS for this PC ... Install Node.js LTS now?"</strong>: the app could not download Node.js itself, so it offers Windows' own installer. Type <b>Y</b> to accept (Windows may ask for permission), or anything else to install it yourself from the page it opens.</li>
+  <li><strong>"The app cannot reach the internet to download its packages"</strong>, <strong>"Could not download Node.js"</strong> or <strong>"The download did not work"</strong>: the first install needs the internet. Check the connection (open any website). On an office network, a proxy or firewall may block it; ask whoever runs the network to allow <code>registry.npmjs.org</code> and <code>nodejs.org</code>.</li>
+  <li><strong>"The app packages did not install"</strong>: the internet, disk and folder look fine, so antivirus is the usual cause. Add the Free-GST-Billing folder to its exclusions and click ${ui('Install')} again.</li>
+  <li><strong>"Node.js could not be set up automatically"</strong>: install Node.js LTS yourself from <a href="https://nodejs.org">nodejs.org</a> (the page opens by itself), keep the default options, and open the launcher again. If antivirus removed it, add the folder to its exclusions.</li>
+  <li><strong>"Windows can install Node.js LTS for this PC ... Install Node.js LTS now?"</strong>: the app could not download Node.js itself, so it offers Windows' own installer. Type <b>Y</b> and press <kbd>Enter</kbd> to accept (Windows may ask for permission), or anything else to install it yourself.</li>
+  <li><strong>"This version of Windows is too old"</strong>: the app needs Windows 10 or 11. Node.js no longer runs on Windows 7 or 8.</li>
+  <li><strong>"The app cannot write to its own folder"</strong>: see <a href="#no-permission">The app is not allowed to write</a>.</li>
+  <li><strong>"Drive C:\\ is almost full"</strong>: the install needs about 400 MB. See <a href="#disk-full">The disk is full</a>.</li>
+  <li><strong>"too old"</strong>, <strong><code>npm ERR!</code></strong> or <strong>"Unsupported engine"</strong>: see <a href="#old-node">Node.js is too old</a>.</li>
+  <li><strong>"Free GST Billing is already installed on this computer"</strong>: see <a href="#already-installed">Already installed on this computer</a>.</li>
 </ul>
+<p>Never delete the <code>data</code> folder to fix an install.</p>
+</section>
+
+<section id="already-installed">
+<h3>"Already installed on this computer"</h3>
+<p>You may see: <strong>"Already installed on this computer"</strong> in the launcher, or <strong>"Free GST Billing is already installed on this computer, in: ..."</strong> in the black window.</p>
+<p>You extracted a new ZIP into a new folder. Your invoices are in the copy it names, so it does not make a second, empty copy.</p>
+<ol>
+  <li>Click ${ui('Update the installed copy')}. It uses the files you just extracted, so no download is needed.</li>
+  <li>When it finishes, open the app from your <b>Free GST Billing</b> shortcut as usual.</li>
+  <li>The new folder is not needed after that. You can delete it.</li>
+</ol>
+</section>
+
+<section id="old-node">
+<h3>"Node.js is too old" or "npm ERR!"</h3>
+<p>You may see: <strong>"The Node.js v... on this PC is too old for this app"</strong>, <strong>"Node.js v... on this machine is too old"</strong>, <strong>"npm ... on this machine is too old"</strong>, <strong>"Unsupported engine"</strong>, <strong><code>npm ERR!</code></strong>, a file named <code>npm-debug.log</code>, or <strong>"SyntaxError: Unexpected token"</strong> when the app starts.</p>
+<p>The app runs on Node.js 18 or newer (with npm 7 or newer). An older Node.js on the computer cannot install or run it.</p>
+<ol>
+  <li><strong>Windows, v1.10.81 or newer:</strong> click ${ui('Install')} or ${ui('Open App')} again, with the internet on. The app fetches a current Node.js into its own folder by itself (about 30 MB, once) and leaves your other Node.js alone.</li>
+  <li><strong>Windows, older version:</strong> install Node.js LTS from <a href="https://nodejs.org">nodejs.org</a>, delete the <code>_system\\node_modules</code> folder (the <code>_system</code> folder is hidden: in File Explorer, <b>View → Show → Hidden items</b>), and click ${ui('Install')} again.</li>
+  <li><strong>Mac:</strong> install the LTS <b>macOS Installer (.pkg)</b> from <a href="https://nodejs.org/en/download">nodejs.org</a>, or run <code>brew install node@20</code>, then open the launcher again. See <a href="install-mac.html#node">Part 1: Install Node.js</a>.</li>
+  <li><strong>Linux or NAS:</strong> install Node.js 20 with the commands in <a href="install-linux.html#node">Step 1: Install Node.js 20</a> (the window also prints the command for your system), then start the app again.</li>
+</ol>
+<p>Only the <code>node_modules</code> folder may be deleted. Never delete the <code>data</code> folder.</p>
+</section>
+
+<section id="starting">
+<h2>Starting the app</h2>
+<p>The launcher or the browser cannot reach the app, or the app asks for a PIN.</p>
 </section>
 
 <section id="not-answered">
-<h2>"Still starting..." or "The server has not answered in 90 seconds"</h2>
-<p>The first start after an install or update is slow, because antivirus checks every new file. Wait a minute, then open <code>http://localhost:47371</code> in your browser. If it still does not open, close the black window and click ${ui('Open App')} again; from v1.10.81 it also repairs an install that an update left half done. If the window shows an error above that line, the entries under <a href="#install-failed">The install stopped with an error</a> say what to do.</p>
+<h3>"Still starting..." or "The server has not answered in 90 seconds"</h3>
+<p>You may see: <strong>"Still starting... (30 seconds. The first start after an update is the slow one.)"</strong>, <strong>"The server has not answered in 90 seconds"</strong>, or, on versions before v1.10.69, <strong>"Server did not respond in 15s"</strong>.</p>
+<p>The first start after an install or update is slow, because antivirus checks every new file.</p>
+<ol>
+  <li>Wait a minute, then open <code>http://localhost:47371</code> in your browser.</li>
+  <li>If it does not open, close the black window and click ${ui('Open App')} again. From v1.10.81 this also finishes an install that an update left half done.</li>
+  <li>If the window shows a <strong>PROBLEM:</strong> above that line, the entries under <a href="#install-failed">The install stopped with an error</a> say what to do.</li>
+  <li>Still nothing? The reason is written in the <code>errors.log</code> file in the data folder, on a line with <b>Failed to start server</b>. Send it with your <a href="#report-problem">report</a>.</li>
+</ol>
 </section>
 
 <section id="cannot-connect">
-<h2>"Cannot connect", a blank page, or "Needs a Quick Start"</h2>
-<p>The app is not running. Open the <b>Free GST Billing</b> shortcut and click ${ui('Open App')}; it starts the app if needed and opens the right address. You never need to type the address yourself; if its usual port is busy, the app picks another and the shortcut follows it.</p>
+<h3>"Failed to fetch", "App Not Running" or "Needs a Quick Start"</h3>
+<p>You may see: <strong>"Failed to fetch"</strong> (Chrome, Edge), <strong>"NetworkError when attempting to fetch resource"</strong> (Firefox) or <strong>"Load failed"</strong> (Safari), often after words like <i>Restore failed:</i> or <i>Export failed:</i>; <b>App Not Running</b> at the bottom of the sidebar; a page saying <strong>"Free GST Billing Software Needs a Quick Start"</strong>; <strong>"Could not check the PIN. Is the app still running?"</strong>; or the browser's own <strong>"This site can't be reached"</strong> or a blank page.</p>
+<p>The app's engine (the server on your computer) is not running: the computer was restarted, the app was stopped, or it closed. Nothing already saved is lost.</p>
+<ol>
+  <li>Double-click <b>Free GST Billing</b> on your Desktop (Mac: <b>Free GST Billing - MAC</b>; Linux: the start command in <a href="install-linux.html#start">Step 3</a>).</li>
+  <li>Click ${ui('Open App')}. It starts the app if needed and opens the right address.</li>
+  <li>Wait up to a minute. The "Needs a Quick Start" page carries on by itself once the app is running; otherwise press <kbd>F5</kbd> to reload.</li>
+  <li>Try what failed again.</li>
+</ol>
+<p>You never need to type the address yourself. If it keeps stopping, see <a href="#port-in-use">Port is busy</a> and the <a href="#problem-log">Problem log</a>.</p>
 </section>
 
-<section id="wrong-tax">
-<h2>The invoice has the wrong tax split</h2>
-<ul>
-  <li>Check your own <b>state</b> in <a href="settings.html#company-details">Settings</a>.</li>
-  <li>Check the <b>client's state</b>, or their GSTIN, which fills the state in.</li>
-  <li>If goods go to a different state from the client's address, set <b>Place of Supply</b> on the invoice.</li>
-  <li>For a client abroad, set their <b>country</b>: it is then an export, charged as IGST. For an SEZ unit, tick <b>SEZ</b> on the client.</li>
-</ul>
-<p>See <a href="invoices.html#gst">How GST is worked out</a>.</p>
+<section id="port-in-use">
+<h3>"Port 47371 is busy" or "address already in use"</h3>
+<p>You may see: <strong>"Port 47371 is busy, trying 47372..."</strong>, <strong><code>EADDRINUSE</code></strong> or <strong>"address already in use"</strong>. These lines only appear when the app is started from a Terminal or Command Prompt.</p>
+<p>Another program, or a second copy of Free GST Billing, already uses that port (the "door" the browser knocks on). The app picks the next free one by itself and saves it in <code>data\\port.txt</code>; the launcher reads that file, so ${ui('Open App')} goes to the right address.</p>
+<ol>
+  <li>Always open the app with the shortcut and ${ui('Open App')}, not a bookmark of <code>localhost:47371</code>, which may now be the other program.</li>
+  <li>If the launcher says it has not answered, close it and click ${ui('Open App')} once more: it reads the new port.</li>
+  <li>The <a href="control-panel.html#about">Control Panel</a> shows the port the app is using.</li>
+  <li>Two copies of the app on one computer? Keep using the one with your invoices; see <a href="#already-installed">Already installed</a>.</li>
+</ol>
 </section>
 
-<section id="no-tax">
-<h2>No GST is charged at all</h2>
-<p>The <b>Tax % column</b> is probably turned off under ${ui('Customize')}. Turning it off removes GST from the invoice, and your choice carries over to new invoices. Tick it again. Bills of supply and delivery challans never charge GST.</p>
+<section id="pin-forgotten">
+<h3>PIN problems: "Wrong PIN" or a forgotten PIN</h3>
+<p>You may see: <strong>"Wrong PIN. Try again."</strong>, <strong>"Too many wrong tries. Wait 30 seconds and try again."</strong> (after 5 wrong PINs in a row), <strong>"Could not check the PIN. Is the app still running?"</strong>, or in Settings <strong>"Current PIN is wrong"</strong>, <strong>"The two PINs do not match"</strong>, <strong>"The PIN must be 6 digits"</strong> (or 8).</p>
+<p>The <a href="settings.html#lock">PIN lock</a> asks for the PIN once per browser tab. "Could not check the PIN" means the app is not running: see <a href="#cannot-connect">Failed to fetch</a>.</p>
+<p><b>Forgot the PIN?</b> It can be removed on this computer without losing anything:</p>
+<ol>
+  <li>Open the <b>Free-GST-Billing</b> folder, the one with the launcher in it.</li>
+  <li>Make a new empty file there named <code>RESET-PIN</code>. On Windows: right-click an empty space, ${ui('New')} → ${ui('Text Document')}, and name it <code>RESET-PIN</code> (<code>RESET-PIN.txt</code> also works). On a Mac or Linux, in the Terminal: <code>touch ~/Free-GST-Billing/RESET-PIN</code> (change the path if your folder is elsewhere).</li>
+  <li>Reload the app's page. The PIN is removed and the file deleted by itself. Your invoices are not touched.</li>
+  <li>Set a new PIN in <a href="settings.html#lock">Settings</a> if you want one.</li>
+</ol>
+</section>
+
+<section id="updating">
+<h2>Updating</h2>
+<p>Problems during or right after an update. An update never changes your data folder, and backs it up first.</p>
+</section>
+
+<section id="update-failed">
+<h3>An update went wrong</h3>
+<p>You may see: <strong>"Update failed — ..."</strong> in the app, <strong>"ERROR: could not reach GitHub. Are you online?"</strong>, <strong>"Could not check for updates. Check internet connection."</strong>, or <strong>"The new version is in place, but it is not ready to run yet"</strong>.</p>
+<p>Your data folder is never changed by an update, and a backup was saved in <code>Documents\\FreeGSTBill Backups</code> before it started.</p>
+<ol>
+  <li>Check the internet, then run the update again. This fixes most problems.</li>
+  <li>If the window showed a <strong>PROBLEM:</strong>, fix that first (see <a href="#install-failed">The install stopped with an error</a>), then click ${ui('Open App')}: it finishes the install by itself.</li>
+  <li>If it still fails, update by hand with the ZIP: see <a href="update.html#windows">Windows: other ways</a>.</li>
+</ol>
+</section>
+
+<section id="update-not-showing">
+<h3>"Update complete", but the old version is still there</h3>
+<p>You may see: <strong>"[OK] Update complete! Restart the app (Stop Server -> Open App) to run the new version."</strong> or <strong>"Update finished. Reload the page to use the new version."</strong></p>
+<p>The new files are in place, but the running app or your browser still has the old version.</p>
+<ol>
+  <li>Press <kbd>Ctrl</kbd> + <kbd>F5</kbd> (Mac: <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd>).</li>
+  <li>Still the old number at the bottom of the Dashboard? Stop the app (launcher, ${ui('More options')} → ${ui('Stop the app')}, or ${ui('Stop Server')} in the Control Panel), then click ${ui('Open App')}.</li>
+  <li>If the app does not start after that, see <a href="#not-answered">The server has not answered</a>.</li>
+</ol>
+</section>
+
+<section id="app-out-of-date">
+<h3>"Failed to fetch dynamically imported module"</h3>
+<p>You may see: <strong>"Failed to fetch dynamically imported module"</strong>, <strong>"error loading dynamically imported module"</strong> or <strong>"Loading chunk ... failed"</strong>, or a screen that will not open after an update.</p>
+<p>The browser kept parts of the old version after an update. The app normally reloads itself once to fix this.</p>
+<ol>
+  <li>Press <kbd>Ctrl</kbd> + <kbd>F5</kbd> (Mac: <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd>).</li>
+  <li>If it comes back, close every tab of the app, then open it again from the shortcut with ${ui('Open App')}.</li>
+</ol>
+</section>
+
+<section id="scripts-not-found">
+<h3>"Update and backup scripts not found" or "Not available here"</h3>
+<p>You may see: <strong>"Update and backup scripts not found."</strong> in the Control Panel, buttons that say <b>Not available here</b>, or <strong>"Not available here: the script for this action is not in the app folder. Download the latest ZIP to get it."</strong></p>
+<p>The Control Panel runs scripts that come with the downloaded ZIP, and they are not in this copy. On Mac and Linux only Update and Backup have scripts, so Restore, Move and Stop always say Not available here.</p>
+<ol>
+  <li>Update with the launcher's ${ui('More options')} → ${ui('Update to the latest version')}, or by hand with the <a href="update.html">downloaded ZIP</a>.</li>
+  <li>For your data in the meantime, use <a href="backup.html#export-import">Export Backup</a> in Settings.</li>
+</ol>
+<p>More in <a href="control-panel.html#scripts-missing">"Update and backup scripts not found"</a>.</p>
+</section>
+
+<section id="saving">
+<h2>Saving and working in the app</h2>
+<p>Messages while making invoices, saving settings or importing.</p>
+</section>
+
+<section id="screen-problem">
+<h3>"This screen ran into a problem. Your data is safe."</h3>
+<p>One screen of the app hit an error and was stopped, so the rest of the app keeps working. Nothing that was already saved is lost.</p>
+<ol>
+  <li>Click ${ui('Try again')}.</li>
+  <li>If the panel comes back, click ${ui('Go to Dashboard')} and carry on with other work.</li>
+  <li>Click ${ui('Report this problem')} so it gets fixed. The report is filled in for you, and private details (GSTIN, PAN, phone, email, UPI ID and bank account numbers) are removed before it leaves. You can read it before you submit it on GitHub.</li>
+  <li>No GitHub account? Click ${ui('Copy details')} and paste them into an email or WhatsApp message; see <a href="#copy-details">Sending the details another way</a>.</li>
+</ol>
+</section>
+
+<section id="duplicate-number">
+<h3>"Invoice number ... already exists"</h3>
+<p>You may see: <strong>"Invoice number INV/0007 was already used — saved as INV/0008 instead."</strong>, <strong>"Invoice number ... already exists. Change it before saving."</strong>, <strong>"Invoice number ... is already used by another invoice. This invoice is still saved as ..."</strong>, <strong>"A bill with this invoice number already exists"</strong>, or <strong>"An invoice with this number exists again. Rename or delete it first."</strong> (restoring from the trash).</p>
+<p>Two invoices cannot share a number, and the app never overwrites the other one. A new invoice simply moves on to the next free number by itself.</p>
+<ol>
+  <li>For an invoice you are editing, change the number in the invoice details to one that is not used, and save again.</li>
+  <li>To find the other invoice, search its number with <kbd>Ctrl</kbd> + <kbd>K</kbd>.</li>
+  <li><strong>"Could not find a free invoice number after 1000 attempts"</strong>: type a number yourself, or set <b>Start numbering from</b> in <a href="settings.html#invoice-numbers">Settings</a> past your last invoice.</li>
+</ol>
+</section>
+
+<section id="payload-too-large">
+<h3>"Request body too large"</h3>
+<p>Usually after <i>Failed to save</i>, <i>Restore failed:</i> or <i>Import failed:</i>.</p>
+<p>Something you saved was bigger than the app accepts in one go: up to 5 MB for an everyday save, up to 500 MB for restoring a backup file. The usual cause is a very large logo, signature or stamp picture, because every invoice keeps a copy of your business details with their pictures.</p>
+<ol>
+  <li>Make the picture smaller, ideally under 500 KB: crop it to just the logo or signature, or save it as a JPG. A free site such as tinypng.com can shrink it.</li>
+  <li>Upload the smaller picture in <a href="settings.html#branding">Settings</a> and save.</li>
+  <li>Try what failed again.</li>
+  <li>For a backup file over 500 MB, restore a daily backup from <b>Settings, Backup Management</b>, or the ZIP with ${ui('Choose Backup ZIP')} in the <a href="control-panel.html#actions">Control Panel</a>.</li>
+</ol>
+</section>
+
+<section id="disk-full">
+<h3>"The disk is full"</h3>
+<p>You may see: <strong>"The disk is full"</strong>, <strong><code>ENOSPC</code></strong>, <strong>"no space left on device"</strong>, <strong>"Drive C:\\ is almost full"</strong> (install), or <strong>"the disk is full"</strong> in an update message.</p>
+<p>The drive the app is on has no free space, so the app could not write. The app writes each file in full or not at all, so nothing already saved is lost or half-written.</p>
+<ol>
+  <li>Free some space: empty the Recycle Bin (Mac: Bin), delete old downloads and videos you do not need.</li>
+  <li>Backups you have already copied somewhere else can be deleted from <code>Documents\\FreeGSTBill Backups</code>.</li>
+  <li>Try again.</li>
+</ol>
+</section>
+
+<section id="no-permission">
+<h3>"The app is not allowed to write to its data folder"</h3>
+<p>You may see: <strong>"The app is not allowed to write to its data folder"</strong>, <strong>"The app cannot write to its own folder"</strong> (install), <strong><code>EACCES</code></strong>, <strong><code>EPERM</code></strong>, <strong>"permission denied"</strong> or <strong>"operation not permitted"</strong>.</p>
+<p>Windows or antivirus is stopping the app from changing its own files. Usual causes: the app folder is inside <code>C:\\Program Files</code>, on a read-only or synced drive, or antivirus <b>Controlled folder access</b> blocks it.</p>
+<ol>
+  <li>Stop the app (launcher, ${ui('More options')} → ${ui('Stop the app')}).</li>
+  <li>Move the whole <b>Free-GST-Billing</b> folder to <b>Documents</b> or <code>D:\\</code>, and open the launcher from there. The old Desktop shortcut points at the old place: right-click the launcher → ${ui('Send to')} → ${ui('Desktop (create shortcut)')} for a new one.</li>
+  <li>If antivirus blocks it, allow the app: in <b>Windows Security → Virus &amp; threat protection → Ransomware protection</b>, use <b>Allow an app through Controlled folder access</b>, or add the folder to your antivirus's exclusions.</li>
+  <li><strong>Mac or Linux:</strong> the folder may belong to another user (for example after using <code>sudo</code>). In the Terminal: <code>sudo chown -R $(whoami) ~/Free-GST-Billing</code> (change the path if your folder is elsewhere).</li>
+</ol>
+</section>
+
+<section id="csv-import">
+<h3>A CSV import did not work</h3>
+<p>You may see: <strong>"CSV file is empty or has no data rows"</strong>, <strong>"Failed to parse CSV file"</strong>, <strong>"Could not read ..."</strong>, <strong>"Import stopped after ..."</strong>, or for bank statements <strong>"Could not parse this CSV"</strong> or <strong>"No transactions found"</strong>.</p>
+<p>The file is not a plain CSV, or its first row is not the column headings.</p>
+<ol>
+  <li>In Excel, use <b>File → Save As → CSV (Comma delimited)</b>. An <code>.xlsx</code> file renamed to <code>.csv</code> does not work.</li>
+  <li>Keep the column headings in the first row and the data from the second row down.</li>
+  <li>After "Import stopped after ...", the rows before it are saved. Fix the row the message names and import the rest.</li>
+  <li>For bank statements, use the CSV straight from your bank's download, not one edited by hand.</li>
+</ol>
+<p>See <a href="clients.html#import-csv">clients</a>, <a href="products.html#import">products</a>, <a href="purchases.html#csv-purchases">purchases</a> and <a href="income-tax.html#bank-import">bank statements</a>.</p>
+</section>
+
+<section id="ocr-failed">
+<h3>Reading a bill photo failed</h3>
+<p>You may see: <strong>"OCR failed: ..."</strong>, <strong>"Please upload an image (PNG, JPG, WebP)."</strong> or <strong>"Image is over 8MB"</strong>.</p>
+<ol>
+  <li>Use a sharp, straight, well-lit JPG or PNG under 8 MB, cropped to the bill.</li>
+  <li>If the message mentions <i>fetch</i>, <i>network</i> or <i>worker</i>, press <kbd>Ctrl</kbd> + <kbd>F5</kbd> and try again; if it persists, see <a href="#cannot-connect">Failed to fetch</a>.</li>
+  <li>If it still fails, enter the bill by hand.</li>
+</ol>
+</section>
+
+<section id="printing">
+<h2>Printing and PDFs</h2>
+<p>Print does nothing, or the PDF is not right.</p>
+</section>
+
+<section id="print-blocked">
+<h3>Print does nothing, or "Print failed"</h3>
+<p>You may see: <strong>"Your browser blocked the print window. Allow pop-ups for this app and try again."</strong>, <strong>"Allow pop-ups for this page to print the report"</strong>, <strong>"Print failed — try Download PDF instead"</strong>, <strong>"Failed to generate PDF."</strong> or <strong>"Could not generate any PDFs"</strong>.</p>
+<ol>
+  <li>Allow pop-ups for the app: click the blocked pop-up icon at the right end of the address bar, choose <b>Always allow</b> for <code>localhost</code>, and try again.</li>
+  <li>Use ${ui('Download PDF')} and print the PDF instead.</li>
+  <li>Press <kbd>Ctrl</kbd> + <kbd>F5</kbd> and try again.</li>
+</ol>
+<p>For receipt printers, see <a href="thermal-printing.html#receipt-problems">Receipt printer problems</a>.</p>
+</section>
+
+<section id="pdf-file-in-use">
+<h3>"Its PDF in Saved Invoices could not be updated"</h3>
+<p>You may see: <strong>"Invoice saved, but its PDF in Saved Invoices could not be updated. Use Save &amp; Download."</strong> or <strong>"A saved PDF could not be marked CANCELLED. Close the PDF if it is open, then cancel again."</strong></p>
+<p>The invoice itself is saved. Only its PDF copy could not be replaced, usually because that PDF is open in a PDF reader.</p>
+<ol>
+  <li>Close the PDF in Adobe Reader, Edge or your browser.</li>
+  <li>Click ${ui('Save &amp; Download')} again, or repeat the cancel or undo.</li>
+</ol>
 </section>
 
 <section id="missing-on-pdf">
-<h2>Something is missing from the PDF</h2>
+<h3>Something is missing from the PDF</h3>
 <ul>
   <li><strong>Logo, signature or stamp</strong>: check it is uploaded and saved in <a href="settings.html#branding">Settings</a>, and ticked under Customize.</li>
   <li><strong>UPI QR code</strong>: needs a UPI ID on the account, a rupee invoice, and <b>UPI QR</b> ticked under Customize.</li>
@@ -170,45 +398,228 @@ export default [
 </ul>
 </section>
 
-<section id="gstr1-blocked">
-<h2>GSTR-1 export says "blocked"</h2>
-<p>An invoice number is too long or has characters the portal refuses, or an item has a GST rate the portal does not accept. The message names the first one. See <a href="gst-returns.html#json-checks">Checks before the file is made</a>.</p>
+<section id="image-problem">
+<h3>A logo or signature picture will not upload</h3>
+<p>You may see: <strong>"This doesn't look like an image"</strong>, <strong>"Image is ... MB — over the 5MB cap"</strong>, <strong>"Image too large (max 2MB)"</strong>, <strong>"Image too large (max 3MB)"</strong>, <strong>"Image must be under 500KB"</strong>, or <strong>"Could not decode this image"</strong>.</p>
+<ol>
+  <li>Use a PNG or JPG. An iPhone photo (HEIC) must be turned into a JPEG first: share it to Files as a JPEG, or on the iPhone set <b>Settings → Camera → Formats → Most Compatible</b> for new photos.</li>
+  <li>Make it smaller, ideally under 500 KB: crop it or shrink it with a free site such as tinypng.com.</li>
+  <li>Upload it again.</li>
+</ol>
 </section>
 
-<section id="update-failed">
-<h2>An update went wrong</h2>
-<p>Your data folder is never changed by an update, and a backup was saved in <code>Documents\\FreeGSTBill Backups</code> before it started. Run the update again, which fixes most problems. If it still fails, download the ZIP and extract it over the app folder by hand.</p>
+<section id="gst-returns-problems">
+<h2>GST, tax and returns</h2>
+<p>Wrong tax on an invoice, and messages from GST Returns.</p>
+</section>
+
+<section id="wrong-tax">
+<h3>The invoice has the wrong tax split</h3>
+<ol>
+  <li>Check your own <b>state</b> in <a href="settings.html#company-details">Settings</a>.</li>
+  <li>Check the <b>client's state</b>, or their GSTIN, which fills the state in.</li>
+  <li>If goods go to a different state from the client's address, set <b>Place of Supply</b> on the invoice.</li>
+  <li>For a client abroad, set their <b>country</b>: it is then an export, charged as IGST. For an SEZ unit, tick <b>SEZ</b> on the client.</li>
+</ol>
+<p>See <a href="invoices.html#gst">How GST is worked out</a>.</p>
+</section>
+
+<section id="state-missing">
+<h3>"Set your business State in Settings"</h3>
+<p>You may see: <strong>"Set your business State in Settings — required for correct CGST/SGST vs IGST split."</strong> or <strong>"Set your GSTIN in Settings first"</strong> (E-Way Bill).</p>
+<p>The app needs your state to choose CGST + SGST or IGST, and your GSTIN for E-Way Bill files.</p>
+<ol>
+  <li>Open <a href="settings.html#company-details">Settings, Company Details</a>.</li>
+  <li>Fill in <b>State</b> (and <b>GSTIN</b>, which fills the state in), and save.</li>
+  <li>Go back to the invoice; the tax is worked out again.</li>
+</ol>
+</section>
+
+<section id="no-tax">
+<h3>No GST is charged at all</h3>
+<p>The <b>Tax % column</b> is probably turned off under ${ui('Customize')}. Turning it off removes GST from the invoice, and your choice carries over to new invoices. Tick it again. Bills of supply and delivery challans never charge GST.</p>
+</section>
+
+<section id="gstr1-blocked">
+<h3>"GSTR-1 export blocked — fix these first"</h3>
+<p>You may also see <strong>"GSTR-1 JSON exported. ⚠ ..."</strong>: the file was made, with warnings worth reading.</p>
+<p>An invoice number is too long or has characters the portal refuses, or an item has a GST rate the portal does not accept. The message names the first ones.</p>
+<ol>
+  <li>Open the invoice the message names and fix its number or rate.</li>
+  <li>Export again.</li>
+</ol>
+<p>See <a href="gst-returns.html#json-checks">Checks before the file is made</a>.</p>
+</section>
+
+<section id="gstr2b-wrong-file">
+<h3>"That doesn't look like a GSTR-2B JSON"</h3>
+<p>You may see: <strong>"That doesn't look like a GSTR-2B JSON. Expected docdata.b2b array."</strong> or <strong>"Failed to parse GSTR-2B JSON"</strong>.</p>
+<p>The file chosen is not the GSTR-2B JSON from the GST portal: often the Excel or PDF version, or a different return.</p>
+<ol>
+  <li>On the GST portal, download GSTR-2B for the month as a <b>JSON</b> file.</li>
+  <li>If it comes as a ZIP, extract it first.</li>
+  <li>Choose that <code>.json</code> file. See <a href="gst-returns.html#gstr-2b">GSTR-2B</a>.</li>
+</ol>
+</section>
+
+<section id="nothing-to-export">
+<h3>"No data to export for this period"</h3>
+<p>You may see: <strong>"No data to export for this period"</strong>, <strong>"No invoices to export"</strong>, <strong>"No B2B data to export"</strong>, <strong>"No TDS entries in this period"</strong>, or <strong>"Nothing to export"</strong>.</p>
+<p>The chosen period has nothing of that kind for this business.</p>
+<ol>
+  <li>Check the <a href="gst-returns.html#period">period</a> at the top.</li>
+  <li>Check the business at the top of the sidebar: each business has its own invoices. See <a href="shortcuts.html#switch-business">Switching business</a>.</li>
+</ol>
 </section>
 
 <section id="gst-labels">
-<h2>It says VAT instead of GST, or the other way round</h2>
+<h3>It says VAT instead of GST, or the other way round</h3>
 <p>Change <a href="settings.html#region">Region</a> in Settings, and check your country in Company Details. Tax names follow the seller's country.</p>
 </section>
 
-<section id="ocr-failed">
-<h2>Reading a bill photo failed</h2>
-<p>Use a sharp, straight, well-lit JPG or PNG under 8 MB, cropped to the bill. If it still fails, reload the page with <kbd>Ctrl</kbd> + <kbd>F5</kbd> and try again, or enter the bill by hand.</p>
+<section id="backups">
+<h2>Backups, restore and Google Drive</h2>
+<p>Daily backups, backup files and restoring.</p>
+</section>
+
+<section id="restore-failed">
+<h3>A backup or restore failed</h3>
+<p>You may see: <strong>"This file doesn't look like a Free GST Billing backup."</strong>, <strong>"Could not read the file"</strong>, <strong>"Import failed: ..."</strong>, <strong>"Restore failed: ..."</strong>, <strong>"Backup failed: ..."</strong> or <strong>"No data folder found - nothing to back up."</strong></p>
+<p>A restore saves what you have now first, so a failed one changes nothing.</p>
+<ol>
+  <li>Read the end of the message: <a href="#cannot-connect">Failed to fetch</a>, <a href="#payload-too-large">Request body too large</a>, <a href="#disk-full">disk full</a> and <a href="#no-permission">permission</a> each have their own entry.</li>
+  <li>For <b>Import Backup</b>, choose the <code>freegstbill-backup-<i>date</i>.json</code> file saved by Export Backup. A ZIP from the launcher or Control Panel is restored with ${ui('Choose Backup ZIP')} in the <a href="control-panel.html#actions">Control Panel</a> instead.</li>
+  <li>Try another day from <b>Settings, Backup Management</b>.</li>
+</ol>
+<p>See <a href="backup.html">Backups and updates</a>.</p>
+</section>
+
+<section id="backup-folder">
+<h3>"Cannot write to that folder" (backup copy folder)</h3>
+<p>You may see: <strong>"Give the full folder path, for example D:\\Backups"</strong>, <strong>"Choose a folder outside the app's data folder."</strong>, <strong>"Cannot write to that folder: ..."</strong>, or <strong>"Folder saved, but copying today's backup failed: ..."</strong>.</p>
+<ol>
+  <li>Type the whole path, starting with the drive letter, such as <code>D:\\FreeGSTBill</code>; on a Mac or Linux, a path starting with <code>/</code>.</li>
+  <li>Choose a folder outside the app's own folder.</li>
+  <li>For a USB disk, plug it in first. Settings says when a copy fails.</li>
+  <li>For a permission code such as <code>EACCES</code>, choose a folder in your own Documents or another drive.</li>
+</ol>
+<p>See <a href="backup.html#backup-copy">Keeping a copy somewhere else</a>.</p>
+</section>
+
+<section id="google-drive">
+<h3>Google Drive upload failed</h3>
+<p>You may see: <strong>"Google Drive not configured."</strong>, <strong>"Enter your Google OAuth Client ID first"</strong>, <strong>"Drive auth failed — backup downloaded locally only"</strong>, <strong>"Google Drive: Please reconnect in Settings"</strong> or <strong>"Google Drive upload failed: ..."</strong>.</p>
+<p>The file was still saved on this computer. Only the copy to Drive did not happen.</p>
+<ol>
+  <li>Check the internet.</li>
+  <li>In <a href="settings.html#google-drive">Settings, Google Drive</a>, connect again (and fill in the Client ID if it is empty).</li>
+  <li>Save or export again.</li>
+</ol>
+</section>
+
+<section id="damaged-file">
+<h3>"Skipped damaged file" in the log</h3>
+<p>You may see a log line like: <strong>"Skipped damaged file data/bills/INV_0007.json (not valid JSON)"</strong>, and that one invoice, client or product is missing from its list.</p>
+<p>One saved file was damaged, by a power cut, a disk error or editing it by hand. The app skips it so everything else still opens.</p>
+<ol>
+  <li>Note the file name in the line (for example <code>bills/INV_0007.json</code>).</li>
+  <li>Open the data folder: ${ui('Open Data Folder')} in the <a href="control-panel.html#actions">Control Panel</a>.</li>
+  <li>Open <code>backups</code>, then the newest date folder, then the same subfolder (<code>bills</code>). Copy that file.</li>
+  <li>Paste it into the same subfolder of the data folder, replacing the damaged one, and reload the page.</li>
+  <li>No good copy there? Look in the ZIPs in <code>Documents\\FreeGSTBill Backups</code>, or move the damaged file to your Desktop (everything else keeps working) and <a href="#report-problem">send it to us</a>.</li>
+</ol>
+<p>Restoring a whole day from <b>Settings, Backup Management</b> also works, but it puts all your data back to that day. See <a href="backup.html#automatic-backups">Automatic daily backups</a>.</p>
+</section>
+
+<section id="mac">
+<h2>Mac</h2>
+<p>Messages macOS shows before the app starts.</p>
+</section>
+
+<section id="mac-blocked">
+<h3>The Mac will not open the launcher</h3>
+<ul>
+  <li><strong>"could not be executed because you do not have appropriate access privileges"</strong>: open <b>Terminal</b> (Applications → Utilities), type <code>chmod +x </code> with a space after it, drag <b>Free GST Billing - MAC</b> into the Terminal window, press <kbd>Return</kbd>, and open the file again. Downloads from v1.10.82 do not need this. See <a href="terminal.html#example">the step-by-step example</a>.</li>
+  <li><strong>"cannot be opened because Apple cannot check it for malicious software"</strong> or <strong>"unidentified developer"</strong>: the app is not signed by Apple. Hold <kbd>Control</kbd>, click <b>Free GST Billing - MAC</b>, choose <b>Open</b>, then <b>Open</b> again. Only the first time. Or use <b>System Settings → Privacy &amp; Security → Open Anyway</b>.</li>
+  <li><strong>"Node.js is not installed"</strong> or <strong>too old</strong>: see <a href="#old-node">Node.js is too old</a>.</li>
+</ul>
+<p>Updating on a Mac: never drag a new download over the old folder; see <a href="update.html#mac">Mac: other ways</a>.</p>
+</section>
+
+<section id="linux">
+<h2>Linux and NAS</h2>
+<p>Messages in the Terminal.</p>
+</section>
+
+<section id="linux-permission">
+<h3>"Permission denied" or "bash: not found"</h3>
+<p>You may see: <strong>"Permission denied"</strong> when starting <code>./Free GST Billing - LINUX.sh</code>, or <strong>"bash: not found"</strong> on a NAS.</p>
+<ol>
+  <li>Start it through bash, which needs no permission change: <code>cd ~/Free-GST-Billing &amp;&amp; bash "Free GST Billing - LINUX.sh"</code>.</li>
+  <li>No bash (Alpine, some NAS systems): install it, for example <code>sudo apk add bash</code>.</li>
+  <li>"Permission denied" while the app writes files: see <a href="#no-permission">The app is not allowed to write</a>.</li>
+</ol>
+</section>
+
+<section id="linux-update-failed">
+<h3>The Linux update stopped</h3>
+<p>The update says <strong>ERROR:</strong> and, in most cases, <strong>"Nothing was changed."</strong> If it fails while applying, the old app files are put back.</p>
+<ul>
+  <li><strong>"Updating needs "unzip" (or python3)"</strong>: run <code>sudo apt install unzip</code> (Alpine: <code>apk add unzip</code>) and update again.</li>
+  <li><strong>"Could not download the update"</strong>: check the internet and try again.</li>
+  <li><strong>"could not be extracted (damaged download, or the disk is full)"</strong>: free some space (see <a href="#disk-full">The disk is full</a>) and try again.</li>
+  <li><strong>"Update Node.js as shown above"</strong>: see <a href="#old-node">Node.js is too old</a>.</li>
+  <li><strong>"npm install failed."</strong>: check the internet and the free space, then run <code>sh ~/Free-GST-Billing/_system/update-unix.sh</code> again.</li>
+  <li><strong>"This copy runs from a git checkout"</strong>: update it with <code>git pull &amp;&amp; npm install &amp;&amp; npm run build</code>.</li>
+</ul>
+<p>After <strong>"[OK] Update complete"</strong>, restart the app (or its Docker container or service).</p>
+</section>
+
+<section id="problem-log">
+<h2>Problem log and reporting a problem</h2>
+<p>The app keeps a list of recent problems on this computer. Open <b>Support &amp; About</b> in the sidebar, then <b>Problem log</b>.</p>
+<ul>
+  <li>Each problem shows the time, the screen and the message, with ${ui('Copy')} and ${ui('Report')} buttons.</li>
+  <li>${ui('Copy all')} copies the whole list; ${ui('Clear log')} empties it.</li>
+  <li>Below, it shows the app server's recent log lines, from the <code>errors.log</code> file in the data folder.</li>
+</ul>
+<p>Nothing is sent anywhere unless you click ${ui('Report')}.</p>
+</section>
+
+<section id="report-problem">
+<h3>Reporting a problem</h3>
+<ol>
+  <li>In the Problem log, click ${ui('Report')} next to the problem (or ${ui('Report this problem')} on the panel that showed it).</li>
+  <li>GitHub's <a href="${SITE.repo}/issues/new?template=bug_report.yml">Report a problem</a> form opens, already filled in with the version, your computer and the error details. Private details (GSTIN, PAN, phone, email, UPI ID, bank account) are removed first.</li>
+  <li>Add what you did just before it happened, check the text, and submit. This needs a free GitHub account.</li>
+</ol>
+<p>Reporting without the Problem log: the form asks for the version (bottom of the Dashboard, or <b>Settings, App Updates</b>), your computer, what you did and what you saw, and a screenshot (hide your GSTIN and bank details). If the app does not start, add what <code>node -v</code> and <code>npm -v</code> show in Command Prompt; see <a href="terminal.html#windows">Using the Terminal</a>.</p>
+<p>Problems are fixed in the <a href="support.html#weekly">Saturday update</a>, and anything urgent, such as the app not opening, straight away. For a new feature use <a href="${SITE.repo}/issues/new?template=feature_request.yml">Ask for a feature</a>.</p>
+</section>
+
+<section id="copy-details">
+<h3>Sending the details another way</h3>
+<p>No GitHub account? Click ${ui('Copy details')} (or ${ui('Copy')} in the Problem log), paste it into an email to <a href="mailto:contact@dicecodes.com">contact@dicecodes.com</a> or a WhatsApp message, and add what you did just before it happened. Read it before sending; it is plain text.</p>
+</section>
+
+<section id="questions">
+<h2>Questions</h2>
+<p>Things people ask that are not errors.</p>
 </section>
 
 <section id="other-devices">
-<h2>Can I use it on my phone or another computer?</h2>
+<h3>Can I use it on my phone or another computer?</h3>
 <p>The app runs on the computer it is installed on, and only that computer can open it. It has no user accounts, so it is deliberately not shared over your network, where anyone connected could read your books. (The optional <a href="settings.html#lock">PIN lock</a> locks the screen on this computer only.) To work on another computer, <a href="backup.html#move-pc">move your data</a> there.</p>
 </section>
 
 <section id="internet">
-<h2>Does it need the internet?</h2>
+<h3>Does it need the internet?</h3>
 <p>Only to install and to update. Invoices, reports, GST returns and even reading bills from photos all work offline. Google Drive upload uses the internet too.</p>
 </section>
 
 <section id="privacy">
-<h2>Is my data sent anywhere?</h2>
-<p>No. There is no account, no tracking and no server of ours. Your data stays in the app's folder unless you choose Google Drive, which copies files into your own Drive.</p>
-</section>
-
-<section id="report-problem">
-<h2>Reporting a problem</h2>
-<p>Use the <a href="${SITE.repo}/issues/new?template=bug_report.yml">Report a problem</a> form on GitHub. It asks for the version (<b>Settings, App Updates</b>), your computer, what you did and what you saw, and a screenshot (hide your GSTIN and bank details). If the app does not start, add what <code>node -v</code> and <code>npm -v</code> show in Command Prompt.</p>
-<p>Problems are fixed in the <a href="support.html#weekly">Saturday update</a>, and anything urgent, such as the app not opening, straight away. For a new feature use <a href="${SITE.repo}/issues/new?template=feature_request.yml">Ask for a feature</a>.</p>
+<h3>Is my data sent anywhere?</h3>
+<p>No. There is no account, no tracking and no server of ours. Your data stays in the app's folder unless you choose Google Drive, which copies files into your own Drive, or you send a <a href="#report-problem">problem report</a> yourself.</p>
 </section>
 `,
 },

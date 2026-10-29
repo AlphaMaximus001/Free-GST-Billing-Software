@@ -2807,6 +2807,73 @@ kbd {
 
 .toast-close:hover { opacity: 1; }
 
+/* v1.10.83 - "Report" / "How to fix" on an error toast. Inherits the toast's
+   text colour, so it reads on every toast type in light and dark mode. */
+.toast-action {
+  background: none;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.toast-action:hover { background: rgba(0,0,0,0.06); }
+
+/* v1.10.83 - the "This screen ran into a problem" panel (ErrorBoundary.jsx). */
+.problem-panel {
+  max-width: 640px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  border-left: 4px solid #f59e0b;
+}
+.problem-panel h2 { margin: 0 0 0.5rem; font-size: 1.15rem; }
+.problem-panel p { margin: 0 0 0.75rem; line-height: 1.55; color: var(--text-secondary, #4b5563); }
+.problem-panel code {
+  display: block;
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  background: var(--bg-secondary, #f8fafc);
+  font-size: 0.8rem;
+  word-break: break-word;
+  white-space: pre-wrap;
+  margin-bottom: 0.9rem;
+}
+.problem-panel-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.problem-known {
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: var(--bg-secondary, #f8fafc);
+  margin-bottom: 0.9rem;
+  font-size: 0.88rem;
+}
+.problem-known a { font-weight: 600; }
+.problem-known a, #problem-log a { color: var(--primary); }
+.problem-log-list { list-style: none; margin: 0; padding: 0; }
+.problem-log-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  align-items: baseline;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
+.problem-log-msg { flex: 1 1 240px; min-width: 0; word-break: break-word; }
+.problem-log-server {
+  max-height: 260px;
+  overflow: auto;
+  padding: 0.6rem;
+  border-radius: 6px;
+  background: var(--bg-secondary, #f8fafc);
+  font-size: 0.72rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 @keyframes toast-slide {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }

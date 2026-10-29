@@ -20,6 +20,7 @@ import Dashboard from './components/Dashboard';
 import InvoiceGenerator from './components/InvoiceGenerator';
 import SetupWizard from './components/SetupWizard';
 import ToastContainer, { toast } from './components/Toast';
+import ErrorBoundary from './components/ErrorBoundary';
 import ConfirmModalContainer from './components/ConfirmModal';
 import WelcomeGuide from './components/WelcomeGuide';
 const SettingsView = lazy(() => import('./components/SettingsView'));
@@ -991,6 +992,10 @@ function App() {
         </div>
       )}
       <div className="main-content">
+        {/* v1.10.83 - a screen that throws shows "ran into a problem" here
+            instead of blanking the app; keyed by screen so the sidebar works
+            and opening another screen starts clean. */}
+        <ErrorBoundary key={currentView} onHome={() => setCurrentView('dashboard')}>
         {currentView !== 'new' && <StarBanner />}
         {currentView === 'dashboard' && (
           <Dashboard onNew={handleNewInvoice} onEdit={handleEditInvoice} onPrint={handlePrintInvoice} onDuplicate={handleDuplicateInvoice} onConvert={handleConvertToInvoice} onOpenProducts={() => setCurrentView('inventory')} onOpenSettings={() => setCurrentView('settings')} onOpenGuide={openDocs} onOpenSupport={() => setCurrentView('support')} activeProfile={profile} />
@@ -1049,6 +1054,7 @@ function App() {
         </Suspense>
         {/* Version + DiceCodes line: Dashboard only, so it never takes space on working screens. */}
         {currentView === 'dashboard' && <AppFooter onOpenSupport={() => setCurrentView('support')} />}
+        </ErrorBoundary>
       </div>
 
       {/* Update modal — release notes + Export-backup-first nudge + Update Now */}
