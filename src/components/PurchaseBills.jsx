@@ -1056,7 +1056,7 @@ export default function PurchaseBills() {
           <div className="modal-overlay" onClick={() => setViewPurchase(null)}>
             <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 720 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 className="section-title" style={{ margin: 0 }}>Purchase Bill · {p.invoiceNumber || '—'}</h3>
+                <h3 className="section-title" style={{ margin: 0 }}>Purchase Bill · {p.invoiceNumber || '—'} <HelpButton title="Viewing a purchase bill" doc="purchases#view-bill" size={16} /></h3>
                 <button className="icon-btn" onClick={() => setViewPurchase(null)} title="Close"><X size={18} /></button>
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
@@ -1186,7 +1186,7 @@ export default function PurchaseBills() {
       {showForm && (
         <div className="modal-overlay" onClick={closeForm}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '720px' }}>
-            <h3 className="section-title">{isPo ? (editingId ? 'Edit purchase order' : 'New purchase order') : (editingId ? 'Edit Purchase Bill' : 'Add Purchase Bill')} <HelpButton title="Purchases" doc={isPo ? 'purchases#purchase-orders' : 'purchases#add-purchase'} size={16} style={{ marginLeft: 6 }} /></h3>
+            <h3 className="section-title">{isPo ? (editingId ? 'Edit purchase order' : 'New purchase order') : (editingId ? 'Edit Purchase Bill' : 'Add Purchase Bill')} <HelpButton title="Purchases" doc={isPo ? 'purchases#new-po' : (fromPoNumber && !editingId) ? 'purchases#convert-po' : 'purchases#add-purchase'} size={16} style={{ marginLeft: 6 }} /></h3>
             {/* v1.10.83 (#112) - a bill made from a purchase order. */}
             {!isPo && fromPoNumber && (
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 0.75rem' }}>
@@ -1292,7 +1292,7 @@ export default function PurchaseBills() {
             </div>
 
             {/* Items */}
-            <h4 style={{ marginTop: '1rem', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Items</h4>
+            <h4 style={{ marginTop: '1rem', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Items <HelpButton title="Items on the bill" doc="purchases#purchase-items" size={16} /></h4>
             {/* Rendered once for all rows — a <datalist> is referenced by id,
                 so duplicating it per row would only bloat the DOM. */}
             {/* Same rule as the supplier list above — value only. */}
@@ -1445,7 +1445,7 @@ export default function PurchaseBills() {
       {tab === 'bills' && (
       <div className="glass-panel">
         <div className="table-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h3>Purchase Records</h3>
+          <h3>Purchase Records <HelpButton title="Purchase Records" doc="purchases#purchase-list" size={16} /></h3>
           <TableExport title="Purchase register" filename="Purchases" landscape
             subtitle={ownerProfile?.businessName || ''}
             headers={['Date', 'Supplier', 'GSTIN', 'Invoice No', 'Taxable Amount', 'CGST', 'SGST', 'IGST', 'Cess', 'Inter-state', 'Round-off', 'Total', 'Status', 'Note']}
