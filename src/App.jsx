@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { Home, FileText, Settings, Plus, Users, Package, BarChart3, Wallet, RefreshCw, Receipt, BookOpen, Moon, Sun, Download, X, ShoppingCart, ChevronDown, Building2, Pencil, HelpCircle, Search, Command, Bell, Calculator, HardDrive, Menu, Heart, Banknote } from 'lucide-react';
 import { getAllProfiles, saveProfile, getEnabledModules, getMenuOrder, onMenuChanged, getAllBills, getAllProducts, getStockAlertSettings, getAllClients, runUpdateNow, getLockStatus } from './store';
-import { isModuleEnabled, getUpcomingFilings, countsAsSales, localToday, toLocalIsoDate, DOCS_URL } from './utils';
+import { isModuleEnabled, getUpcomingFilings, countsAsSales, localToday, toLocalIsoDate, DOCS_URL, findLowStock, trackedStock } from './utils';
 import { orderedMenu } from './utils/businessTypes';
 // v1.10.4 — Route-level lazy loading. Prior App.jsx synchronously
 // imported all 12 views (~15k LOC combined), so a first-paint on
@@ -226,7 +226,7 @@ function App() {
         const stockThreshold = Number(stockAlertCfg?.threshold ?? 5);
         const lowStock = stockAlertCfg?.enabled === false
           ? []
-          : products.filter(p => (p.stock ?? 999) <= stockThreshold);
+          : findLowStock(products, stockThreshold); // services and uncounted left out (#121)
         const filings = getUpcomingFilings().filter(f => f.daysAway <= 10);
         // Recurring auto-fire breadcrumb — set by server.js processDueRecurring().
         // Only "fresh" (today's) auto-fires count as a notification; older ones
@@ -636,7 +636,7 @@ function App() {
     if (navItems.some(i => i.id === 'inventory')) searchCorpus.products.forEach(p => {
       acts.push({
         label: `📦 ${p.name} — product${p.hsn ? ' · HSN: ' + p.hsn : ''}`,
-        hint: (p.stock ?? 0) + ' in stock',
+        hint: trackedStock(p) === null ? '' : trackedStock(p) + ' in stock',
         category: 'product',
         run: () => setCurrentView('inventory'),
       });
@@ -1170,7 +1170,7 @@ function App() {
                     <div style={{ flex: 1 }}>
                       <strong>{notifications.lowStock.length} product{notifications.lowStock.length !== 1 ? 's' : ''} low on stock</strong>
                       <div style={{ fontSize: '0.72rem', opacity: 0.85, marginTop: '0.2rem' }}>
-                        {notifications.lowStock.slice(0, 3).map(p => `${p.name} (${p.stock} left)`).join(' · ')}
+                        {notifications.lowStock.slice(0, 3).map(p => `${p.name} (${trackedStock(p)} left)`).join(' · ')}
                       </div>
                     </div>
                   </button>

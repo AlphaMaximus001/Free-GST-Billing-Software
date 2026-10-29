@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, X, Save, Eye, Factory } from 'lucide-react';
 import { getAllProductions, saveProduction, deleteProduction, getProfile } from '../store';
-import { formatCurrency, formatDateGST, localToday, belongsToProfile } from '../utils';
+import { formatCurrency, formatDateGST, localToday, belongsToProfile, isServiceProduct } from '../utils';
 import { unitCost, materialsNeeded, buildProduction, shortages } from '../utils/manufacturing';
 import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
@@ -22,7 +22,7 @@ const qtyText = (q, unit) => `${q} ${unit || 'Nos'}`;
 
 // ---- Bill of materials, inside the Add / Edit Product form ----
 export function BomEditor({ productId, madeHere, bom, products, currency, onChange }) {
-  const others = products.filter((p) => p.id !== productId);
+  const others = products.filter((p) => p.id !== productId && !isServiceProduct(p)); // a service has no stock (#121)
   const setLine = (i, patch) => onChange({ madeHere, bom: bom.map((l, j) => (j === i ? { ...l, ...patch } : l)) });
   const cost = unitCost({ id: productId || '_new', madeHere: true, bom }, products);
   return (

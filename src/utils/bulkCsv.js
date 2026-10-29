@@ -45,7 +45,7 @@ const norm = (h) => String(h || '').toLowerCase().replace(/[\s_\-.%()/#]+/g, '')
 
 // Rows as objects keyed by canonical field name. `fields` maps each canonical
 // name to the accepted header spellings.
-function rowsToRecords(text, fields) {
+export function rowsToRecords(text, fields) {
   const table = parseCsv(text);
   if (table.length < 2) return { records: [], missing: [], unknown: [] };
   const header = table[0].map(norm);

@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Package, Search, Plus, Edit3, Trash2, X, Save, Upload, Table2, Factory } from 'lucide-react';
 import { getAllProducts, saveProduct, deleteProduct, getProfile, getStockAlertSettings, getEnabledModules } from '../store';
-import { getAllUnits, getCountryConfig, formatCurrency, isModuleEnabled } from '../utils';
+import { getAllUnits, getCountryConfig, formatCurrency, isModuleEnabled, isServiceProduct, trackedStock, filterUnitsByMode, getDefaultUnitForMode } from '../utils';
+import { productsCsvToList, PRODUCTS_SAMPLE } from '../utils/listCsv';
+import CsvListImport from './CsvListImport';
 import { bomError, unitCost } from '../utils/manufacturing';
 import { BomEditor, MakeModal, ProductionList } from './Manufacturing';
 import { toast } from './Toast';
@@ -17,7 +19,8 @@ import TableExport from './TableExport';
 // still gets a valid number, but the form no longer edits it directly —
 // dead state removed for clarity.
 const emptyForm = {
-  name: '', hsn: '', purchasePrice: '', sellingPrice: '', taxPercent: '', unit: 'Pcs', stock: '', description: '',
+  // kind: v1.10.83 (#121) - 'goods' or 'service' (a service has no stock).
+  kind: 'goods', name: '', hsn: '', purchasePrice: '', sellingPrice: '', taxPercent: '', unit: 'Pcs', stock: '', description: '',
   madeHere: false, bom: [],
 };
 
@@ -79,6 +82,7 @@ export default function InventoryView() {
     // Read `sellingPrice` if set, else fall back to `rate`. `purchasePrice`
     // is new — starts empty for legacy products until the user fills it.
     setForm({
+      kind: isServiceProduct(product) ? 'service' : 'goods',
       name: product.name || '',
       hsn: product.hsn || '',
       purchasePrice: product.purchasePrice ?? '',
@@ -113,7 +117,7 @@ export default function InventoryView() {
     }
     // v1.10.83 (#115) - a raw materials list must be complete, positive and loop-free.
     const bom = form.bom.map((l) => ({ productId: l.productId, qty: Number(l.qty) }));
-    if (mfgOn && form.madeHere) {
+    if (mfgOn && form.madeHere && form.kind !== 'service') {
       const err = bomError(editingId || '_new', bom, products);
       if (err) { toast(err, 'warning'); return; }
     }
@@ -122,6 +126,7 @@ export default function InventoryView() {
       // old caller reading .rate still gets the right number.
       const sellingPrice = form.sellingPrice ? parseFloat(form.sellingPrice) : 0;
       const purchasePrice = form.purchasePrice ? parseFloat(form.purchasePrice) : 0;
+      const service = form.kind === 'service';
       const product = {
         // Fields this form does not show (cess % from purchase bills, etc.)
         // are kept: the record used to be rebuilt from the form alone.
@@ -134,11 +139,14 @@ export default function InventoryView() {
         rate: sellingPrice, // mirror for legacy readers
         taxPercent: form.taxPercent ? parseFloat(form.taxPercent) : 0,
         unit: form.unit,
-        stock: form.stock ? parseFloat(form.stock) : 0,
+        kind: service ? 'service' : 'goods',
+        // #121 - a service has no stock; blank stock is "not tracked" (it used
+        // to save 0, which showed Out of Stock for things never counted).
+        stock: service || form.stock === '' ? undefined : parseFloat(form.stock),
         description: form.description.trim(),
         // Only written while the feature is on; otherwise the fields a product
         // already has are kept as they are (spread above).
-        ...(mfgOn ? (form.madeHere ? { madeHere: true, bom } : { madeHere: false }) : {}),
+        ...(mfgOn ? (form.madeHere && !service ? { madeHere: true, bom } : { madeHere: false }) : {}),
       };
       await saveProduct(product);
       toast(editingId ? 'Product updated' : 'Product added', 'success');
@@ -172,67 +180,13 @@ export default function InventoryView() {
   const updateField = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
-
-  const csvInputRef = useRef(null);
-
-  const parseCSVLine = (line) => {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      // "" inside quotes is a literal quote (as our own exports write it).
-      if (ch === '"' && inQuotes && line[i + 1] === '"') { current += '"'; i++; }
-      else if (ch === '"') { inQuotes = !inQuotes; }
-      else if (ch === ',' && !inQuotes) { result.push(current); current = ''; }
-      else { current += ch; }
-    }
-    result.push(current);
-    return result;
-  };
-
-  const handleCSVImport = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      // Excel's "CSV UTF-8" starts with a byte-order mark, which turned the
-      // first header into "\uFEFFname" so no row had a name and nothing imported.
-      const text = (await file.text()).replace(/^\uFEFF/, '');
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) { toast('CSV file is empty or has no data rows', 'warning'); return; }
-      const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
-      let imported = 0;
-      // v1.10.74 - importing the same file twice made duplicates. Skip names
-      // already in the list (trimmed, any case), including repeats inside the file.
-      let skipped = 0;
-      const known = new Set(products.map(p => (p.name || '').trim().toLowerCase()));
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCSVLine(lines[i]);
-        if (values.length === 0) continue;
-        const row = {};
-        headers.forEach((h, idx) => { row[h] = (values[idx] || '').trim(); });
-        const name = row.name || row.product || row['product name'] || '';
-        if (!name) continue;
-        if (known.has(name.toLowerCase())) { skipped++; continue; }
-        known.add(name.toLowerCase());
-        await saveProduct({
-          name,
-          hsn: row.hsn || row['hsn code'] || row['sac'] || '',
-          rate: row.rate || row.price ? parseFloat(row.rate || row.price) || 0 : 0,
-          taxPercent: row.taxpercent || row['tax%'] || row['gst%'] || row['tax'] ? parseFloat(row.taxpercent || row['tax%'] || row['gst%'] || row['tax']) || 0 : 0,
-          unit: row.unit || 'Nos',
-          stock: row.stock || row.quantity ? parseFloat(row.stock || row.quantity) || 0 : 0,
-          description: row.description || '',
-        });
-        imported++;
-      }
-      toast(`Imported ${imported} product(s)${skipped ? `, skipped ${skipped} already in your list` : ''}`, 'success');
-      loadProducts();
-    } catch {
-      toast('Failed to parse CSV file', 'error');
-    }
-    if (csvInputRef.current) csvInputRef.current.value = '';
-  };
+  // A service starts on a service unit (Hrs) unless its unit is one already.
+  const serviceUnits = filterUnitsByMode(units, 'services');
+  const setKind = (kind) => setForm(prev => ({
+    ...prev, kind,
+    ...(kind === 'service' && !serviceUnits.some(u => u.label === prev.unit) ? { unit: getDefaultUnitForMode('services') } : {}),
+  }));
+  const [showImport, setShowImport] = useState(false);
 
   return (
     <div className="dashboard-container">
@@ -246,8 +200,7 @@ export default function InventoryView() {
         </div>
         {/* Wraps on a phone: with Make there are four buttons (v1.10.83, #115). */}
         <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-          <input type="file" accept=".csv" ref={csvInputRef} style={{ display: 'none' }} onChange={handleCSVImport} />
-          <button className="btn btn-secondary" onClick={() => csvInputRef.current?.click()}>
+          <button className="btn btn-secondary" onClick={() => setShowImport(true)}>
             <Upload size={16} /> Import CSV
           </button>
           <button className="btn btn-secondary" onClick={() => setBulkEdit(true)} disabled={!products.length || bulkEdit}
@@ -265,6 +218,12 @@ export default function InventoryView() {
           </button>
         </div>
       </div>
+      {showImport && (
+        <CsvListImport what="products" sample={PRODUCTS_SAMPLE} sampleName="Products-sample.csv" doc="products#import"
+          intro="One product or service per row: Name (required), Type (Goods or Service), HSN/SAC, Unit, Purchase Price, Selling Price, GST % and Stock (leave Stock blank for a service)."
+          parse={(text) => { const r = productsCsvToList(text, products); return { list: r.products, skipped: r.skipped, errors: r.errors }; }}
+          save={saveProduct} onClose={() => setShowImport(false)} onDone={() => { setShowImport(false); loadProducts(); }} />
+      )}
       {showMake && <MakeModal products={products} currency={profileCurrency} onClose={() => setShowMake(false)} onSaved={afterProduction} />}
 
       {/* Search */}
@@ -289,10 +248,19 @@ export default function InventoryView() {
                 <input type="text" className="form-input" value={form.name}
                   onChange={e => updateField('name', e.target.value)} placeholder="e.g. Web Development" />
               </div>
+              <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                <span className="form-label" id="product-kind-label">This is a <HelpButton title="Goods or service" doc="products#goods-or-service" size={14} /></span>
+                <div role="radiogroup" aria-labelledby="product-kind-label" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {[['goods', 'Goods (stock counted)'], ['service', 'Service (no stock)']].map(([id, label]) => (
+                    <button key={id} type="button" role="radio" aria-checked={form.kind === id}
+                      className={`type-chip ${form.kind === id ? 'type-chip-active' : ''}`} onClick={() => setKind(id)}>{label}</button>
+                  ))}
+                </div>
+              </div>
               <div className="form-group">
-                <label className="form-label">HSN / SAC Code</label>
+                <label className="form-label">{form.kind === 'service' ? 'SAC Code' : 'HSN / SAC Code'}</label>
                 <input type="text" className="form-input" value={form.hsn}
-                  onChange={e => updateField('hsn', e.target.value)} placeholder="e.g. 998314" />
+                  onChange={e => updateField('hsn', e.target.value)} placeholder={form.kind === 'service' ? 'e.g. 998314' : 'e.g. 4802'} />
               </div>
               {/* v1.10.29 — Purchase price + selling price side by side.
                   Selling price seeds the invoice rate; purchase price seeds
@@ -324,20 +292,22 @@ export default function InventoryView() {
                   {form.unit && !units.some(u => u.label === form.unit) && (
                     <option value={form.unit}>{form.unit}</option>
                   )}
-                  {units.map(u => <option key={u.label} value={u.label}>{u.label}{u.custom ? ' ★' : ''}</option>)}
+                  {(form.kind === 'service' ? serviceUnits : units).map(u => <option key={u.label} value={u.label}>{u.label}{u.custom ? ' ★' : ''}</option>)}
                 </select>
               </div>
-              <div className="form-group">
-                <label className="form-label">Stock Quantity</label>
-                <input type="number" className="form-input" value={form.stock}
-                  onChange={e => updateField('stock', e.target.value)} placeholder="0" min="0" />
-              </div>
+              {form.kind !== 'service' && (
+                <div className="form-group">
+                  <label className="form-label">Stock Quantity</label>
+                  <input type="number" className="form-input" value={form.stock}
+                    onChange={e => updateField('stock', e.target.value)} placeholder="Blank = not counted" min="0" />
+                </div>
+              )}
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Description (optional)</label>
                 <input type="text" className="form-input" value={form.description}
                   onChange={e => updateField('description', e.target.value)} placeholder="Brief description..." />
               </div>
-              {mfgOn && (
+              {mfgOn && form.kind !== 'service' && (
                 <BomEditor productId={editingId} madeHere={form.madeHere} bom={form.bom} products={products} currency={profileCurrency}
                   onChange={({ madeHere, bom }) => setForm((prev) => ({ ...prev, madeHere, bom }))} />
               )}
@@ -358,8 +328,8 @@ export default function InventoryView() {
           <h3>Products & Services <HelpButton title="The product list" doc="products#product-list" size={16} /></h3>
           {!bulkEdit && (
             <TableExport title="Products" filename="Products"
-              headers={['Name', 'HSN/SAC', 'Purchase price', 'Selling price', 'GST %', 'Unit', 'Stock']}
-              rows={filtered.map((p) => [p.name, p.hsn || '', Number(p.purchasePrice) || 0, Number(p.sellingPrice ?? p.rate) || 0, Number(p.taxPercent) || 0, p.unit || 'Nos', Number(p.stock) || 0])} />
+              headers={['Name', 'Type', 'HSN/SAC', 'Purchase price', 'Selling price', 'GST %', 'Unit', 'Stock']}
+              rows={filtered.map((p) => [p.name, isServiceProduct(p) ? 'Service' : 'Goods', p.hsn || '', Number(p.purchasePrice) || 0, Number(p.sellingPrice ?? p.rate) || 0, Number(p.taxPercent) || 0, p.unit || 'Nos', trackedStock(p) ?? ''])} />
           )}
         </div>
         {bulkEdit && filtered.length > 0 ? (
@@ -402,9 +372,14 @@ export default function InventoryView() {
                     <td>{product.taxPercent ? `${product.taxPercent}%` : '-'}</td>
                     <td className="text-muted">{product.unit || 'Nos'}</td>
                     <td>
-                      {(product.stock ?? 0) <= 0 ? (
+                      {/* #121 - a service, or stock never entered, is not counted: never "Out of Stock". */}
+                      {isServiceProduct(product) ? (
+                        <span className="text-muted" title="A service has no stock">Service</span>
+                      ) : trackedStock(product) === null ? (
+                        <span className="text-muted" title="No stock entered, so it is not counted">-</span>
+                      ) : trackedStock(product) <= 0 ? (
                         <span style={{ color: '#dc2626', fontWeight: 600 }}>Out of Stock</span>
-                      ) : (stockAlerts.enabled !== false && (product.stock ?? 0) <= Number(stockAlerts.threshold ?? 5)) ? (
+                      ) : (stockAlerts.enabled !== false && trackedStock(product) <= Number(stockAlerts.threshold ?? 5)) ? (
                         <span style={{ color: '#d97706', fontWeight: 600 }}>{product.stock}</span>
                       ) : (
                         product.stock

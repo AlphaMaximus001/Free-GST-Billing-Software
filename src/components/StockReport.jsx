@@ -42,6 +42,7 @@ export default function StockReport({ businessName }) {
   const asOf = monthEnd(month);
   const qty = closingStock(data.products, data.bills, data.purchases, asOf, data.productions);
   const rows = data.products
+    .filter((p) => qty.has(p.id)) // services have no stock (#121)
     .map((p) => ({ p, q: qty.get(p.id) ?? 0, ...stockValueOf(p, qty.get(p.id)) }))
     .sort((a, b) => String(a.p.name || '').localeCompare(String(b.p.name || '')));
   const total = rows.reduce((s, r) => s + (r.q > 0 ? r.value : 0), 0);

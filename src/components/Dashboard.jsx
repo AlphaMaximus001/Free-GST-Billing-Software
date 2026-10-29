@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban, Undo2, Eye, QrCode, Upload } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts, markSavedPdfCancelled, getEnabledModules } from '../store';
-import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES, localToday, amountDue, paymentStatusFor, isModuleEnabled, TDS_SECTIONS } from '../utils';
+import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES, localToday, amountDue, paymentStatusFor, isModuleEnabled, TDS_SECTIONS, findLowStock, trackedStock } from '../utils';
 import { billInInr, billCurrency as fxBillCurrency, baseCurrencyOf } from '../utils/fx';
 import { withClientTds } from '../utils/tdsTcs';
 import { prepareEInvoices, parseIrpResponse, matchIrnEntries, downloadJson, einvoiceFileName } from '../utils/einvoice';
@@ -481,7 +481,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       setProductCount(prods.length);
       if (cfg?.enabled === false) { setLowStockProducts([]); return; }
       const threshold = Number(cfg?.threshold ?? 5);
-      setLowStockProducts(prods.filter(p => (p.stock ?? 0) <= threshold));
+      setLowStockProducts(findLowStock(prods, threshold)); // services and uncounted left out (#121)
     });
   }, []);
 
@@ -2138,11 +2138,11 @@ function LowStockTicker({ products, onOpenProducts }) {
               aria-hidden={copy === 1 ? 'true' : undefined}
               tabIndex={copy === 1 ? -1 : undefined}
               title={onOpenProducts ? `Open Products to restock ${p.name}` : undefined}
-              className={`low-stock-chip${(p.stock ?? 0) <= 0 ? ' low-stock-out' : ''}`}>
+              className={`low-stock-chip${trackedStock(p) <= 0 ? ' low-stock-out' : ''}`}>
               <strong>{p.name}</strong>
               {p.hsn ? <span className="text-muted" style={{ marginLeft: 4, fontSize: '0.72rem' }}>({p.hsn})</span> : null}
               <span style={{ marginLeft: 6, fontWeight: 700 }}>
-                {(p.stock ?? 0) <= 0 ? 'Out of Stock' : `Stock: ${p.stock}`}
+                {trackedStock(p) <= 0 ? 'Out of Stock' : `Stock: ${trackedStock(p)}`}
               </span>
             </button>
           )))}
