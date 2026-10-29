@@ -33,7 +33,7 @@ Your data never leaves your computer. No cloud. No signup. No tracking. No limit
 - **Other computers cannot open it.** The app's server listens only on `127.0.0.1`, this computer itself, and refuses requests from other websites.
 - **Open source — check every line.** The full code is right here under the MIT licence; the release ZIP is built from it with `npm run release:zip`.
 - **No admin rights needed.** It installs into your own user folder, and your data is backed up automatically every day.
-- **Works offline, and says what it connects to.** On its own it contacts only GitHub (the update check and the public supporters list) and Google Fonts (its text font) — plus your own Google Drive, only if you connect it.
+- **Works offline, and says what it connects to.** On its own it contacts only GitHub (the update check and the public supporters list) — plus your own Google Drive, only if you connect it. Even its font is built in.
 
 **[Read the full answer: every address the app connects to, and how to check it yourself →](https://dicecodes.com/free-gst-software-documentation/security.html)**
 

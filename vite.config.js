@@ -148,6 +148,11 @@ export default defineConfig({
         // least once. Trims initial precache from 1.63 MiB → ~0.85 MiB.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         globIgnores: [
+          // v1.10.83 - the bundled Inter font: only the Latin parts are ever
+          // drawn (the app is in English; ₹ is in Latin-extended), and every
+          // browser that runs the app reads .woff2, never the .woff copy.
+          '**/assets/inter-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*',
+          '**/assets/*.woff',
           '**/assets/pdf-*.js',
           '**/assets/qr-*.js',
           '**/assets/index.es-*.js',
@@ -211,24 +216,6 @@ export default defineConfig({
             options: {
               cacheName: 'lazy-chunks-cache',
               expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 30 },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-cache',
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'gstatic-fonts-cache',
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
             },
           },
           {

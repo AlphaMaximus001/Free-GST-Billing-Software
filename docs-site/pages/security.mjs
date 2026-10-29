@@ -30,7 +30,7 @@ export default [
 <section id="no-internet-needed">
 <h2>It works without internet</h2>
 <p>Everything you do day to day works offline: making and printing invoices, PDFs, payments, stock, purchases, expenses, reports, GSTR-1 and GSTR-3B files, backups, and reading a supplier's bill from a photo (OCR). The app runs on your computer and opens in your browser, but it is not a website.</p>
-<p>Internet is needed only to install the app, to update it, and for the optional things listed below. When you are offline the app simply skips them; your work is not affected. (Without internet, the text uses your computer's own font instead of the app's usual one.)</p>
+<p>Internet is needed only to install the app, to update it, and for the optional things listed below. When you are offline the app simply skips them; your work is not affected. Everything the app needs to run, even its font, is inside the app folder.</p>
 </section>
 
 <section id="what-it-connects-to">
@@ -39,9 +39,8 @@ export default [
 <h3>By itself, while the app is open</h3>
 <div class="table-wrap"><table>
   <tr><th>Address</th><th>When</th><th>Why, and what is sent</th></tr>
-  <tr><td><code>fonts.googleapis.com</code>, <code>fonts.gstatic.com</code> (Google Fonts)</td><td>When the app opens</td><td>Downloads the app's text font (Inter). Like any web request, Google sees your internet address and browser type. None of your business data is sent.</td></tr>
   <tr><td><code>api.github.com</code>, <code>raw.githubusercontent.com</code> (GitHub)</td><td>About 5 seconds after the app opens, every 6 hours while it stays open, and when you click ${ui('Check for Updates')} in Settings</td><td>Asks GitHub which version is the newest, so the app can tell you an update is ready. Nothing about you or your business is sent.</td></tr>
-  <tr><td><code>raw.githubusercontent.com</code> (GitHub)</td><td>When the Dashboard or Support &amp; About opens</td><td>Reads the public supporters list (who has supported the project, and the total). Nothing is sent.</td></tr>
+  <tr><td><code>raw.githubusercontent.com</code> (GitHub)</td><td>When Support &amp; About opens, or the Dashboard shows its support card</td><td>Reads the public supporters list (who has supported the project, and the total). Nothing is sent.</td></tr>
 </table></div>
 <h3>Only when you do something</h3>
 <div class="table-wrap"><table>

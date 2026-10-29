@@ -8,6 +8,13 @@ import { toast } from './components/Toast.jsx'
 import { logProblem } from './utils/problemLog'
 import { isChunkLoadError } from './utils/errorReport'
 import { restorePrefs, startMirroring } from './utils/prefsMirror'
+// v1.10.83 - Inter from the app's own files, not Google Fonts. Each file holds
+// every alphabet with a unicode-range, so the browser fetches only the parts it
+// needs (Latin; Latin-extended has the ₹ sign).
+import '@fontsource/inter/400.css'
+import '@fontsource/inter/500.css'
+import '@fontsource/inter/600.css'
+import '@fontsource/inter/700.css'
 import './index.css'
 
 // v1.10.83 - the app's code loaded: tell public/boot-guard.js, and let it
