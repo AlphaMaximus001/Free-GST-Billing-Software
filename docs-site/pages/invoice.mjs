@@ -204,12 +204,12 @@ export default [
 <div class="table-wrap"><table>
   <tr><th>Field</th><th>What to know</th></tr>
   <tr><td>Item</td><td>The item name. Typing searches your <a href="products.html">products</a> by name or HSN and shows up to five, with their HSN and price. Pick one with the mouse, or with <kbd>↓</kbd> <kbd>↑</kbd> and <kbd>Enter</kbd>. Picking fills in the HSN, selling price, unit and GST rate, and links the row to the product so its stock is counted. You can also type any name that is not a product.</td></tr>
-  <tr><td>HSN/SAC</td><td>The goods (HSN) or services (SAC) code. GST returns need it. For common codes the app knows the usual GST rate: from the fourth digit it shows the rate and the item type in green under the box, and if the row's GST is still 18% or 0% it is changed to match. Always check it.</td></tr>
+  <tr><td>HSN/SAC</td><td>The goods (HSN) or services (SAC) code. GST returns need it. For common codes the app knows the usual GST rate: from the fourth digit it shows the rate and the item type in green under the box, and if the row's GST is still 18% or 0% it is changed to match. Always check it. Finding your code: see <a href="gst-basics.html#hsn-search">GST basics: HSN and SAC</a>.</td></tr>
   <tr><td>Qty</td><td>1 to start. Clicking the box selects the number, so typing replaces it. Decimals are fine, such as 2.5 kg.</td></tr>
   <tr><td>Unit</td><td>From the list for Goods, Services or Mixed. A new row starts with the unit of the row above. ${ui('＋ Add custom…')} adds your own unit (up to 20 characters), marked ★ and kept in this browser for later invoices; ${ui('− Remove "unit"')} takes one away again. Invoices already made keep the unit they used.</td></tr>
   <tr><td>Rate</td><td>Price for one unit. Without GST, unless <a href="#tax-inclusive">Prices include tax</a> is ticked.</td></tr>
   <tr><td>Discount</td><td>A discount on this row, as an amount or a percentage. See <a href="#discounts">Discounts</a>. Hidden when <b>Discount column</b> is off under Customize.</td></tr>
-  <tr><td>GST %</td><td>0, 0.1, 0.25, 3, 5, 12, 18, 28 or 40%, plus any rates you added in <a href="print-settings.html#tax-rates">Print Settings</a>. ${ui('Custom…')} takes any rate from 0 to 100, up to two decimals. New rows start at 18%. Since 22 September 2025 most goods are at 5%, 18% or 40%; 12% and 28% stay for older invoices and the items still taxed at them. Hidden when there is no GST on the invoice. Outside India the label is your country's tax, such as VAT %.</td></tr>
+  <tr><td>GST %</td><td>0, 0.1, 0.25, 3, 5, 12, 18, 28 or 40%, plus any rates you added in <a href="print-settings.html#tax-rates">Print Settings</a>. ${ui('Custom…')} takes any rate from 0 to 100, up to two decimals. New rows start at 18%. Since 22 September 2025 most goods are at 5%, 18% or 40%; 12% and 28% stay for older invoices and the items still taxed at them. Which rate applies to your item: see <a href="gst-basics.html#which-rate">GST basics: what rate do I charge?</a> Hidden when there is no GST on the invoice. Outside India the label is your country's tax, such as VAT %.</td></tr>
   <tr><td>Cess %</td><td>Compensation cess, for tobacco, cars, coal and the like. Hidden until you turn on <b>GST Cess % column</b> under Customize.</td></tr>
   <tr><td>Bin</td><td>Removes the row. The last remaining row cannot be removed.</td></tr>
 </table></div>
@@ -303,6 +303,7 @@ export default [
   <li><strong>TDS</strong>, tax <em>your client deducts</em> when paying you, is for information: the total does not change. See <a href="#tds">TDS</a>.</li>
 </ul>
 <p>Each has a section list and a <b>Rate %</b> box beside it. Picking a section fills in its usual rate; you can type another rate.</p>
+<p>TDS is worked out on the value before GST, as CBDT Circular 23/2017 says when GST is shown separately. TCS under CGST section 52 is worked out on the net taxable value, and TCS under 206C(1) on the amount including GST. Who deducts what, and how to check it reached your PAN: see <a href="gst-basics.html#income-tax-tds">GST basics: TDS and TCS</a>.</p>
 <ul>
   <li><strong>194Q</strong> (and 206C(1H) on invoices before April 2025) only applies above ₹50 lakh a year with that client. The app adds up what you have already billed the client this financial year, and charges only the part above ₹50 lakh.</li>
   <li><strong>Every other section</strong>, such as 194C, 194J or CGST section 52, applies from the first rupee. Tick it only when the rules say it applies to this client.</li>

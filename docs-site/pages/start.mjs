@@ -90,6 +90,7 @@ export default [
 <p><b>State</b> is where your business is registered. The app compares it with each client's state: same state means CGST + SGST, a different state means IGST. A wrong state here makes the tax wrong on every invoice.</p>
 <p><b>GSTIN</b> is your 15-character GST number, for example <code>07ABCDE1234F1Z5</code>. Its first two digits are your state code. Not registered for GST? Leave it blank; you can make bills without GST. Everything here can be changed later in <a href="settings.html#company-details">Settings → Company details</a>.</p>
 </div>
+<p>Not sure whether you need GST registration, or which scheme to choose? See <a href="gst-basics.html#registration">GST basics: do I need GST registration?</a></p>
 </section>
 
 <section id="bank-upi">
@@ -181,7 +182,7 @@ export default [
   <li><strong>Add your business details</strong>If you skipped the welcome, open ${ui('Settings')} and fill in <b>Company Details</b>. This is the header of every invoice. Your state matters: it decides whether GST is split into CGST and SGST, or charged as IGST.</li>
   <li><strong>Start a new invoice</strong>Click ${ui('New Invoice')} in the sidebar. <b>Tax Invoice</b> is already selected, which is the right choice for a normal GST sale.</li>
   <li><strong>Add the client</strong>Under <b>Billed To</b>, type the client's name. If they are registered for GST, type their GSTIN and their state fills in by itself. A mistyped GSTIN is caught straight away.</li>
-  <li><strong>Add what you sold</strong>For each line, give a description, quantity, unit, rate and GST rate. The HSN or SAC code is optional but helps your GST return. Clicking a number field selects what is there, so you can just type.</li>
+  <li><strong>Add what you sold</strong>For each line, give a description, quantity, unit, rate and GST rate. The HSN or SAC code is optional but helps your GST return. Not sure which rate or code? See <a href="gst-basics.html#which-rate">What GST rate do I charge?</a> and <a href="gst-basics.html#hsn-search">finding your HSN or SAC code</a>. Clicking a number field selects what is there, so you can just type.</li>
   <li><strong>Check the tax</strong>The preview on the right shows the totals. Same state as you: CGST and SGST. Another state: IGST. You do not need to choose.</li>
   <li><strong>Save and download</strong>Click ${ui('Save &amp; Download')}. The invoice gets its number, is saved to your records, and downloads as a PDF.</li>
 </ol>
@@ -209,6 +210,7 @@ export default [
   <li><a href="settings.html#payment-accounts">Add your bank or UPI</a>, so a payment QR code prints on every invoice.</li>
   <li><a href="settings.html#branding">Add your logo, signature and stamp</a>.</li>
   <li>At the end of the month, <a href="gst-returns.html">prepare your GST returns</a> from the invoices you have made.</li>
+  <li>New to GST? Read <a href="gst-basics.html">GST basics for new business owners</a>: registration, rates, HSN codes, returns and due dates.</li>
 </ul>
 <p>The <b>Getting started</b> list on the Dashboard tracks these for you, and ticks each one off once it is done.</p>
 </section>
