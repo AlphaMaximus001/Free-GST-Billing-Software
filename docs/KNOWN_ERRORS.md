@@ -720,6 +720,34 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-064 - HSN rate suggestions filled in pre-September-2025 GST rates
+
+**Version:** since v1.10.22 (stale from 22 Sep 2025) · fixed in v1.10.83
+**Reported by:** docs review (rates checked against the 56th GST Council lists)
+
+**Symptom** - typing HSN 1806 (chocolate) set the line to 18% instead of 5%;
+2202 (soft drinks) to 28% instead of 40%; 8528 (TVs) and 2523 (cement) to 28%
+instead of 18%; 3004 (medicines) to 12% instead of 5%; garments said "< ₹1000".
+
+**Cause** - `src/utils/hsnRates.js` was a hand-written table from the 2017-2024
+rate structure. The GST Council's 56th meeting changed most of those rates from
+22 Sep 2025, and nothing tied the table to that change. Worse, the invoice
+auto-filled the suggestion over 18% / 0%, and codes whose rate depends on price,
+engine size or packing were stored as one rate.
+
+**Rule** - every entry carries the rate in force today, with the date checked
+and the sources in the file header; a code that cannot be verified is removed,
+not guessed. A code with more than one possible rate uses `rates: [...]` and is
+shown, never auto-filled (`autoFillRate()` returns null). Re-check the table
+whenever the GST Council changes rates.
+
+**Guard** - `scripts/hsnrates-test.mjs` in `npm run test:unit`: asserts current
+rates for chocolate, biscuits, water, soft drinks, TVs, cement, tyres,
+medicines, pencils, salons; that garments, footwear, cars, bikes and spectacles
+do not auto-fill; and that no entry suggests 12% or 28%.
+
+---
+
 ## ERR-063 - Any screen that threw while rendering left a blank white page
 
 **Version:** since v1.0 · fixed in v1.10.83

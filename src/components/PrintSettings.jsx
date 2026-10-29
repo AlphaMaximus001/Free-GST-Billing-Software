@@ -1218,7 +1218,7 @@ export default function PrintSettings() {
           💯 Custom tax rate presets <HelpButton title="Custom tax rate presets" doc="print-settings#tax-rates" size={16} style={{ marginLeft: 6 }} />
         </h4>
         <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 0.6rem' }}>
-          Built-in rates: 0% · 5% · 12% · 18% · 28%. Add your own (e.g. 3% jewellery, 0.25% diamond, 7.5% custom).
+          Built-in rates: 0% · 0.1% · 0.25% · 3% · 5% · 12% · 18% · 28% · 40%. Since 22 Sep 2025 most goods are 5%, 18% or 40%; 12% and 28% stay for older bills. Add your own (e.g. 1.5%, 7.5%).
         </p>
         <CustomListEditor
           values={settings.customTaxRates || []}

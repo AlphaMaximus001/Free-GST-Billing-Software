@@ -294,7 +294,7 @@ export default [
 
 <section id="tax-rates">
 <h2>Custom tax rate presets</h2>
-<p>The built-in GST rates are 0, 5, 12, 18 and 28%. Add your own, such as 3% for jewellery or 0.25% for diamonds: type the numbers separated by commas, such as <code>3, 0.25</code>, and click ${ui('Add')}. Each must be between 0 and 100. They appear in the rate list on every invoice. The × next to a rate removes it.</p>
+<p>The built-in GST rates are 0, 0.1, 0.25, 3, 5, 12, 18, 28 and 40%. Since 22 September 2025 most goods are at 5%, 18% or 40%; 12% and 28% stay for older invoices (see <a href="gst-basics.html#which-rate">GST basics: what rate do I charge?</a>). Add your own, such as 1.5% or 7.5%: type the numbers separated by commas, such as <code>1.5, 7.5</code>, and click ${ui('Add')}. Each must be between 0 and 100. They appear in the rate list on every invoice. The × next to a rate removes it.</p>
 </section>
 
 <section id="templates">
