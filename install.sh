@@ -305,6 +305,19 @@ install_app() {
   # Every app file is replaced, node_modules included; the books, saved PDFs,
   # the bin and Node.js stay. A half-done earlier install is repaired the same way.
   mkdir -p "$SYS"
+  # A clean update: what an older version had and this one does not goes
+  # (checked before the new files are moved in). Never the books, saved
+  # PDFs, the bin or Node.js.
+  for entry in "$SYS"/*; do
+    [ -e "$entry" ] || continue
+    name=$(basename "$entry")
+    case "$name" in data | 'Saved Invoices' | Trash | node | node-dir.txt) continue ;; esac
+    [ -e "$NEW_SYS/$name" ] || rm -rf "${SYS:?}/$name"
+  done
+  for f in "$DIR"/'Free GST Billing - '* "$DIR/READ ME FIRST.txt"; do
+    [ -f "$f" ] || continue
+    [ -e "$(dirname "$NEW_SYS")/$(basename "$f")" ] || rm -f "$f"
+  done
   for entry in "$NEW_SYS"/* "$NEW_SYS"/.[!.]*; do
     [ -e "$entry" ] || continue
     name=$(basename "$entry")

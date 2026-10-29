@@ -260,12 +260,22 @@ function Install-App {
     # same way.
     New-Item -ItemType Directory -Path $sys -Force | Out-Null
     $keep = @('data', 'Saved Invoices', 'Trash', 'node')
+    $newNames = @(Get-ChildItem -LiteralPath $newSys -Force | ForEach-Object { $_.Name })
     foreach ($item in Get-ChildItem -LiteralPath $newSys -Force) {
       if ($keep -contains $item.Name) { continue }
       $target = Join-Path $sys $item.Name
       if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
       Move-Item -LiteralPath $item.FullName -Destination $target
     }
+    # A clean update: what an older version had and this one does not goes.
+    # Never the books, saved PDFs, the bin or Node.js.
+    Get-ChildItem -LiteralPath $sys -Force | Where-Object {
+      $newNames -notcontains $_.Name -and ($keep + 'node-dir.txt') -notcontains $_.Name -and -not $_.Name.StartsWith('.')
+    } | ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+    $rootNames = @(Get-ChildItem -LiteralPath $inner.FullName -File -Force | ForEach-Object { $_.Name })
+    Get-ChildItem -LiteralPath $dest -File -Force | Where-Object {
+      ($_.Name -like 'Free GST Billing - *' -or $_.Name -eq 'READ ME FIRST.txt') -and $rootNames -notcontains $_.Name
+    } | ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }
     foreach ($f in Get-ChildItem -LiteralPath $inner.FullName -File -Force) {
       Copy-Item -LiteralPath $f.FullName -Destination (Join-Path $dest $f.Name) -Force
     }

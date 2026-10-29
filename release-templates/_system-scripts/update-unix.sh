@@ -264,6 +264,18 @@ for entry in "$NEW_SYSTEM"/* "$NEW_SYSTEM"/.[!.]*; do
   fi
   cp -R "$entry" "$SYSTEM_DIR/$name"
 done
+# v1.10.83 - a clean update: what an older version had and this one does not
+# goes into the rollback folder too (so a failed update still puts it back),
+# and is gone once the update succeeds. Only for a full release package;
+# never the books, saved PDFs, the bin or Node.js.
+if [ -n "$SHIPPED" ]; then
+  for entry in "$SYSTEM_DIR"/*; do
+    [ -e "$entry" ] || continue
+    name=$(basename "$entry")
+    case "$name" in data | 'Saved Invoices' | Trash | node | node-dir.txt) continue ;; esac
+    [ -e "$NEW_SYSTEM/$name" ] || mv "$entry" "$ROLLBACK/$name"
+  done
+fi
 
 # --- Step 6: dependencies ----------------------------------------------------
 if [ -z "$SHIPPED" ]; then
@@ -281,6 +293,13 @@ for launcher in "$NEW_ROOT"/*.sh "$NEW_ROOT"/*.command "$NEW_ROOT"/*.hta; do
   [ -f "$launcher" ] || continue
   cp "$launcher" "$ROOT_DIR/" 2>/dev/null || true
 done
+# ...and launchers an older version had that this one no longer ships.
+if [ -n "$SHIPPED" ]; then
+  for f in "$ROOT_DIR"/'Free GST Billing - '* "$ROOT_DIR/READ ME FIRST.txt"; do
+    [ -f "$f" ] || continue
+    [ -e "$NEW_ROOT/$(basename "$f")" ] || rm -f "$f"
+  done
+fi
 
 say ''
 say "[OK] Update complete: v$FROM -> v$TO"

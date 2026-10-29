@@ -95,6 +95,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Purchase bills took 18% GST for every product picked on a new line**,
   instead of the product's own rate (a 12% item was booked at 18%, giving the
   wrong input tax credit). A product with no rate saved still gets 18%.
+- **After an update the app could open blank (or as the old version) until
+  you refreshed a second time**: the browser's offline copy still held the
+  old version, which asked for files the update had removed. The new version
+  now reloads open windows when it takes over, and if the app's code ever
+  cannot load, it clears its offline copy once and reloads by itself. Your
+  data is never part of that copy.
+- **Updates now leave a clean folder**: files an older version had and the
+  new one no longer needs are removed (the Update button, the update scripts
+  and the one-line install all do this). Your books, saved PDFs, the bin and
+  the backups are never touched, and your data is still backed up first.
 - **Stop Server did nothing on Mac and Linux** (the button was greyed out).
   It now stops the app there too.
 - **Windows: the first Open App could wait 90 seconds and give up** when

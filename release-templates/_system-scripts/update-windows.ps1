@@ -126,6 +126,20 @@ Get-ChildItem -Path $newSystem -Force | Where-Object { $keep -notcontains $_.Nam
 Get-ChildItem -Path $sourceRoot -File | Where-Object { $_.Extension -match '\.(hta|command|sh)$' -or $_.Name -match '^Free GST Billing' } | ForEach-Object {
   Copy-Item -Path $_.FullName -Destination (Join-Path $RootDir $_.Name) -Force
 }
+# v1.10.83 - a clean update: files an older version had and this one does not
+# are removed. Only for a full release package (never a source zipball, which
+# has no built app), and never the books, saved PDFs, the bin or Node.js.
+if ($shipped) {
+  $shippedNames = @(Get-ChildItem -Path $newSystem -Force | ForEach-Object { $_.Name })
+  $protected = @('data', 'Saved Invoices', 'Trash', 'node', 'node-dir.txt')
+  Get-ChildItem -Path $SystemDir -Force | Where-Object {
+    $shippedNames -notcontains $_.Name -and $protected -notcontains $_.Name -and -not $_.Name.StartsWith('.')
+  } | ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+  $rootNames = @(Get-ChildItem -Path $sourceRoot -File | ForEach-Object { $_.Name })
+  Get-ChildItem -Path $RootDir -File | Where-Object {
+    ($_.Name -like 'Free GST Billing - *' -or $_.Name -eq 'READ ME FIRST.txt') -and $rootNames -notcontains $_.Name
+  } | ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }
+}
 
 # --- Step 5: Reinstall dependencies (safest - new package.json may add packages) ---
 if (-not $shipped) { Write-Host '  Re-installing dependencies...' }
