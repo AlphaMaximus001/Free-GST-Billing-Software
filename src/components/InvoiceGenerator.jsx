@@ -3628,7 +3628,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                   }));
                   return (
                     <div className={`form-group${isOn ? ' notice notice-info' : ''}`} style={{ marginBottom: '0.75rem', padding: '0.6rem', borderRadius: '6px', display: 'block' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.82rem', cursor: 'pointer' }}>
                         <input type="checkbox" checked={isOn} onChange={toggle}
                           style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} />
                         <strong>🔁 Make this a recurring invoice</strong>
@@ -3700,7 +3700,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 {/* TCS — collected by seller, ADDS to total (Section 206C, Income Tax Act) */}
                 {(profile?.country || 'India') === 'India' && (tdsTcsOn || invoiceOptions.showTCS) && (
                   <div className={`form-group${invoiceOptions.showTCS ? ' notice notice-warn' : ''}`} style={{ marginBottom: '0.75rem', padding: '0.6rem', borderRadius: '6px', display: 'block' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.82rem', cursor: 'pointer' }}>
                       <input type="checkbox" checked={!!invoiceOptions.showTCS}
                         onChange={() => setInvoiceOptions(prev => {
                           // Turning TCS on for an invoice whose remembered section can no
@@ -3741,7 +3741,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 {/* TDS — deducted by buyer from payment, INFORMATIONAL on invoice */}
                 {(profile?.country || 'India') === 'India' && (tdsTcsOn || invoiceOptions.showTDS) && (
                   <div className={`form-group${invoiceOptions.showTDS ? ' notice notice-info' : ''}`} style={{ marginBottom: '0.75rem', padding: '0.6rem', borderRadius: '6px', display: 'block' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.82rem', cursor: 'pointer' }}>
                       <input type="checkbox" checked={!!invoiceOptions.showTDS}
                         onChange={() => setInvoiceOptions(prev => ({ ...prev, showTDS: !prev.showTDS }))}
                         style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} />
