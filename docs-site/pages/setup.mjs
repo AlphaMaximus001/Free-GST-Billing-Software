@@ -5,7 +5,7 @@ export default [
 {
   slug: 'settings',
   title: 'Settings',
-  lead: 'Every section of Settings, in the order it appears: your business, bank accounts, invoice numbers, logo and stamp, more than one business, terms, features, stock alerts, region, app lock, backups, Google Drive, import and export, and updates.',
+  lead: 'Every section of Settings, in the order it appears: your business type, your business, bank accounts, invoice numbers, logo and stamp, more than one business, terms, features, stock alerts, region, app lock, backups, Google Drive, import and export, and updates.',
   body: `
 <section id="save-bar">
 <h2>Saving your changes</h2>
@@ -13,9 +13,26 @@ export default [
 <p>Not everything waits for a Save. Save all changes covers every section in the last two columns:</p>
 <table>
   <tr><th>Saves by itself as you change it</th><th>Has its own Save button</th><th>Needs Save Profile</th></tr>
-  <tr><td>Payment accounts, Modules, Region, App lock</td><td>Invoice number format, Low-stock alerts, Terms templates</td><td>Company details, PAN, logo, signature, stamp, GSTR filing details, Google Drive fields</td></tr>
+  <tr><td>Payment accounts, Region, App lock</td><td>Invoice number format, Low-stock alerts, Terms templates; Business type and Features (no button of their own: Save all changes)</td><td>Company details, PAN, logo, signature, stamp, GSTR filing details, Google Drive fields</td></tr>
 </table>
 <p>The row of buttons under the title jumps to each section.</p>
+</section>
+
+<section id="business-type">
+<h2>Business type</h2>
+<p>The first tab of Settings. Pick what kind of business you run, and the app shows the features that business needs and hides the rest. Picking one only fills in the tick boxes: a yellow box lists what will be turned on and what will be turned off, and nothing changes until you click ${ui('Save all changes')} at the bottom. ${ui('Discard')} puts everything back. <b>Nothing is ever deleted</b>: a business type only changes what you see, and you can switch any single feature back in <a href="#features">Features</a>.</p>
+<p>If you used the app before this tab existed, it shows <b>Not chosen yet</b> and your switches stay exactly as they were until you pick one. The choice is kept on this computer and is the same for every business you run in the app.</p>
+<div class="table-wrap"><table>
+  <tr><th>Business type</th><th>Hidden (everything else is shown)</th></tr>
+  <tr><td>Retail shop / kirana</td><td>Recurring, TDS / TCS, E-way bill, E-invoicing, Purchase orders, Manufacturing, Cost centres</td></tr>
+  <tr><td>Freelancer / consultant</td><td>Products, Purchases, E-way bill, E-invoicing, Purchase orders, GSTR-2B matching, Manufacturing, Cost centres</td></tr>
+  <tr><td>Restaurant / cafe</td><td>Recurring, TDS / TCS, E-way bill, E-invoicing, Purchase orders, GSTR-2B matching, Manufacturing, Cost centres</td></tr>
+  <tr><td>Wholesale / trading</td><td>Recurring, E-invoicing, Manufacturing, Cost centres</td></tr>
+  <tr><td>Manufacturing</td><td>Recurring, E-invoicing</td></tr>
+  <tr><td>Service / repair shop</td><td>TDS / TCS, E-way bill, E-invoicing, Purchase orders, GSTR-2B matching, Manufacturing, Cost centres</td></tr>
+  <tr><td>Everything</td><td>Nothing: every feature is shown</td></tr>
+</table></div>
+<p>Every type keeps Dashboard, New invoice, Clients, Settings, Support &amp; About, User guide, Notifications, Dark mode and Control Panel. E-invoicing is only for businesses with a turnover above ₹5 crore, so only <b>Everything</b> turns it on; tick it in Features if you need it.</p>
 </section>
 
 <section id="company-details">
@@ -119,19 +136,21 @@ export default [
 <p>The app-wide look of every invoice has its own page: <a href="print-settings.html">Print and PDF settings</a>.</p>
 </section>
 
-<section id="modules">
-<h2>Turning features off</h2>
-<p>Untick anything you do not use, and it disappears from the sidebar and forms. Your data is kept, and ticking it again brings it all back.</p>
+<section id="features">
+<h2>Features: what shows and in what order</h2>
+<p>Tick what you want to see and untick what you do not, then click ${ui('Save all changes')} at the bottom: only then does the menu change. Until you save, the bottom bar lists Features as unsaved, and ${ui('Discard')} undoes your ticks. Unticked things disappear from the menu and the screens. <b>Nothing is deleted</b>: your data is kept, and ticking it again brings it all back. Each switch has a line saying what it does.</p>
+<p><b>Menu</b> lists every item of the sidebar, split into the top and the bottom of the menu. Use the ${ui('▲')} and ${ui('▼')} arrows next to an item to move it up or down; ${ui('Default order')} puts the menu back. <b>Dashboard</b>, <b>New invoice</b>, <b>Clients</b>, <b>Settings</b>, <b>Support &amp; About</b> and <b>Lock app</b> (shown only when a PIN is set) are always shown and have no switch. Quick search (Ctrl+K) leaves out anything hidden.</p>
+<p><b>Features inside screens</b> are grouped by the screen they appear on:</p>
 <div class="table-wrap"><table>
-  <tr><th>Group</th><th>Features</th></tr>
-  <tr><td>Sales &amp; Invoicing</td><td>Invoices (always on), Recurring invoices, Payment receipts</td></tr>
-  <tr><td>Directory</td><td>Clients (always on), Products &amp; Services, <a href="products.html#manufacturing">Manufacturing (bill of materials)</a> (<b>off</b> to start)</td></tr>
-  <tr><td>Purchases &amp; Expenses</td><td>Expense tracker, <a href="cash-book.html">Cash book</a>, Purchase bills, GSTR-2B reconciliation, <a href="purchases.html#purchase-orders">Purchase orders</a> (<b>off</b> to start)</td></tr>
-  <tr><td>GST &amp; Tax (India)</td><td>GSTR-1 / GSTR-3B, E-Way Bill, <a href="gst-returns.html#e-invoice">E-invoicing (IRN)</a> (<b>off</b> to start), TDS / TCS on invoices (<b>off</b> to start), Income Tax Helper</td></tr>
-  <tr><td>Reports</td><td>Dashboard (always on), Reports, Cost centres (<b>off</b> to start; see <a href="reports.html#cost-centres">By cost centre</a>)</td></tr>
-  <tr><td>Integrations</td><td>Google Drive backup, UPI QR code on invoices</td></tr>
+  <tr><th>Screen</th><th>Features</th></tr>
+  <tr><td>Invoice screen</td><td>TDS / TCS, E-way bill, <a href="gst-returns.html#e-invoice">E-invoicing (IRN)</a> (<b>off</b> to start), UPI QR code</td></tr>
+  <tr><td>Purchases screen</td><td><a href="purchases.html#purchase-orders">Purchase orders</a> (<b>off</b> to start), GSTR-2B matching</td></tr>
+  <tr><td>Products screen</td><td><a href="products.html#manufacturing">Manufacturing (bill of materials)</a> (<b>off</b> to start)</td></tr>
+  <tr><td>Reports screen</td><td><a href="reports.html#cost-centres">Cost centres</a> (<b>off</b> to start)</td></tr>
+  <tr><td>Integrations</td><td>Google Drive</td></tr>
 </table></div>
-<p>🇮🇳 marks features that only apply in India. They are hidden when Region is International. ${ui('Reset to default')} puts every feature back as it was on install.</p>
+<p>Some things keep working while hidden, and the switch says so. Recurring invoices are one: hiding <b>Recurring</b> does not stop them being made. Pause them on the Recurring screen if you want them to stop.</p>
+<p>🇮🇳 India-only features are not listed when Region is International. ${ui('Reset to my business type')} sets every switch back to what your <a href="#business-type">business type</a> gives; save to apply it. Before a business type is chosen, the button is ${ui('Reset to default')}.</p>
 </section>
 
 <section id="stock">

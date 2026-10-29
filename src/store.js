@@ -175,9 +175,44 @@ export const getEnabledModules = () => {
     return raw ? JSON.parse(raw) : {};
   } catch { return {}; }
 };
+// v1.10.83 - the sidebar listens for this, so a switch in Settings shows
+// at once instead of on the next unrelated re-render.
+const MENU_EVENT = 'fgsb-menu-changed';
+const menuChanged = () => { try { window.dispatchEvent(new Event(MENU_EVENT)); } catch { /* no window */ } };
+export const onMenuChanged = (fn) => {
+  window.addEventListener(MENU_EVENT, fn);
+  return () => window.removeEventListener(MENU_EVENT, fn);
+};
 export const setEnabledModules = (map) => {
   try { localStorage.setItem(MODULES_KEY, JSON.stringify(map || {})); } catch { /* ignore */ }
   apiFetch(`${API}/meta/enabledModules`, { method: 'POST', body: JSON.stringify({ value: map || {} }) }).catch(() => {});
+  menuChanged();
+};
+
+// v1.10.83 - business type (one per PC, like the switches it sets; null =
+// "Not chosen yet", which is what everyone who updates starts with) and the
+// sidebar order (list of item ids). Both mirrored to the data folder by
+// prefsMirror.
+const BUSINESS_TYPE_KEY = 'gst_businessType';
+export const getBusinessType = () => {
+  try { return localStorage.getItem(BUSINESS_TYPE_KEY) || null; } catch { return null; }
+};
+export const setBusinessType = (id) => {
+  try { localStorage.setItem(BUSINESS_TYPE_KEY, id); } catch { /* ignore */ }
+};
+const MENU_ORDER_KEY = 'gst_menuOrder';
+export const getMenuOrder = () => {
+  try {
+    const v = JSON.parse(localStorage.getItem(MENU_ORDER_KEY) || '[]');
+    return Array.isArray(v) ? v : [];
+  } catch { return []; }
+};
+export const setMenuOrder = (order) => {
+  try {
+    if (order?.length) localStorage.setItem(MENU_ORDER_KEY, JSON.stringify(order));
+    else localStorage.removeItem(MENU_ORDER_KEY);
+  } catch { /* ignore */ }
+  menuChanged();
 };
 
 // ---- Invoice counter ----
@@ -446,6 +481,8 @@ const EXPORTABLE_LOCALSTORAGE_KEYS = [
   'gst_customUnits',                 // user-defined units for line items
   'gst_regionMode',                  // 'india' | 'international' | 'both'
   'gst_enabledModules',              // map of disabled feature toggles
+  'gst_businessType',                // v1.10.83 — business type picked in Settings / first run
+  'gst_menuOrder',                   // v1.10.83 — sidebar order
   'gst_filing_status',               // GSTR-1/3B "Filed" pill states per period key
   'gst_printSettings',               // v1.8.4 — thermal printer defaults (font, weight, all-caps, etc.)
   'gst_itrCalcInputs',               // v1.7.0 — regime calculator inputs

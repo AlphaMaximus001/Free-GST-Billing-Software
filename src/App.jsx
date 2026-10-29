@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { Home, FileText, Settings, Plus, Users, Package, BarChart3, Wallet, RefreshCw, Receipt, BookOpen, Moon, Sun, Download, X, ShoppingCart, ChevronDown, Building2, Pencil, HelpCircle, Search, Command, Bell, Calculator, HardDrive, Menu, Heart, Banknote } from 'lucide-react';
-import { getAllProfiles, saveProfile, getEnabledModules, getAllBills, getAllProducts, getStockAlertSettings, getAllClients, runUpdateNow, getLockStatus } from './store';
+import { getAllProfiles, saveProfile, getEnabledModules, getMenuOrder, onMenuChanged, getAllBills, getAllProducts, getStockAlertSettings, getAllClients, runUpdateNow, getLockStatus } from './store';
 import { isModuleEnabled, getUpcomingFilings, countsAsSales, localToday, toLocalIsoDate, DOCS_URL } from './utils';
+import { orderedMenu } from './utils/businessTypes';
 // v1.10.4 — Route-level lazy loading. Prior App.jsx synchronously
 // imported all 12 views (~15k LOC combined), so a first-paint on
 // Dashboard downloaded and parsed GSTReturns (1952), InvoiceGenerator
@@ -515,11 +516,18 @@ function App() {
   // when settings save, which triggers a re-render via the profile state.
   const enabledModules = getEnabledModules();
   const showIfModule = (moduleId) => isModuleEnabled(moduleId, enabledModules);
+  // v1.10.83 - a switch or a new order in Settings → Features redraws the
+  // sidebar straight away.
+  const [, setMenuTick] = useState(0);
+  useEffect(() => onMenuChanged(() => setMenuTick(t => t + 1)), []);
+  // Sidebar items in the saved order; hidden ones dropped. `module: null`
+  // items (Settings, Support & About, Lock app) are always shown.
+  const menu = orderedMenu(getMenuOrder()).filter(m => !m.module || showIfModule(m.module));
 
   // If the user just disabled the module backing the current view, kick them to dashboard
   // so they don't land on an empty page after toggling.
   useEffect(() => {
-    const map = { new: 'invoicing', clients: 'clients', inventory: 'inventory', expenses: 'expenses', purchases: 'purchases', recurring: 'recurring', receipts: 'receipts', cashbook: 'cashBook', reports: 'reports', filing: 'gstReturns' };
+    const map = { new: 'invoicing', clients: 'clients', inventory: 'inventory', expenses: 'expenses', purchases: 'purchases', recurring: 'recurring', receipts: 'receipts', cashbook: 'cashBook', reports: 'reports', filing: 'gstReturns', incometax: 'incomeTax' };
     const moduleForView = map[currentView];
     if (moduleForView && !isModuleEnabled(moduleForView, enabledModules)) {
       setCurrentView('dashboard');
@@ -527,23 +535,27 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, JSON.stringify(enabledModules)]);
 
-  const navItems = [
-    { id: 'dashboard', icon: Home, label: 'Dashboard', module: 'dashboard' },
-    { id: 'new', icon: Plus, label: 'New Invoice', onClick: handleNewInvoice, module: 'invoicing' },
-    { id: 'clients', icon: Users, label: 'Clients', module: 'clients' },
-    { id: 'inventory', icon: Package, label: 'Products', module: 'inventory' },
-    { id: 'expenses', icon: Wallet, label: 'Expenses', module: 'expenses' },
-    { id: 'purchases', icon: ShoppingCart, label: 'Purchases', module: 'purchases' },
-    { id: 'recurring', icon: RefreshCw, label: 'Recurring', module: 'recurring' },
-    { id: 'receipts', icon: Receipt, label: 'Receipts', module: 'receipts' },
-    { id: 'cashbook', icon: Banknote, label: 'Cash book', module: 'cashBook' },
-    { id: 'reports', icon: BarChart3, label: 'Reports', module: 'reports' },
-    { id: 'filing', icon: BookOpen, label: 'GST Returns', module: 'gstReturns' },
-    { id: 'incometax', icon: Calculator, label: 'Income Tax', module: 'incomeTax' },
+  // v1.10.83 - order, labels and switches come from MENU_ITEMS (utils.js);
+  // only the icons and click handlers live here.
+  const NAV_EXTRAS = {
+    dashboard: { icon: Home, label: 'Dashboard' },
+    new: { icon: Plus, label: 'New Invoice', onClick: handleNewInvoice },
+    clients: { icon: Users, label: 'Clients' },
+    inventory: { icon: Package, label: 'Products' },
+    expenses: { icon: Wallet, label: 'Expenses' },
+    purchases: { icon: ShoppingCart, label: 'Purchases' },
+    recurring: { icon: RefreshCw, label: 'Recurring' },
+    receipts: { icon: Receipt, label: 'Receipts' },
+    cashbook: { icon: Banknote, label: 'Cash book' },
+    reports: { icon: BarChart3, label: 'Reports' },
+    filing: { icon: BookOpen, label: 'GST Returns' },
+    incometax: { icon: Calculator, label: 'Income Tax' },
     // v1.10.75 - opens the online documentation, which covers every screen
     // and stays current; the old built-in guide had fallen far behind.
-    { id: 'guide', icon: HelpCircle, label: 'User Guide', module: 'dashboard', onClick: openDocs }, // gated by dashboard so it's always available
-  ].filter(item => showIfModule(item.module));
+    guide: { icon: HelpCircle, label: 'User Guide', onClick: openDocs },
+  };
+  const navItems = menu.filter(m => m.section === 'main').map(m => ({ id: m.id, ...NAV_EXTRAS[m.id] }));
+  const bottomIds = menu.filter(m => m.section === 'bottom').map(m => m.id);
 
   // Command palette actions — declared here (not earlier) because the deps
   // array references `navItems` and `handleNewInvoice`, which are consts.
@@ -559,7 +571,8 @@ function App() {
     });
     acts.push({ label: 'Go to Settings', hint: '', category: 'nav', run: () => setCurrentView('settings') });
     // v1.10.74 - Control Panel has its own sidebar button but was missing here.
-    acts.push({ label: 'Go to Control Panel', hint: '', category: 'nav', run: () => setCurrentView('controlpanel') });
+    // v1.10.83 - and, like every menu item, not when it is switched off.
+    if (bottomIds.includes('controlpanel')) acts.push({ label: 'Go to Control Panel', hint: '', category: 'nav', run: () => setCurrentView('controlpanel') });
     acts.push({ label: 'Go to Support & About', hint: '', category: 'nav', run: () => setCurrentView('support') });
     acts.push({ label: 'Toggle dark mode', hint: '', category: 'action', run: () => setDarkMode(d => !d) });
     acts.push({ label: 'Show keyboard shortcuts', hint: 'Ctrl+/', category: 'help', run: () => setShowShortcutsHelp(true) });
@@ -589,7 +602,8 @@ function App() {
         run: () => setCurrentView('clients'),
       });
     });
-    searchCorpus.products.forEach(p => {
+    // v1.10.83 - a product result opens Products, so none while it is hidden.
+    if (navItems.some(i => i.id === 'inventory')) searchCorpus.products.forEach(p => {
       acts.push({
         label: `📦 ${p.name} — product${p.hsn ? ' · HSN: ' + p.hsn : ''}`,
         hint: (p.stock ?? 0) + ' in stock',
@@ -618,14 +632,14 @@ function App() {
       ['Business type presets', 'section-print'], ['Section labels', 'section-print'],
       ['Watermarks', 'section-print'], ['Multi-copy print', 'section-print'],
       ['Digital signature', 'section-company'], ['Company letterhead', 'section-print'],
-      ['Modules', 'section-modules'], ['Region preference', 'section-region'],
+      ['Business type', 'section-biztype'], ['Features', 'section-modules'], ['Region preference', 'section-region'],
       ['Google Drive backup', 'section-cloud'], ['App updates', 'section-updates'],
     ];
     settingsJumps.forEach(([s, sectionId]) => {
       acts.push({ label: `⚙️ Settings → ${s}`, hint: '', category: 'settings', run: () => openSettingsAt(sectionId) });
     });
     return acts;
-  }, [navItems, updateInfo, handleNewInvoice, searchCorpus]);
+  }, [navItems, bottomIds, updateInfo, handleNewInvoice, searchCorpus]);
 
   const filteredPalette = paletteActions.filter(a =>
     !paletteQuery.trim() || a.label.toLowerCase().includes(paletteQuery.toLowerCase())
@@ -916,65 +930,79 @@ function App() {
                 }} />
               </button>
             )}
-            {/* Notification bell — opens a popover listing overdue / due-soon
-                invoices, GST filing deadlines, and low-stock items. Each row
-                is a single click away from the page that fixes it. */}
-            <button
-              className="nav-btn"
-              onClick={() => setShowNotifs(s => !s)}
-              title="Notifications"
-              style={{ position: 'relative' }}
-            >
-              <Bell size={18} />
-              Notifications
-              {notifTotal > 0 && (
-                <span className="nav-badge" style={{
-                  position: 'absolute', top: '8px', right: '12px',
-                  minWidth: 18, height: 18, padding: '0 5px', borderRadius: '9px',
-                  background: 'var(--danger)', color: '#fff',
-                  fontSize: '0.65rem', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>{notifTotal > 99 ? '99+' : notifTotal}</span>
-              )}
-            </button>
-            {/* v1.10.80 (#98) - only when a PIN is set. */}
-            <LockButton className="nav-btn" label="Lock app" />
-            <button
-              className="nav-btn"
-              onClick={() => setDarkMode(!darkMode)}
-              title={darkMode ? 'Light Mode' : 'Dark Mode'}
-            >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-              {darkMode ? 'Light Mode' : 'Dark Mode'}
-            </button>
-            <button
-              className={`nav-btn nav-btn-support${currentView === 'support' ? ' nav-btn-support-active' : ''}`}
-              onClick={() => setCurrentView('support')}
-              title="Who makes this app, and how to help"
-            >
-              <Heart size={18} /> Support &amp; About
-            </button>
-            <button
-              className={`nav-btn ${currentView === 'controlpanel' ? 'nav-btn-active' : ''}`}
-              onClick={() => setCurrentView('controlpanel')}
-              title="Update, backup, restore, move to another PC"
-            >
-              <HardDrive size={18} /> Control Panel
-            </button>
-            <button
-              className={`nav-btn ${currentView === 'settings' ? 'nav-btn-active' : ''}`}
-              onClick={() => setCurrentView('settings')}
-              style={updateBannerVisible ? { position: 'relative' } : undefined}
-            >
-              <Settings size={18} /> Settings
-              {updateBannerVisible && (
-                <span className="nav-badge" style={{
-                  position: 'absolute', top: '8px', right: '12px',
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: '#f59e0b',
-                }} title="Update available" />
-              )}
-            </button>
+            {/* v1.10.83 - in the order chosen in Settings → Features; switched-off
+                ones are already left out of bottomIds. */}
+            {bottomIds.map(id => ({
+              /* Notification bell — opens a popover listing overdue / due-soon
+                 invoices, GST filing deadlines, and low-stock items. Each row
+                 is a single click away from the page that fixes it. */
+              notifications: (
+                <button key={id}
+                  className="nav-btn"
+                  onClick={() => setShowNotifs(s => !s)}
+                  title="Notifications"
+                  style={{ position: 'relative' }}
+                >
+                  <Bell size={18} />
+                  Notifications
+                  {notifTotal > 0 && (
+                    <span className="nav-badge" style={{
+                      position: 'absolute', top: '8px', right: '12px',
+                      minWidth: 18, height: 18, padding: '0 5px', borderRadius: '9px',
+                      background: 'var(--danger)', color: '#fff',
+                      fontSize: '0.65rem', fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>{notifTotal > 99 ? '99+' : notifTotal}</span>
+                  )}
+                </button>
+              ),
+              /* v1.10.80 (#98) - only when a PIN is set. */
+              lock: <LockButton key={id} className="nav-btn" label="Lock app" />,
+              darkMode: (
+                <button key={id}
+                  className="nav-btn"
+                  onClick={() => setDarkMode(!darkMode)}
+                  title={darkMode ? 'Light Mode' : 'Dark Mode'}
+                >
+                  {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                  {darkMode ? 'Light Mode' : 'Dark Mode'}
+                </button>
+              ),
+              support: (
+                <button key={id}
+                  className={`nav-btn nav-btn-support${currentView === 'support' ? ' nav-btn-support-active' : ''}`}
+                  onClick={() => setCurrentView('support')}
+                  title="Who makes this app, and how to help"
+                >
+                  <Heart size={18} /> Support &amp; About
+                </button>
+              ),
+              controlpanel: (
+                <button key={id}
+                  className={`nav-btn ${currentView === 'controlpanel' ? 'nav-btn-active' : ''}`}
+                  onClick={() => setCurrentView('controlpanel')}
+                  title="Update, backup, restore, move to another PC"
+                >
+                  <HardDrive size={18} /> Control Panel
+                </button>
+              ),
+              settings: (
+                <button key={id}
+                  className={`nav-btn ${currentView === 'settings' ? 'nav-btn-active' : ''}`}
+                  onClick={() => setCurrentView('settings')}
+                  style={updateBannerVisible ? { position: 'relative' } : undefined}
+                >
+                  <Settings size={18} /> Settings
+                  {updateBannerVisible && (
+                    <span className="nav-badge" style={{
+                      position: 'absolute', top: '8px', right: '12px',
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: '#f59e0b',
+                    }} title="Update available" />
+                  )}
+                </button>
+              ),
+            })[id])}
             <div className={`server-status server-status-${serverStatus}`}>
               <span className="server-status-dot" />
               {serverStatus === 'online' ? 'App Ready' : serverStatus === 'offline' ? 'App Not Running' : 'Connecting...'}

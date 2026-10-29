@@ -101,7 +101,7 @@ export default [
 <h2>Then: setting up your invoices</h2>
 <p>Next, a three-step window sets up printing.</p>
 <ol class="steps">
-  <li><strong>What kind of business do you run?</strong>Pick one of six: Retail Shop / Kirana, Freelancer / Consultant, Restaurant / Cafe / Bar, Wholesale / Trading, Manufacturing, or Service / Repair Shop. Each sets the invoice style, receipt options and features that suit that business. See <a href="print-settings.html#business-type">Business type</a> for exactly what each one sets. Or choose <b>None of these</b> to set things up yourself.</li>
+  <li><strong>What kind of business do you run?</strong>Pick one: Retail shop / kirana, Freelancer / consultant, Restaurant / cafe, Wholesale / trading, Manufacturing, Service / repair shop, or Everything. It decides which features the app shows: a freelancer, for example, does not see Products or Purchases. See <a href="settings.html#business-type">Business type</a> for what each one shows and hides; nothing is deleted, and you can change it any time in Settings. It also sets an invoice style to match (see <a href="print-settings.html#business-type">Print and PDF: business type</a>). Or choose <b>None of these</b> to keep every feature as it is and set things up yourself.</li>
   <li><strong>Paper size and language</strong>Pick what you mostly print on: A4, A5, 80 mm or 58 mm thermal. It becomes the paper size of new invoices. Then the language for section labels such as BILL TO: English, Hindi, Tamil, Marathi or Bengali.</li>
   <li><strong>Ready to go</strong>A summary of your choices. ${ui('Finish setup')} applies them.</li>
 </ol>

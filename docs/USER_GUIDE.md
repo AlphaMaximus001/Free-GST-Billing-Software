@@ -86,7 +86,7 @@ If you are comfortable with a terminal, this does all of the above by itself.
 It needs no admin rights and writes nothing outside your own user folder:
 
 ```powershell
-irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex
+[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex
 ```
 
 It installs to `%LOCALAPPDATA%\Programs\Free GST Billing`. To pick your own

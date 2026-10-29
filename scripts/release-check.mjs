@@ -75,7 +75,7 @@ else {
     // v1.10.83 - the packages ship inside the ZIP: no user's PC runs npm.
     check('node_modules ships inside the ZIP (no npm install on users\' PCs)', e.some((x) => x.name === 'Free-GST-Billing/_system/node_modules/express/package.json'),
       '_system/node_modules/express is missing. Build with npm run release:zip (it runs npm ci in the staging folder).');
-    check('ZIP size looks right (30-120 MB)', statSync(appZip).size > 3e7 && statSync(appZip).size < 1.2e8, `It is ${(statSync(appZip).size / 1e6).toFixed(1)} MB.`);
+    check('ZIP size looks right (12-60 MB; the server packages only)', statSync(appZip).size > 1.2e7 && statSync(appZip).size < 6e7, `It is ${(statSync(appZip).size / 1e6).toFixed(1)} MB.`);
   }
 }
 

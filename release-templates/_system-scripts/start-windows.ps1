@@ -227,6 +227,13 @@ $deadline = (Get-Date).AddSeconds(90)
 $announced = 0
 while ((Get-Date) -lt $deadline) {
   Start-Sleep -Milliseconds 400
+  # v1.10.83 - when the port is taken the server moves to a free one and
+  # writes it to port.txt; without this, the first Open App waited 90 s on
+  # the old port and gave up.
+  if (Test-Path $portFile) {
+    $p = (Get-Content $portFile -Raw -ErrorAction SilentlyContinue)
+    if ($p -and $p.Trim() -match '^\d+$') { $port = [int]$p.Trim() }
+  }
   if (TestServerUp -p $port) {
     Open-App $port
     exit 0

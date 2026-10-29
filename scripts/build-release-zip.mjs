@@ -191,6 +191,63 @@ if (!existsSync(join(SYSTEM, 'node_modules', 'express', 'package.json')) || !exi
   process.exit(1);
 }
 
+// v1.10.83 - keep only what the SERVER loads. The app's own code (React,
+// jsPDF, tesseract...) is already built into dist/, so shipping those packages
+// again only made the ZIP 58 MB / 12,000 files: a slow first start (antivirus
+// reads every file) and a several-minute update for the old Windows updater.
+// The packages to keep are found by reading the shipped server files' imports,
+// so a new import can never be left out by a stale list; npm then names
+// everything they depend on.
+{
+  const serverFiles = [join(SYSTEM, 'server.js'), ...readdirSync(join(SYSTEM, 'src'), { recursive: true })
+    .filter((f) => /\.m?js$/.test(String(f))).map((f) => join(SYSTEM, 'src', String(f)))];
+  const BUILTIN = /^(node:|fs$|path$|url$|os$|crypto$|child_process$|http$|https$|zlib$|stream$|util$|events$|net$|readline$|buffer$|assert$|worker_threads$|timers$)/;
+  const wanted = new Set();
+  for (const f of serverFiles) {
+    const code = readFileSync(f, 'utf8');
+    for (const m of code.matchAll(/(?:^|\n)\s*import\s[^'"]*?from\s+['"]([^'".][^'"]*)['"]|import\(\s*['"]([^'".][^'"]*)['"]\s*\)/g)) {
+      const spec = m[1] || m[2];
+      if (BUILTIN.test(spec)) continue;
+      wanted.add(spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0]);
+    }
+  }
+  const nm = join(SYSTEM, 'node_modules');
+  // Walk npm's own record of the install (node_modules/.package-lock.json):
+  // each package's dependencies resolve the way Node resolves them, from its
+  // own nested node_modules up to the top.
+  const installed = JSON.parse(readFileSync(join(nm, '.package-lock.json'), 'utf8')).packages || {};
+  const resolve = (from, name) => {
+    for (let dir = from; ; dir = dir.slice(0, Math.max(0, dir.lastIndexOf('/node_modules/')))) {
+      const key = `${dir ? `${dir}/` : ''}node_modules/${name}`;
+      if (installed[key]) return key;
+      if (!dir) return null;
+    }
+  };
+  const keep = new Set();
+  const visit = (key) => {
+    if (!key || keep.has(key)) return;
+    keep.add(key);
+    const p = installed[key];
+    for (const d of Object.keys({ ...p.dependencies, ...p.optionalDependencies, ...p.peerDependencies })) visit(resolve(key, d));
+  };
+  for (const w of wanted) visit(resolve('', w));
+  // Top-level folder of every kept package ("express", "@scope/name").
+  const keepTop = new Set([...keep].map((k) => k.split('node_modules/')[1].replace(/\/$/, '')));
+  let removed = 0;
+  for (const entry of readdirSync(nm)) {
+    if (entry.startsWith('.')) continue;
+    const names = entry.startsWith('@') ? readdirSync(join(nm, entry)).map((s) => `${entry}/${s}`) : [entry];
+    for (const name of names) {
+      if (!keepTop.has(name)) { rmSync(join(nm, name), { recursive: true, force: true }); removed += 1; }
+    }
+    if (entry.startsWith('@') && readdirSync(join(nm, entry)).length === 0) rmSync(join(nm, entry), { recursive: true, force: true });
+  }
+  for (const w of wanted) {
+    if (!existsSync(join(nm, w, 'package.json'))) { console.error(`  x The server needs "${w}" but it is not in the package.`); process.exit(1); }
+  }
+  console.log(`  → Server packages: ${[...wanted].join(', ')} (+ ${keepTop.size - wanted.size} they need); ${removed} app-only packages left out`);
+}
+
 // v1.10.63 (#54) — Refuse to ship a server that cannot start.
 //
 // The bug above was not that someone wrote bad code; it was that NOTHING

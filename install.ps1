@@ -1,7 +1,7 @@
 # Free GST Billing - one-line install, update and repair for Windows.
 #
 #   Press Windows + R, paste this line, press Enter:
-#   powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"
+#   powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"
 #
 # v1.10.83 - a file PowerShell fetches carries no "downloaded from the
 # internet" mark, so Windows SmartScreen shows no warning; and the release
@@ -11,7 +11,7 @@
 # registry, no service: everything stays under the user's own profile.
 #
 # To remove the app (it asks before deleting any data):
-#   powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1))) -Uninstall"
+#   powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create(([Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1))) -Uninstall"
 #
 # `iex` cannot pass parameters, so settings come from environment variables:
 #   FREEGSTBILL_DIR   install into (or update) this folder

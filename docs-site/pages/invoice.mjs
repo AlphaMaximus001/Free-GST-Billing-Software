@@ -37,8 +37,8 @@ export default [
   <tr><td>${ui('Save &amp; Download')}</td><td>Saves the invoice and downloads the PDF. See <a href="#save-download">Save &amp; Download</a>.</td></tr>
   <tr><td>${ui('Print')}</td><td>Saves the invoice, then prints it. See <a href="#print">Printing</a>.</td></tr>
   <tr><td>${ui('WhatsApp')}</td><td>Opens WhatsApp with the invoice details typed in. See <a href="#whatsapp">Sending on WhatsApp</a>.</td></tr>
-  <tr><td>${ui('E-Way Bill')}</td><td>Tax invoices and delivery challans only. Downloads the e-way bill file. See <a href="#eway-bill">E-way bill</a>.</td></tr>
-  <tr><td>${ui('E-invoice')}</td><td>Only when <b>E-invoicing (IRN)</b> is on in Settings, Modules. Tax invoices and credit notes. Downloads the e-invoice file and takes back the IRN. See <a href="gst-returns.html#e-invoice">E-invoicing</a>.</td></tr>
+  <tr><td>${ui('E-Way Bill')}</td><td>Tax invoices and delivery challans only, while <b>E-way bill</b> is on in Settings, Features. Downloads the e-way bill file. See <a href="#eway-bill">E-way bill</a>.</td></tr>
+  <tr><td>${ui('E-invoice')}</td><td>Only when <b>E-invoicing (IRN)</b> is on in Settings, Features. Tax invoices and credit notes. Downloads the e-invoice file and takes back the IRN. See <a href="gst-returns.html#e-invoice">E-invoicing</a>.</td></tr>
   <tr><td>${ui('Customize')}</td><td>Opens the panel that controls what prints, the paper size, currency and more. See <a href="invoice-options.html">Customize: what prints and how</a>.</td></tr>
   <tr><td>${ui('Hide Preview')}</td><td>Hides the preview so the form uses the whole width, handy for long invoices. ${ui('Show Preview')} brings it back, and the app remembers your choice.</td></tr>
 </table></div>
@@ -184,7 +184,7 @@ export default [
 
 <section id="tds-tcs">
 <h2>TDS and TCS</h2>
-<p>Both are under ${ui('Customize')}, for Indian businesses. Turn on <b>TDS / TCS on invoices</b> in <a href="settings.html#modules">Settings, Modules</a> first; it is off to begin with.</p>
+<p>Both are under ${ui('Customize')}, for Indian businesses. They show unless your <a href="settings.html#business-type">business type</a> hides them; the switch is <b>TDS / TCS</b> in <a href="settings.html#features">Settings, Features</a>.</p>
 <ul>
   <li><strong>TCS</strong>, tax you collect: tick it and pick the section: CGST section 52 (1%, e-commerce operators), 206C(1), or a custom rate. TCS is added to the invoice total. Section 206C(1H), TCS on sale of goods, was removed from 1 April 2025, so new invoices cannot choose it; invoices already made with it keep it.</li>
   <li><strong>TDS</strong>, tax your client deducts: tick it and pick the section, such as 194Q, 194C, 194J, 194I, 194H, 194O or 195. It is for information: the invoice shows <b>Less: TDS</b> and the <b>Net Receivable</b>, and the total does not change.</li>
