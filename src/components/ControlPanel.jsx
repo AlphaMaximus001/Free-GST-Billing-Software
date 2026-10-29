@@ -104,7 +104,7 @@ export default function ControlPanel() {
         <div className="notice notice-warn" style={{ marginBottom: '1rem' }}>
           <AlertCircle size={18} />
           <div>
-            <strong>Update and backup scripts not found.</strong> They come with the downloaded ZIP, in the
+            <strong>Update and backup scripts not found.</strong> <HelpButton title="Update and backup scripts not found" doc="control-panel#scripts-missing" size={16} /> They come with the downloaded ZIP, in the
             <code> _system</code> folder next to the app. If you started the app from source code, or copied it
             without those files, download the latest ZIP from GitHub. Your data can still be saved from
             <em> Settings → Data Management → Export Backup</em>.
@@ -191,6 +191,7 @@ export default function ControlPanel() {
               ? <CheckCircle size={18} color="#22c55e" />
               : <AlertCircle size={18} color="#ef4444" />}
             {prettyAction(lastResult.action)} — {lastResult.ok ? 'OK' : 'Failed'}
+            <HelpButton title="Control Panel actions" doc="control-panel#actions" size={16} />
           </h3>
           {lastResult.stdout && (
             <details open>
@@ -235,7 +236,7 @@ function ActionCard({ icon, title, body, buttonLabel, disabled, onClick, variant
     <div className="glass-panel p-6" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--primary)' }}>
         {icon}
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{title}</h3>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>{title} <HelpButton title={title} doc="control-panel#actions" size={16} /></h3>
       </div>
       <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)', flex: 1 }}>{body}</p>
       <button

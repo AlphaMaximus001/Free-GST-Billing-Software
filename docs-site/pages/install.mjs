@@ -359,6 +359,24 @@ bash "_system/start-unix.sh"</code></pre>
 <p>Changes still look the same? Press ${key('Ctrl', 'F5')} (Mac: ${key('Cmd', 'Shift', 'R')}) to make the browser load the new version.</p>
 </section>
 
+<section id="update-window">
+<h3>The "Update available" window</h3>
+<p>It opens when you click <b>Update to v…</b> in the sidebar. At the top it shows the new version and the one you are on, with the date it was released.</p>
+<div class="table-wrap"><table>
+  <tr><th>Part</th><th>What it means</th></tr>
+  <tr><td><b>Your data is safe.</b></td><td>Updating replaces only the app itself. Your <code>data</code> folder (invoices, clients, products, settings) and your <code>Saved Invoices</code> PDFs are never touched.</td></tr>
+  <tr><td>The release notes</td><td>What changed in this version.</td></tr>
+  <tr><td><b>Recommended:</b> export a backup</td><td>${ui('Open Settings → Data Management')} takes you to <a href="backup.html#export-import">Export Backup</a>. Worth doing before any update, just in case.</td></tr>
+  <tr><td>${ui('Skip this version')}</td><td>Hides the <b>Update to v…</b> button for this version. The next version will be offered as usual, and you can still update from <b>Settings → App Updates</b>.</td></tr>
+  <tr><td>${ui('Remind me later')}</td><td>Closes the window; the sidebar button stays.</td></tr>
+  <tr><td>${ui('View on GitHub')}</td><td>Opens the release page in your browser.</td></tr>
+  <tr><td>${ui('Update Now')}</td><td>Backs up your data, then fetches and installs the new version. It takes about a minute: leave the window open, then reload the page when it finishes.</td></tr>
+</table></div>
+<div class="note tip"><strong>Something wrong?</strong>
+<p>If the update stops with an error, your data is still safe. See <a href="troubleshooting.html#update-failed">The update failed</a>, or use one of the other ways on this page.</p>
+</div>
+</section>
+
 <section id="one-line">
 <h2>Also easy: the install line again</h2>
 <p>The line that installs the app also updates it, and repairs it if it will not start. It finds your install, backs up your data first, replaces only the app's own files and opens the new version.</p>

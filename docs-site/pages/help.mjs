@@ -41,15 +41,23 @@ export default [
 
 <section id="notifications">
 <h2>Notifications</h2>
-<p>The bell shows a count of things that need you. Clicking it lists them, and clicking one takes you there:</p>
-<ul>
-  <li>🔁 recurring invoices created today</li>
-  <li>⚠ overdue invoices</li>
-  <li>⏰ invoices due in the next 3 days</li>
-  <li>📋 GST, TDS, TCS, advance tax and ITR dates in the next 10 days</li>
-  <li>📦 products low on stock</li>
-</ul>
-<p>${ui('Mark all as read')} clears the list. Anything new brings it back. The bell counts all your businesses together.</p>
+<p>${ui('Notifications')} in the sidebar has a small red count when something needs you. It is your daily to-do list: who has not paid, what is due soon, which return to file, what to re-order. The app works it out by itself when it opens and again every 10 minutes; nothing is sent to you by SMS or email.</p>
+<p>Click it to open the <b>Notifications</b> window. Each line is a button: click it and the window closes and takes you to the screen where you deal with it.</p>
+<div class="table-wrap"><table>
+  <tr><th>Line</th><th>What it means</th><th>Clicking it opens</th></tr>
+  <tr><td>🔁 <b>N recurring invoices auto-generated today</b></td><td>The app made invoices from your <a href="recurring.html#automatic">recurring templates</a> today. Check them and download the PDFs.</td><td>Dashboard</td></tr>
+  <tr><td>⚠ <b>N overdue invoices</b></td><td>Tax invoices, bills of supply and composition bills not fully paid whose <b>Due Date</b> has passed. The first three numbers are shown. Quotations, proformas, challans, credit notes and cancelled invoices never appear.</td><td>Dashboard (see <a href="dashboard.html#overdue">Overdue invoices and reminders</a>)</td></tr>
+  <tr><td>⏰ <b>N invoices due in next 3 days</b></td><td>Unpaid sales whose due date is today or within 3 days, with the client's name. A good time for a polite reminder.</td><td>Dashboard</td></tr>
+  <tr><td>📋 <b>N GST filings due in next 10 days</b></td><td>GSTR-1, GSTR-3B, TDS, TCS, advance tax and ITR dates coming up, with how many days are left ("today" or "4d").</td><td>GST Returns (see <a href="gst-returns.html#filing-guide">the filing guide</a>)</td></tr>
+  <tr><td>📦 <b>N products low on stock</b></td><td>Products at or below your low-stock limit (5 unless you changed it), with how many are left. Not shown when stock alerts are off in <a href="settings.html#stock">Settings</a>.</td><td>Products (see <a href="products.html#low-stock">Low stock</a>)</td></tr>
+</table></div>
+<p>When nothing needs you, the window says <b>All clear ✨ — nothing needs your attention right now.</b></p>
+<p>${ui('Mark all as read')} clears everything shown and the count goes to zero. The app remembers exactly what you cleared, so a line comes back by itself only when something changes: a new invoice becomes overdue, a different product runs low, or the stock number changes. Clearing does not mark any invoice as paid; record the payment on the <a href="dashboard.html#payments">Dashboard</a> for that.</p>
+<div class="note tip"><strong>Something wrong?</strong>
+<p><b>An invoice I was paid for still shows as overdue.</b> The payment is not recorded yet. Record it with the ${ui('₹')} button on the Dashboard and the line goes away at the next check.</p>
+<p><b>No due-date reminders at all.</b> Only invoices with a <b>Due Date</b> can become overdue or due soon. Set one in <a href="invoices.html#details">Invoice Details</a>, or give the client payment terms.</p>
+<p><b>The filing dates do not match my returns.</b> The dates are the usual monthly due dates. If you file quarterly (QRMP) or the government extends a date, go by the GST portal.</p>
+</div>
 </section>
 
 <section id="command-palette">
@@ -61,7 +69,12 @@ export default [
   <li>find a client by name or GSTIN, or a product by name or HSN, which opens their list;</li>
   <li>jump to Settings, switch dark mode, or see what is new in an update.</li>
 </ul>
-<p>Use <kbd>↑</kbd> <kbd>↓</kbd> and <kbd>Enter</kbd>. <kbd>Esc</kbd> closes it.</p>
+<ol class="steps">
+  <li><strong>Open it</strong>Press <kbd>Ctrl</kbd> + <kbd>K</kbd> (Mac: <kbd>⌘</kbd> + <kbd>K</kbd>). A box opens with <b>Type a command or page name…</b></li>
+  <li><strong>Type a few letters</strong>For example <code>gst</code>, an invoice number such as <code>0012</code>, or part of a client's name. The list narrows as you type.</li>
+  <li><strong>Pick one</strong>Move with <kbd>↑</kbd> <kbd>↓</kbd> and press <kbd>Enter</kbd>, or click it. The box closes and the screen opens.</li>
+</ol>
+<p><kbd>Esc</kbd>, or a click outside the box, closes it. If nothing fits you see <b>Nothing matches "…"</b>: try fewer letters. ${ui('All shortcuts (Ctrl+/)')} at the bottom opens the list of <a href="#keyboard">keyboard shortcuts</a>.</p>
 <figure><img src="assets/img/app-palette.png" alt="Quick search finding a client and their invoices." loading="lazy"><figcaption>Quick search finding a client and their invoices.</figcaption></figure>
 </section>
 
@@ -70,8 +83,10 @@ export default [
 <table>
   <tr><td><kbd>Ctrl</kbd> + <kbd>K</kbd></td><td>Quick search</td></tr>
   <tr><td><kbd>Ctrl</kbd> + <kbd>N</kbd></td><td>New invoice</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>S</kbd></td><td>Save the invoice (on the invoice screen)</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>P</kbd></td><td>Download the PDF (on the invoice screen)</td></tr>
   <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd></td><td>Lock the app (when a PIN is set)</td></tr>
-  <tr><td><kbd>Ctrl</kbd> + <kbd>/</kbd></td><td>Show all shortcuts</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>/</kbd></td><td>Show or hide the <b>Keyboard Shortcuts</b> window, which lists these</td></tr>
   <tr><td><kbd>Esc</kbd></td><td>Close a dialog</td></tr>
   <tr><td><kbd>Enter</kbd></td><td>Confirm a dialog</td></tr>
 </table>
@@ -577,13 +592,22 @@ export default [
 
 <section id="problem-log">
 <h2>Problem log and reporting a problem</h2>
-<p>The app keeps a list of recent problems on this computer. Open <b>Support &amp; About</b> in the sidebar, then <b>Problem log</b>.</p>
-<ul>
-  <li>Each problem shows the time, the screen and the message, with ${ui('Copy')} and ${ui('Report')} buttons.</li>
-  <li>${ui('Copy all')} copies the whole list; ${ui('Clear log')} empties it.</li>
-  <li>Below, it shows the app server's recent log lines, from the <code>errors.log</code> file in the data folder.</li>
-</ul>
-<p>Nothing is sent anywhere unless you click ${ui('Report')}.</p>
+<p>The app keeps a list of recent problems on this computer: a save that failed, a screen that went wrong, the app server not answering. Open <b>Support &amp; About</b> in the sidebar and scroll to the <b>Problem log</b> card. Use it when something did not work and you want to know why, or when you want to send the details to get it fixed.</p>
+<p>Private details are removed before anything is kept: GSTIN, PAN, phone numbers, email addresses, UPI IDs and bank account numbers. Nothing is sent anywhere unless you click ${ui('Report')}.</p>
+<div class="table-wrap"><table>
+  <tr><th>On the card</th><th>What it is or does</th></tr>
+  <tr><td>The list</td><td>Newest first. Each line shows the date and time, the screen it happened on, and the message. If the app was talking to its server, the request and its answer (for example <code>POST /api/bills (500)</code>, or <i>no answer</i>) come first.</td></tr>
+  <tr><td><b>How to fix</b></td><td>Shown on a line the app recognises (a full disk, a damaged file, a blocked pop-up…). It opens the matching fix on this Troubleshooting page.</td></tr>
+  <tr><td>${ui('Copy')} / ${ui('Report')} on a line</td><td>Copy that one problem as text, or open the GitHub report form already filled in. See <a href="#report-problem">Reporting a problem</a>.</td></tr>
+  <tr><td>${ui('Copy all')}</td><td>Copies every problem, newest first, plus the server log lines, ready to paste into an email or a GitHub issue.</td></tr>
+  <tr><td>${ui('Clear log')}</td><td>Empties the list once the problem is solved. It does not touch your invoices or any other data.</td></tr>
+  <tr><td><b>Server log</b></td><td>Click to open. The app server's last lines from the <code>errors.log</code> file in your data folder. Known problems found in it are listed above the lines, each with a <b>How to fix</b> link.</td></tr>
+</table></div>
+<p><b>No problems logged. Good.</b> means nothing has gone wrong in this browser. <b>The server log is empty.</b> means the same for the server.</p>
+<div class="note tip"><strong>Something wrong?</strong>
+<p><b>"Could not copy."</b> Your browser blocked the clipboard. Open <b>Server log</b> or select the text with the mouse and press <kbd>Ctrl</kbd> + <kbd>C</kbd>.</p>
+<p><b>The list is empty but something failed.</b> The list is kept in this browser (in a private window it may not be kept at all). If the problem happened in another browser or on another computer, open the app there. Problems from before you cleared the log are gone.</p>
+</div>
 </section>
 
 <section id="report-problem">
@@ -668,7 +692,7 @@ export default [
 
 <section id="income-tax-limits">
 <h2>Income tax</h2>
-<p>The income tax helper estimates tax for FY 2025-26, for someone under 60. It does not file your return or produce the ITR file the portal takes. See <a href="income-tax.html">Income tax helper</a>.</p>
+<p>The income tax helper estimates tax for FY 2025-26, including for seniors (60 to 79) and super seniors (80 and above). It does not file your return or produce the ITR file the portal takes. See <a href="income-tax.html">Income tax helper</a>.</p>
 </section>
 
 <section id="stock-limits">

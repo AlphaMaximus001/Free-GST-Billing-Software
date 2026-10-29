@@ -85,16 +85,27 @@ export default [
   <tr><td>GSTIN</td><td>Leave blank if you are not registered</td></tr>
   <tr><td>PAN, Phone, Email</td><td>Optional</td></tr>
 </table>
+<p>${ui('Next')} stays greyed out until a Business Name is typed. ${ui('Back')} returns to the first screen without losing what you typed.</p>
+<div class="note tip"><strong>Getting it right</strong>
+<p><b>State</b> is where your business is registered. The app compares it with each client's state: same state means CGST + SGST, a different state means IGST. A wrong state here makes the tax wrong on every invoice.</p>
+<p><b>GSTIN</b> is your 15-character GST number, for example <code>07ABCDE1234F1Z5</code>. Its first two digits are your state code. Not registered for GST? Leave it blank; you can make bills without GST. Everything here can be changed later in <a href="settings.html#company-details">Settings → Company details</a>.</p>
+</div>
 </section>
 
 <section id="bank-upi">
 <h2>Step 3: bank and UPI</h2>
 <p>Where clients should pay you: bank name, account number, IFSC code and UPI ID. A UPI ID puts a scan-to-pay QR code on your invoices. You can also upload your logo and signature here, up to 500 KB each. ${ui('Skip, I’ll add later')} leaves it all for <a href="settings.html#payment-accounts">Settings</a>.</p>
+<div class="note tip"><strong>Something wrong?</strong>
+<p><b>"Image must be under 500KB".</b> The logo or signature file is too big. Open it in Paint (or any photo app), make it smaller, save it as PNG or JPG, and choose it again.</p>
+<p><b>A typing mistake in the account number or IFSC.</b> Check them against your passbook or cheque book; they print on every invoice. You can correct them later in <a href="settings.html#payment-accounts">Settings → Payment accounts</a>.</p>
+</div>
 </section>
 
 <section id="all-set">
 <h2>Step 4: you're all set</h2>
-<p>A short list of what to do next. ${ui('Start Billing')} saves everything; your bank details become your first <a href="settings.html#payment-accounts">payment account</a>.</p>
+<p>A short list of what to do next: make your first invoice, download or share it, check the GST reports, and file your returns. ${ui('Start Billing')} saves everything; your bank details become your first <a href="settings.html#payment-accounts">payment account</a>. You see <b>Setup complete! Start creating invoices.</b> and the app opens.</p>
+<p>If you see <b>Failed to save. Try again.</b>, the app's engine stopped: check it is still running (see <a href="troubleshooting.html#cannot-connect">Failed to fetch</a>) and click ${ui('Start Billing')} again.</p>
+<p>Next: <a href="first-invoice.html">make your first invoice</a>.</p>
 </section>
 
 <section id="setup-wizard">
@@ -106,6 +117,49 @@ export default [
   <li><strong>Ready to go</strong>A summary of your choices. ${ui('Finish setup')} applies them.</li>
 </ol>
 <p>${ui('Skip setup')}, or the ${ui('✕')}, closes it. A ${ui('✨ Finish setup')} button then waits at the bottom right of the screen, for whenever you want to come back to it. Everything it sets can also be changed in <a href="print-settings.html">Print and PDF settings</a>.</p>
+<p>The top of the window shows <b>Step 1 of 3</b> and a bar that fills as you go. ${ui('Continue')} moves on, ${ui('Back')} goes back without losing your choices.</p>
+</section>
+
+<section id="wizard-business-type">
+<h3>What kind of business do you run?</h3>
+<p>Click the card that fits you best; it turns blue. Each card has a one-line hint:</p>
+<div class="table-wrap"><table>
+  <tr><th>Card</th><th>For</th></tr>
+  <tr><td>Retail shop / kirana</td><td>Selling from a counter, keeping stock, buying from suppliers.</td></tr>
+  <tr><td>Freelancer / consultant</td><td>Billing for your time or services, no stock.</td></tr>
+  <tr><td>Restaurant / cafe</td><td>Quick bills, UPI payments, buying supplies.</td></tr>
+  <tr><td>Wholesale / trading</td><td>Buying and selling goods in bulk and sending them with e-way bills.</td></tr>
+  <tr><td>Manufacturing</td><td>Making products from raw material.</td></tr>
+  <tr><td>Service / repair shop</td><td>Repairs and services, spare parts in stock, yearly contracts.</td></tr>
+  <tr><td>Everything</td><td>Every feature the app has.</td></tr>
+</table></div>
+<p>Your choice decides which screens the sidebar shows and sets a matching invoice style. Hidden screens are only hidden: nothing is deleted, and you can switch any feature back on later in <a href="settings.html#features">Settings → Features</a> or change the type in <a href="settings.html#business-type">Settings → Business type</a>.</p>
+<p>${ui("None of these — I'll configure manually")} closes the window at once and changes nothing: every feature stays as it is, and the ✨ Finish setup button does not appear.</p>
+<div class="note tip"><strong>Not sure?</strong>
+<p>Pick the one closest to what you do most. A shop that also repairs things can pick Retail shop / kirana. If you want to see everything first, pick <b>Everything</b> and hide what you do not use later.</p>
+</div>
+</section>
+
+<section id="wizard-paper-language">
+<h3>Paper size + language</h3>
+<p><b>Paper size</b>: what you mostly print on. It becomes the paper size of every new invoice; you can still change it on any one invoice.</p>
+<div class="table-wrap"><table>
+  <tr><td>A4 · Standard</td><td>Normal office paper and laser or inkjet printers. The usual choice.</td></tr>
+  <tr><td>A5 · Compact</td><td>Half of A4. For short bills.</td></tr>
+  <tr><td>80mm Thermal</td><td>The common shop receipt printer (about 8 cm wide roll).</td></tr>
+  <tr><td>58mm Thermal</td><td>Small receipt printers (about 6 cm wide roll).</td></tr>
+</table></div>
+<p>Not sure which thermal printer you have? Measure the paper roll, or see <a href="thermal-printing.html#setup">Thermal printing</a>.</p>
+<p><b>Section label language</b>: the language of the printed headings such as BILL TO and TOTAL: English, हिन्दी (Hindi), தமிழ் (Tamil), मराठी (Marathi) or বাংলা (Bengali). Your item names, addresses and the rest stay exactly as you type them; the app's own screens stay in English.</p>
+</section>
+
+<section id="wizard-ready">
+<h3>Ready to go</h3>
+<p>A summary of the three choices: <b>Business type</b>, <b>Default paper size</b> and <b>Section label language</b>. Check them, then click ${ui('Finish setup')}. You see <b>Setup complete! Your defaults are configured.</b> and land on the Dashboard. Your next new invoice uses these settings.</p>
+<div class="note tip"><strong>Something wrong?</strong>
+<p><b>A screen I need is missing from the sidebar.</b> Your business type hid it. Turn it back on in <a href="settings.html#features">Settings → Features</a>.</p>
+<p><b>Invoices print on the wrong paper.</b> Change the paper size on the invoice (<a href="invoice-options.html#paper-size">Paper / print size</a>), or the default in <a href="print-settings.html">Print and PDF settings</a>.</p>
+</div>
 </section>
 `,
 },

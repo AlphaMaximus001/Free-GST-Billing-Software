@@ -40,6 +40,7 @@ const SupportView = lazy(() => import('./components/SupportView'));
 import StarBanner from './components/StarBanner';
 import AppFooter from './components/AppFooter';
 import LockButton from './components/LockButton';
+import HelpButton from './components/HelpButton';
 import { lockNow } from './utils/appLock';
 import { getPrintSettings } from './utils/printSettings';
 
@@ -747,7 +748,7 @@ function App() {
       <div className="server-down-overlay">
         <div className="server-down-modal">
           <FileText size={48} color="#3b82f6" />
-          <h2>Free GST Billing Software Needs a Quick Start</h2>
+          <h2>Free GST Billing Software Needs a Quick Start <HelpButton title="Needs a Quick Start" doc="shortcuts#app-not-running" size={16} /></h2>
           <p>
             Your data is <strong>100% safe</strong> on your computer — nothing is lost.
             The app just needs to be started once.
@@ -1098,7 +1099,7 @@ function App() {
         <div className="modal-overlay" onClick={() => setShowNotifs(false)}>
           <div className="modal-content" style={{ maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h3 className="section-title" style={{ margin: 0 }}>Notifications</h3>
+              <h3 className="section-title" style={{ margin: 0 }}>Notifications <HelpButton title="Notifications" doc="shortcuts#notifications" size={16} /></h3>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                 {/* v1.10.62 (#53) — clears everything currently shown. Each
                     section remembers exactly WHAT was cleared, so a genuinely
@@ -1219,7 +1220,7 @@ function App() {
               ))}
             </div>
             <div style={{ padding: '0.4rem 1rem', borderTop: '1px solid var(--border-color)', fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span><Command size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />Ctrl+K to toggle · ↑↓ navigate · Enter run</span>
+              <span><Command size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />Ctrl+K to toggle · ↑↓ navigate · Enter run <HelpButton title="Quick search" doc="shortcuts#command-palette" size={16} /></span>
               <button type="button" onClick={() => { setShowPalette(false); setShowShortcutsHelp(true); }} style={{ background: 'none', border: 0, color: 'var(--primary)', cursor: 'pointer', fontSize: '0.7rem' }}>
                 All shortcuts (Ctrl+/)
               </button>
@@ -1233,7 +1234,7 @@ function App() {
         <div className="modal-overlay" onClick={() => setShowShortcutsHelp(false)}>
           <div className="modal-content" style={{ maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h3 className="section-title" style={{ margin: 0 }}>Keyboard Shortcuts</h3>
+              <h3 className="section-title" style={{ margin: 0 }}>Keyboard Shortcuts <HelpButton title="Keyboard shortcuts" doc="shortcuts#keyboard" size={16} /></h3>
               <button className="icon-btn" onClick={() => setShowShortcutsHelp(false)} title="Close"><X size={18} /></button>
             </div>
             <table className="kv-list">
@@ -1260,7 +1261,7 @@ function App() {
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
               <div>
                 <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>
-                  Update available — v{updateInfo.latest}
+                  Update available — v{updateInfo.latest} <HelpButton title="Updating the app" doc="update#update-window" size={16} />
                 </h3>
                 <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
                   You're on v{updateInfo.current}
