@@ -7,7 +7,7 @@ export default [
 {
   slug: 'reports',
   title: 'Reports',
-  lead: 'Profit and loss, who owes you and for how long, party outstanding by month, your best clients, your best-selling products, closing stock with its value, and profit by branch or project. Every report prints and downloads as Excel or CSV.',
+  lead: 'Profit and loss, who owes you and for how long, party outstanding by month, your best clients, your best-selling products, closing stock with its value, TDS and TCS, and profit by branch or project. Every report prints and downloads as Excel or CSV.',
   body: `
 <section id="tabs">
 <h2>The report tabs</h2>
@@ -20,6 +20,7 @@ export default [
   <tr><td>${ui('Client Analytics')}</td><td>Who are my best customers, and who pays slowest?</td><td>The period you choose</td></tr>
   <tr><td>${ui('Product Performance')}</td><td>What sells most, by money and by quantity?</td><td>The period you choose</td></tr>
   <tr><td>${ui('Stock')}</td><td>How much of each product did I have at the end of a month, and what was it worth?</td><td>The month you choose</td></tr>
+  <tr><td>${ui('TDS & TCS')}</td><td>Which clients deducted TDS from my sales, have their certificates come, what TCS did I collect, and what TDS did I deduct from suppliers?</td><td>A financial year, a quarter or your own dates</td></tr>
   <tr><td>${ui('By cost centre')}</td><td>What did each branch, site or project sell, spend and earn? Shows only when cost centres are turned on.</td><td>The period you choose</td></tr>
 </table></div>
 <p>Reports always open on Profit &amp; Loss. Which tab you were on is not remembered after you leave the screen.</p>
@@ -241,6 +242,50 @@ export default [
 <p>Stock you typed in by hand on the Products screen has no date, so it counts as if it changed today. Products are shared by all your businesses, so this report covers every business. ${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} export it, "valued at purchase price".</p>
 <figure><img src="${img('app-stock-report.png')}" alt="Reports, Stock: closing quantity, rate and value of each product, with the total stock value." loading="lazy"><figcaption>Closing stock and its value at the end of a month.</figcaption></figure>
 <div class="note tip"><strong>Something wrong?</strong><p>A red (negative) quantity means more was sold than was bought: a purchase bill is missing, or opening stock was never entered. Add the purchase, or correct the stock on the <a href="products.html#stock">Products</a> screen. Values marked * use the selling price: add a purchase price to the product for a true value. "No products yet." means the product list is empty; stock is tracked only for items in it. See also <a href="limitations.html#stock-limits">what stock does not do</a>.</p></div>
+</section>
+
+<section id="tds-tcs">
+<h2>TDS &amp; TCS</h2>
+<p>Three lists of tax that is cut from, or added to, a payment, so you can match your books with the income tax department's records and with your CA's returns. Open ${ui('Reports')} and click ${ui('TDS & TCS')}. New to TDS and TCS? Read <a href="gst-basics.html#tds-tcs">GST basics: TDS and TCS</a> first; it explains them with an example.</p>
+<p>In plain words:</p>
+<ul>
+  <li><b>TDS (Tax Deducted at Source)</b>: when a business client pays you for contract work, professional fees, rent, commission and the like, it keeps back a small part (for example 10% under 194J) as income tax and deposits it against <b>your PAN</b>. That money is not lost: you claim it in your income tax return.</li>
+  <li><b>TCS (Tax Collected at Source)</b>: tax you add to your own invoice and collect from the buyer, for example under CGST section 52 if you run an online marketplace. You deposit it with the government.</li>
+  <li><b>TDS you deduct</b>: when you pay a contractor or professional above the limits, <em>you</em> keep back TDS from their bill and deposit it yourself, then file a quarterly TDS return (Form 26Q).</li>
+</ul>
+<p><b>Choose the period</b> at the top: a <b>Financial year</b>, then <b>Whole year</b>, one quarter (<b>Q1</b> April to June, <b>Q2</b> July to September, <b>Q3</b> October to December, <b>Q4</b> January to March) or <b>Custom dates</b> with From and To. TDS returns and certificates go quarter by quarter, so a quarter is usually what you want. Like the other reports, it covers the business selected at the top of the sidebar; cancelled invoices, quotations, proformas and challans are left out.</p>
+<p>Four cards at the top give the totals: <b>TDS by your clients</b>, <b>Certificates received</b> (ticked out of all), <b>TCS you collected</b> and <b>TDS you deducted</b>. Each list has ${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} buttons for your CA.</p>
+<div class="note tip"><strong>Something wrong?</strong><p>An invoice is missing from the TDS list: TDS was not ticked on it. Open it and tick TDS under ${ui('Customize')} (see <a href="invoices.html#tds-tcs">TDS and TCS</a>), or record the TDS with the client's payment (see <a href="dashboard.html#payment-tds">TDS when recording a payment</a>). A purchase bill is missing: tick <b>TDS deducted</b> on it (see <a href="purchases.html#purchase-tds">TDS on a purchase bill</a>). The GST Returns screen has a similar <a href="gst-returns.html#tds-tcs">TDS / TCS tab</a> with Form 26Q / 27EQ figures.</p></div>
+</section>
+
+<section id="tds-by-clients">
+<h3>TDS deducted by your clients</h3>
+<p>One row per sales invoice on which the client deducts TDS: <b>Date</b>, <b>Invoice No</b>, <b>Client</b>, the client's <b>PAN</b> (read from its GSTIN), the <b>Section</b> (194J, 194C...), <b>Rate</b>, the <b>Taxable</b> value it is worked out on (the value before GST) and the <b>TDS</b> amount. Under the list, <b>By client</b> and <b>By quarter</b> add them up.</p>
+<p><b>How to reconcile it.</b> The TDS a client deducts reaches your PAN only when the client deposits it and files its own TDS return. Check it once a quarter:</p>
+<ol class="steps">
+  <li><strong>Pick the quarter</strong>Choose the financial year and, say, <b>Q2 (Jul-Sep)</b>.</li>
+  <li><strong>Open your tax statement</strong>Log in at <a href="https://www.incometax.gov.in/" rel="noopener">incometax.gov.in</a> and open <b>Form 26AS</b> (Form 168 from tax year 2026-27) or the <b>AIS</b> (Annual Information Statement). They list the TDS every client deposited against your PAN.</li>
+  <li><strong>Tick what matches</strong>When an invoice's TDS shows there, or the client sends its <b>TDS certificate (Form 16A)</b>, tick the box in the <b>Certificate</b> column. The tick is saved on the invoice at once and is kept if you edit the invoice later.</li>
+  <li><strong>Chase the rest</strong>An unticked row after the quarter's due date means that client has not deposited or filed yet. Ask them: until it shows in your tax statement you cannot claim it.</li>
+  <li><strong>Claim it</strong>Give the year's total (and the Excel file) to your CA for your income tax return.</li>
+</ol>
+<p>Form 16A is the certificate for payments up to 31 March 2026; under the Income-tax Act, 2025 the certificate has a new form, but it does the same job. See <a href="gst-basics.html#income-tax-tds">A client deducts income-tax TDS</a>.</p>
+</section>
+
+<section id="tcs-collected">
+<h3>TCS you collected</h3>
+<p>One row per sales invoice with TCS: the same columns as above, with the <b>TCS</b> amount, and totals <b>By client</b> and <b>By quarter</b>. This is money you collected for the government: deposit it and report it in your TCS return (Form 27EQ for income-tax TCS; GSTR-8 for GST TCS under CGST section 52). Since 10 July 2024 the section 52 rate is 0.5% (it was 1%); new invoices start at 0.5%, older ones keep the rate they were made with. See <a href="gst-basics.html#gst-tds-tcs">GST TDS and GST TCS</a>.</p>
+</section>
+
+<section id="tds-on-purchases">
+<h3>TDS you deducted from suppliers</h3>
+<p>One row per purchase bill on which you ticked <b>TDS deducted</b>: <b>Date</b>, <b>Bill No</b>, <b>Supplier</b>, the supplier's <b>PAN</b> (read from its GSTIN), <b>Section</b>, <b>Rate</b>, <b>Taxable</b>, <b>TDS</b> and what you actually <b>Paid to supplier</b> (bill total less TDS). Under the list, <b>By section</b> and <b>By quarter</b> add them up: these are the figures for your TDS payments and your quarterly TDS return (Form 26Q).</p>
+<ol class="steps">
+  <li><strong>Record it on the bill</strong>On the purchase bill, tick <b>TDS deducted</b>, pick the section and check the rate (see <a href="purchases.html#purchase-tds">TDS on a purchase bill</a>).</li>
+  <li><strong>Deposit it</strong>Pay each month's TDS by the 7th of the next month (30 April for March) on the income tax portal, using your TAN.</li>
+  <li><strong>File the return</strong>Pick the quarter here, export to Excel and give it to whoever files your Form 26Q. Then send each supplier its TDS certificate.</li>
+</ol>
+<p>You need a TAN (Tax Deduction Account Number) to deduct TDS. Whether you must deduct at all depends on the section and its limits; ask your CA if unsure.</p>
 </section>
 
 <section id="cost-centres">

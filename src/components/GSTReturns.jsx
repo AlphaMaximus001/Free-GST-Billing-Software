@@ -39,7 +39,13 @@ function readFilingStatus(key) {
 
 // The per-line split lives in utils.js (splitLineTax) so it can be tested;
 // see v1.10.77 (#89) there.
-const computeItemTaxSplit = splitLineTax;
+// v1.10.83 - an export / SEZ invoice under a LUT charged no IGST
+// (totals.lutZeroRated): its lines report their value and rate with zero tax,
+// as the invoice printed them. Tax-inclusive prices had no tax in them.
+const billSplit = (bill, item, isInter, taxInclusive, isIntraUT) => {
+  if (!bill?.data?.totals?.lutZeroRated) return splitLineTax(item, isInter, taxInclusive, isIntraUT);
+  return { ...splitLineTax(item, isInter, false, isIntraUT), cgst: 0, sgst: 0, utgst: 0, igst: 0, cess: 0 };
+};
 
 function getTaxableAmount(totals) {
   return totals?.taxableAmount ?? ((totals?.subtotal || 0) - (totals?.totalDiscount || 0));
@@ -702,7 +708,7 @@ export default function GSTReturns() {
     (items || []).forEach(item => {
       const rate = item.taxPercent || 0;
       if (!b2cByRate[rate]) b2cByRate[rate] = { taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0, total: 0 };
-      const split = computeItemTaxSplit(item, isInterState, !!bill.data?.taxInclusive, isIntraUT);
+      const split = billSplit(bill, item, isInterState, !!bill.data?.taxInclusive, isIntraUT);
       b2cByRate[rate].taxable += split.taxable;
       b2cByRate[rate].cgst += split.cgst;
       // GST-C2: UTGST folded into SGST bucket for GSTR-1 payload compatibility.
@@ -729,7 +735,7 @@ export default function GSTReturns() {
         const rate = item.taxPercent || 0;
         const key = `${isInter ? 'INTER' : 'INTRA'}_${pos}_${rate}`;
         if (!rows[key]) rows[key] = { inter: isInter, pos, rate, taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0 };
-        const split = computeItemTaxSplit(item, isInter, !!bill.data?.taxInclusive, isIntraUT);
+        const split = billSplit(bill, item, isInter, !!bill.data?.taxInclusive, isIntraUT);
         rows[key].taxable += split.taxable; rows[key].cgst += split.cgst; rows[key].sgst += split.sgst + split.utgst;
         rows[key].igst += split.igst; rows[key].cess += split.cess;
       });
@@ -752,7 +758,7 @@ export default function GSTReturns() {
       const uqc = item.unit || 'OTH';
       const key = `${hsn}|${rate}|${uqc}`;
       if (!hsnMap[key]) hsnMap[key] = { hsn, rate, uqc, description: item.name || '', quantity: 0, taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0, totalTax: 0 };
-      const split = computeItemTaxSplit(item, isInterState, !!bill.data?.taxInclusive, isIntraUT);
+      const split = billSplit(bill, item, isInterState, !!bill.data?.taxInclusive, isIntraUT);
       const sign = hsnSign(bill);
       hsnMap[key].quantity += sign * (item.quantity || 0);
       hsnMap[key].taxable += sign * split.taxable;
@@ -970,7 +976,9 @@ export default function GSTReturns() {
     toast(`${returnType.toUpperCase()} marked as filed for this period`, 'success');
   };
 
-  const isNilReturn = filteredBills.length === 0 && filteredExpenses.length === 0;
+  // A period with purchase bills has input tax credit to claim (and maybe
+  // reverse charge), so it is not a NIL GSTR-3B even with no sales.
+  const isNilReturn = filteredBills.length === 0 && filteredExpenses.length === 0 && filteredPurchases.length === 0;
 
   // ========== CSV Exports ==========
   const exportB2B = () => {
@@ -998,7 +1006,7 @@ export default function GSTReturns() {
         const rate = item.taxPercent || 0;
         const key = `${splyType}_${pos}_${rate}`;
         if (!b2csData[key]) b2csData[key] = { splyType, pos, rate, taxable: 0, cgst: 0, sgst: 0, igst: 0 };
-        const split = computeItemTaxSplit(item, isInter, !!bill.data?.taxInclusive, billIsIntraUT(bill));
+        const split = billSplit(bill, item, isInter, !!bill.data?.taxInclusive, billIsIntraUT(bill));
         b2csData[key].taxable += split.taxable; b2csData[key].cgst += split.cgst; b2csData[key].sgst += split.sgst + split.utgst; b2csData[key].igst += split.igst;
         b2csData[key].cess = (b2csData[key].cess || 0) + split.cess;
       });
@@ -1027,7 +1035,7 @@ export default function GSTReturns() {
         const uqc = hsnUqc(item) || 'NOS';
         const key = `${hsn}|${rate}|${uqc}`;
         if (!hsnDetailed[key]) hsnDetailed[key] = { hsn, desc: item.name || '', uqc, qty: 0, rate, taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0, totalValue: 0 };
-        const split = computeItemTaxSplit(item, isInter, !!bill.data?.taxInclusive, isIntraUT);
+        const split = billSplit(bill, item, isInter, !!bill.data?.taxInclusive, isIntraUT);
         const sign = hsnSign(bill); // v1.10.74 - credit notes reduce the row
         hsnDetailed[key].qty += uqc === 'NA' ? 0 : sign * (item.quantity || 0);
         hsnDetailed[key].taxable += sign * split.taxable;
@@ -1301,7 +1309,7 @@ export default function GSTReturns() {
         const rate = item.taxPercent || 0;
         if (!rateMap[rate]) rateMap[rate] = { txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
         // v1.10.31 — GST-C2/H7: pass isIntraUT so UTGST folds into SGST bucket.
-        const split = computeItemTaxSplit(item, isInter, !!bill.data?.taxInclusive, isIntraUT);
+        const split = billSplit(bill, item, isInter, !!bill.data?.taxInclusive, isIntraUT);
         rateMap[rate].txval += split.taxable;
         rateMap[rate].iamt += split.igst;
         rateMap[rate].camt += split.cgst;
@@ -1343,7 +1351,7 @@ export default function GSTReturns() {
       (items || []).forEach(item => {
         const rate = item.taxPercent || 0; const key = `${splyTy}_${pos}_${rate}`;
         if (!b2csMap[key]) b2csMap[key] = { sply_ty: splyTy, pos, rt: rate, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
-        const split = computeItemTaxSplit(item, isInter, !!bill.data?.taxInclusive, isIntraUT);
+        const split = billSplit(bill, item, isInter, !!bill.data?.taxInclusive, isIntraUT);
         b2csMap[key].txval += split.taxable;
         b2csMap[key].iamt += split.igst;
         b2csMap[key].camt += split.cgst;
@@ -1363,7 +1371,7 @@ export default function GSTReturns() {
         const rate = item.taxPercent || 0; if (!rateMap[rate]) rateMap[rate] = { txval: 0, iamt: 0, csamt: 0 };
         // P1 #23: pass taxInclusive as 3rd arg. Pre-v1.6.8 this was omitted
         // so tax-inclusive B2CL bills inflated taxable + IGST values.
-        const split = computeItemTaxSplit(item, true, !!bill.data?.taxInclusive);
+        const split = billSplit(bill, item, true, !!bill.data?.taxInclusive);
         rateMap[rate].txval += split.taxable; rateMap[rate].iamt += split.igst;
         rateMap[rate].csamt += split.cess; // rounded per line, as on the invoice
       });
@@ -1380,7 +1388,7 @@ export default function GSTReturns() {
       (items || []).forEach(item => {
         const rate = item.taxPercent || 0; if (!rateMap[rate]) rateMap[rate] = { txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
         // UTGST goes in samt, as for B2B (it was dropped for intra-UT notes).
-        const split = computeItemTaxSplit(item, isInter, !!bill.data?.taxInclusive, billIsIntraUT(bill));
+        const split = billSplit(bill, item, isInter, !!bill.data?.taxInclusive, billIsIntraUT(bill));
         rateMap[rate].txval += split.taxable; rateMap[rate].iamt += split.igst; rateMap[rate].camt += split.cgst; rateMap[rate].samt += split.sgst + split.utgst;
         rateMap[rate].csamt += split.cess;
       });
@@ -1416,7 +1424,7 @@ export default function GSTReturns() {
         if (!hsnJsonMap[key]) hsnJsonMap[key] = { hsn_sc: hsn, desc: item.name || '', uqc, qty: 0, rt: rate, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
         // UTGST goes in samt (it was dropped for intra-UT invoices, so the
         // JSON's HSN table disagreed with B2B and with the CSV).
-        const split = computeItemTaxSplit(item, isInter, !!bill.data?.taxInclusive, isIntraUT);
+        const split = billSplit(bill, item, isInter, !!bill.data?.taxInclusive, isIntraUT);
         const sign = hsnSign(bill); // v1.10.74 - credit notes reduce the row
         hsnJsonMap[key].qty += uqc === 'NA' ? 0 : sign * (item.quantity || 0); hsnJsonMap[key].txval += sign * split.taxable; hsnJsonMap[key].iamt += sign * split.igst; hsnJsonMap[key].camt += sign * split.cgst; hsnJsonMap[key].samt += sign * (split.sgst + split.utgst);
         hsnJsonMap[key].csamt += sign * split.cess;
@@ -1564,7 +1572,7 @@ export default function GSTReturns() {
       {/* NIL Return notice */}
       {isNilReturn && (
         <div style={{ padding: '0.5rem 0.75rem', marginBottom: '0.75rem', borderRadius: '8px', background: 'var(--warn-bg)', color: 'var(--warn-text)', fontSize: '0.8rem' }}>
-          No invoices or expenses found — file a NIL return on the GST portal. NIL returns are mandatory.
+          No invoices, purchase bills or expenses found — file a NIL return on the GST portal. NIL returns are mandatory.
           <HelpButton title="NIL returns" doc="gst-returns#nil-return" size={16} />
         </div>
       )}
@@ -1890,7 +1898,7 @@ export default function GSTReturns() {
                 if (!interStateB2C[posName]) interStateB2C[posName] = { pos: posName, taxable: 0, igst: 0 };
                 // v1.10.74 - pass the tax-inclusive flag like every other call,
                 // or a tax-inclusive bill's taxable value and IGST come out too high.
-                const split = computeItemTaxSplit(item, true, !!bill.data?.taxInclusive);
+                const split = billSplit(bill, item, true, !!bill.data?.taxInclusive);
                 interStateB2C[posName].taxable += split.taxable;
                 interStateB2C[posName].igst += split.igst;
               });
@@ -2409,7 +2417,7 @@ export default function GSTReturns() {
                         <li>NIL GSTR-1 and NIL GSTR-3B are <strong>separate returns</strong> — file both</li>
                         <li>NIL filing takes 2-3 minutes per return — just login, verify zeros, submit, file</li>
                         <li>Late fee for NIL: ₹20/day (₹10 CGST + ₹10 SGST), capped at ₹500 per return</li>
-                        <li>You can file NIL returns via SMS: Send <code>NIL space GSTIN space Return Period</code> to 14409. Verify with OTP.</li>
+                        <li>You can file NIL returns by SMS to <strong>14409</strong> from the registered mobile: <code>NIL R1 &lt;GSTIN&gt; &lt;MMYYYY&gt;</code> for GSTR-1, <code>NIL 3B &lt;GSTIN&gt; &lt;MMYYYY&gt;</code> for GSTR-3B, <code>NIL C8 &lt;GSTIN&gt; &lt;MMYYYY&gt;</code> for CMP-08 (a quarterly return uses the quarter's last month, e.g. 062026). Then confirm with <code>CNF R1 &lt;code&gt;</code> (or CNF 3B / CNF C8) using the code you receive.</li>
                         <li>QRMP users filing quarterly: NIL return covers the entire quarter</li>
                         <li>Even if you had no sales but had purchases with GST → file REGULAR return (not NIL) to claim ITC</li>
                       </ul>

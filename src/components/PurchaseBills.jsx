@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { ShoppingCart, Plus, Edit3, Trash2, Search, X, Save, Download, Wand2, Eye, ClipboardList } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllPurchases, savePurchase, deletePurchase, getAllProducts, saveProduct, getProfile, getEnabledModules, getAllPurchaseOrders, savePurchaseOrder, getNextPoNumber } from '../store';
-import { formatCurrency, getFYOptions, belongsToProfile, isUnassignedToBusiness, isInterstateSupply, localToday, roundQty, splitPurchaseTax, isModuleEnabled, businessKeyOf, getAllUnits } from '../utils';
+import { formatCurrency, getFYOptions, belongsToProfile, isUnassignedToBusiness, isInterstateSupply, localToday, roundQty, splitPurchaseTax, isModuleEnabled, businessKeyOf, getAllUnits, TDS_SECTIONS } from '../utils';
+import { purchaseTdsAmount } from '../utils/tdsTcs';
 import { purchaseTotals as calcPurchaseTotal, billFormFromPo } from '../utils/purchaseOrders';
 import PurchaseOrders from './PurchaseOrders';
 import TableExport from './TableExport';
@@ -79,12 +80,30 @@ const emptyForm = {
   // v1.10.83 (#112) - optional; see utils/costCentres.js
   costCentre: '',
   costCentreName: '',
+  // v1.10.83 - TDS you deduct from the supplier (194C, 194J...): worked out on
+  // the value before GST at tdsRate, or the amount typed in tdsAmountManual.
+  tdsOn: false,
+  tdsSection: '194C',
+  tdsRate: 1,
+  tdsAmountManual: '',
 };
 
 // v1.10.83 (#112) - calcItemTax / calcPurchaseTotal moved to
 // utils/purchaseOrders.js unchanged, shared with purchase orders.
 
 // v1.10.6 — audit L4: local copy removed, imported from utils above.
+
+// The TDS fields stored on a purchase bill (cleared when TDS is off).
+const purchaseTdsFields = (form, taxable) => {
+  if (!form.tdsOn) return { tdsAmount: 0, tdsSection: '', tdsRate: 0, tdsManual: false };
+  const manual = String(form.tdsAmountManual ?? '').trim();
+  return {
+    tdsSection: form.tdsSection || '194C',
+    tdsRate: parseFloat(form.tdsRate) || 0,
+    tdsAmount: purchaseTdsAmount(taxable, form.tdsRate, manual),
+    tdsManual: manual !== '',
+  };
+};
 
 export default function PurchaseBills() {
   const [purchases, setPurchases] = useState([]);
@@ -266,6 +285,10 @@ export default function PurchaseBills() {
       fromPo: purchase.fromPo || '',
       costCentre: purchase.costCentre || '',
       costCentreName: purchase.costCentreName || '',
+      tdsOn: (Number(purchase.tdsAmount) || 0) > 0,
+      tdsSection: purchase.tdsSection || '194C',
+      tdsRate: purchase.tdsRate ?? 1,
+      tdsAmountManual: purchase.tdsManual ? String(purchase.tdsAmount) : '',
     });
     setEditingId(purchase.id);
     setShowForm(true);
@@ -509,6 +532,12 @@ export default function PurchaseBills() {
       y += 2; doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(marginL + 100, y, marginR, y); y += 6;
       doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(0);
       doc.text('TOTAL', marginL + 100, y); doc.text(fmt(t.finalTotal), marginR, y, { align: 'right' });
+      if ((Number(purchase.tdsAmount) || 0) > 0) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); y += 6;
+        doc.text(`Less: TDS (${String(purchase.tdsSection || '').replace(/-(co|tech|pm)$/, '')})`, marginL + 100, y); doc.text('-' + fmt(purchase.tdsAmount), marginR, y, { align: 'right' }); y += 5;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Paid to supplier', marginL + 100, y); doc.text(fmt(t.finalTotal - purchase.tdsAmount), marginR, y, { align: 'right' });
+      }
 
       if (purchase.note) {
         y += 14; doc.setFontSize(9); doc.setFont('helvetica', 'italic'); doc.setTextColor(90);
@@ -578,6 +607,7 @@ export default function PurchaseBills() {
         interstate: !!form.interstate,
         note: form.note.trim(),
         ...centreFields(form.costCentre, form.costCentreName),
+        ...purchaseTdsFields(form, totals.taxable),
       };
       await savePurchase(purchase);
 
@@ -996,6 +1026,7 @@ export default function PurchaseBills() {
   const isPo = form.kind === 'po';
   const fromPoNumber = form.fromPo ? orders.find(o => o.id === form.fromPo)?.poNumber : '';
   const formTotals = calcPurchaseTotal(form.items, !isPo && form.applyRoundOff);
+  const formTds = !isPo && form.tdsOn ? purchaseTdsFields(form, formTotals.taxable).tdsAmount : 0;
 
   return (
     <div className="dashboard-container">
@@ -1123,6 +1154,14 @@ export default function PurchaseBills() {
                     with screenshot showing invisible total on Purchase Bill
                     view modal. Now uses --text so it flips with theme. */}
                 <span style={{ borderTop: '2px solid var(--text)', paddingTop: 6, textAlign: 'right', fontWeight: 700, fontSize: '1.05rem', color: 'var(--text)' }}>{formatCurrency(t.finalTotal)}</span>
+                {(Number(p.tdsAmount) || 0) > 0 && (
+                  <>
+                    <span style={{ color: 'var(--text-muted)' }}>Less: TDS ({String(p.tdsSection || '').replace(/-(co|tech|pm)$/, '')}{p.tdsRate ? ` @ ${p.tdsRate}%` : ''})</span>
+                    <span style={{ textAlign: 'right' }}>-{formatCurrency(p.tdsAmount)}</span>
+                    <span style={{ fontWeight: 600 }}>Paid to supplier</span>
+                    <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(t.finalTotal - p.tdsAmount)}</span>
+                  </>
+                )}
               </div>
               {p.note && <p style={{ fontSize: '0.82rem', fontStyle: 'italic', color: 'var(--text-muted)', marginTop: '1rem' }}>Note: {p.note}</p>}
               {/* Action bar */}
@@ -1418,7 +1457,39 @@ export default function PurchaseBills() {
                   </span>
                 )}
                 <span>Total: <strong>{formatCurrency(formTotals.finalTotal)}</strong></span>
+                {formTds > 0 && (
+                  <>
+                    <span>Less TDS: <strong>{formatCurrency(formTds)}</strong></span>
+                    <span>Paid to supplier: <strong>{formatCurrency(formTotals.finalTotal - formTds)}</strong></span>
+                  </>
+                )}
               </div>
+              {!isPo && (
+                <div style={{ marginTop: '0.6rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!form.tdsOn} onChange={e => updateField('tdsOn', e.target.checked)}
+                      style={{ width: 14, height: 14, accentColor: 'var(--primary)' }} />
+                    <span><strong>TDS deducted</strong> — you keep back income-tax TDS from this supplier's payment and deposit it yourself</span>
+                    <HelpButton title="TDS on a purchase bill" doc="purchases#purchase-tds" size={14} />
+                  </label>
+                  {form.tdsOn && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.5rem', marginTop: '0.4rem' }}>
+                      <select className="form-input" aria-label="TDS section" value={form.tdsSection}
+                        onChange={e => {
+                          const code = e.target.value;
+                          const sec = TDS_SECTIONS.find(x => x.code === code);
+                          setForm(prev => ({ ...prev, tdsSection: code, tdsRate: code === 'custom' ? prev.tdsRate : (sec?.rate ?? prev.tdsRate), tdsAmountManual: '' }));
+                        }}>
+                        {TDS_SECTIONS.map(x => <option key={x.code} value={x.code}>{x.label}</option>)}
+                      </select>
+                      <input type="number" step="any" min="0" max="100" className="form-input" aria-label="TDS rate %" placeholder="Rate %"
+                        value={form.tdsRate} onChange={e => setForm(prev => ({ ...prev, tdsRate: e.target.value, tdsAmountManual: '' }))} />
+                      <input type="number" step="any" min="0" className="form-input" aria-label="TDS amount" placeholder={`Amount (${formatCurrency(purchaseTdsAmount(formTotals.taxable, form.tdsRate))})`}
+                        value={form.tdsAmountManual} onChange={e => updateField('tdsAmountManual', e.target.value)} />
+                    </div>
+                  )}
+                </div>
+              )}
               {!isPo && (
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.78rem', cursor: 'pointer', marginTop: '0.6rem', color: '#475569' }}>
                 <input type="checkbox" checked={!!form.applyRoundOff}

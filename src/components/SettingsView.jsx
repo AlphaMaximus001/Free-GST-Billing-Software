@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getRegionMode, setRegionMode, getStockAlertSettings, saveStockAlertSettings, renameNumberSeries, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getCostCentres, saveCostCentres } from '../store';
 import { ensureToken, findOrCreateFolder, uploadJSON } from '../services/googleDrive';
-import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, findSameBusiness, businessKeyOf, stockDelta } from '../utils';
+import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, findSameBusiness, businessKeyOf, stockDelta, localToday } from '../utils';
+import { normaliseLutArn, isLikelyLutArn, lutFyOptions, fyOf } from '../utils/lut';
 // v1.10.36 — lucide's `Image` icon was imported as `Image`, which
 // SHADOWED the browser's `HTMLImageElement` constructor. Reported:
 // "Uncaught TypeError: et is not a constructor at onChange" on logo
@@ -1146,6 +1147,44 @@ export default function SettingsView({ onSaved }) {
                   <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
                     Both are optional (default 0). The portal lets you edit these while filing — you're just avoiding a schema-validation reject on upload.
                   </p>
+                </div>
+              )}
+              {/* v1.10.83 - LUT for exports / SEZ supplies (form GST RFD-11),
+                  one per financial year, per business. */}
+              {(profile.country || 'India') === 'India' && (
+                <div id="lut" className="form-group full-width" style={{ background: 'var(--bg-secondary)', padding: '0.85rem 1rem', borderRadius: 8, border: '1px solid var(--border)' }}>
+                  <label className="form-label" style={{ marginBottom: 6 }}>LUT for exports and SEZ supplies <HelpButton title="LUT for exports" doc="settings#lut" size={16} style={{ marginLeft: 6 }} /></label>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 0.6rem' }}>
+                    With a Letter of Undertaking (filed free on the GST portal, Form GST RFD-11, once per financial year) you bill exports and SEZ supplies without IGST. Invoices dated in the year below tick “under LUT” by themselves and print its ARN.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.6rem' }}>
+                    <div>
+                      <label className="form-label" htmlFor="lut-arn" style={{ fontSize: '0.72rem' }}>LUT ARN (acknowledgement number)</label>
+                      <input id="lut-arn" type="text" name="lutArn" className="form-input" maxLength={20}
+                        value={profile.lutArn || ''}
+                        onChange={(e) => setProfile(p => ({ ...p, lutArn: normaliseLutArn(e.target.value) }))}
+                        placeholder="e.g. AD290426123456X" style={profile.lutArn && !isLikelyLutArn(profile.lutArn) ? { borderColor: '#f59e0b' } : undefined} />
+                      {profile.lutArn && !isLikelyLutArn(profile.lutArn) && (
+                        <small style={{ color: '#d97706', fontSize: '0.7rem', display: 'block', marginTop: '0.2rem' }}>⚠ An ARN is usually 15 letters and digits, starting with AD. Check it against the portal's acknowledgement.</small>
+                      )}
+                    </div>
+                    <div>
+                      <label className="form-label" htmlFor="lut-fy" style={{ fontSize: '0.72rem' }}>Financial year it covers</label>
+                      <select id="lut-fy" name="lutFy" className="form-input" value={profile.lutFy || ''} onChange={handleChange}>
+                        <option value="">Choose the year</option>
+                        {[...new Set([...lutFyOptions(), profile.lutFy].filter(Boolean))].map(fy => <option key={fy} value={fy}>FY {fy}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label" htmlFor="lut-date" style={{ fontSize: '0.72rem' }}>Date filed (optional)</label>
+                      <input id="lut-date" type="date" name="lutDate" className="form-input" value={profile.lutDate || ''} onChange={handleChange} />
+                    </div>
+                  </div>
+                  {profile.lutArn && profile.lutFy && profile.lutFy !== fyOf(localToday()) && (
+                    <p style={{ fontSize: '0.72rem', color: 'var(--warn-text)', margin: '0.5rem 0 0' }}>
+                      This LUT is for FY {profile.lutFy}; today is in FY {fyOf(localToday())}. File a fresh LUT for the current year before your next export.
+                    </p>
+                  )}
                 </div>
               )}
             </div>

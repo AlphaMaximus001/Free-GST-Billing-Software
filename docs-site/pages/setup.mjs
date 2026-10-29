@@ -106,6 +106,21 @@ export default [
 </ul>
 </section>
 
+<section id="lut">
+<h2>LUT for exports and SEZ supplies</h2>
+<p>A second grey box inside Company Details, shown only when the country is India. Fill it in if you export, or sell to units in a Special Economic Zone (SEZ), <b>without charging IGST</b>.</p>
+<p><b>What a LUT is.</b> A Letter of Undertaking (form <b>GST RFD-11</b>) is a promise to the GST department that you will follow the export rules. With a LUT, exports and SEZ supplies are billed without IGST (they are "zero-rated"), so you do not pay the tax and then wait months for a refund. Without one, you must charge IGST and claim it back. It is free, filed online in a few minutes, and valid for <b>one financial year</b>: file a fresh one every April, before your first export of the year. How to file it, step by step: <a href="gst-basics.html#lut">GST basics: LUT</a>.</p>
+<div class="table-wrap"><table>
+  <tr><th>Field</th><th>What to put in</th></tr>
+  <tr><td>LUT ARN (acknowledgement number)</td><td>The ARN the GST portal gave you when you filed the LUT, such as <code>AD290426123456X</code>: usually 15 letters and digits starting with AD. Spaces are removed and letters made capital for you. If it does not look like an ARN, an amber note asks you to check it, but it is still saved.</td></tr>
+  <tr><td>Financial year it covers</td><td>The year you chose on the portal under <b>LUT Applied for Financial Year</b>, such as FY 2026-27.</td></tr>
+  <tr><td>Date filed (optional)</td><td>The date on the acknowledgement, for your records.</td></tr>
+</table></div>
+<p>Save with ${ui('Save Profile')} or ${ui('Save all changes')}. Each business in <a href="#business-profiles">Business Profiles</a> has its own LUT, because a LUT belongs to one GSTIN.</p>
+<p><b>What it does.</b> On a new invoice for a client abroad or an SEZ client, dated in that financial year, <b>Export under LUT (no IGST)</b> is ticked for you: no IGST is charged and the invoice prints the Rule 46 declaration with your ARN. See <a href="invoices.html#lut">Exports and SEZ supplies under a LUT</a>.</p>
+<div class="note tip"><strong>Something wrong?</strong><p>"This LUT is for FY 2025-26; today is in FY 2026-27": your LUT has run out. File a new one on the portal, then type its ARN and choose the new year here. Older invoices keep the ARN they were made with. I do not see this box: the country in Company Details is not India.</p></div>
+</section>
+
 <section id="payment-accounts">
 <h2>Payment Accounts: bank and UPI</h2>
 <p>The bank accounts and UPI IDs your clients pay into. The default one prints in the bank details block of every new invoice; with a UPI ID, rupee invoices also carry a QR code the client scans to pay the exact amount. Add every account you use: you pick which one goes on each invoice.</p>

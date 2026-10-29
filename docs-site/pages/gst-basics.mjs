@@ -368,8 +368,8 @@ ${src(a('https://tutorial.gst.gov.in/userguide/refund/Furnishing_of_Letter_of_Un
 <p><strong>In the app:</strong></p>
 <ul>
   <li>Set the client's country, or tick <b>SEZ</b> on a client in an SEZ: see <a href="clients.html#client-form">Adding and editing a client</a>.</li>
-  <li>Under a LUT, set each line's GST % to 0, so no IGST is added.</li>
-  <li>Put the declaration in the terms. The <b>Export / International (LUT)</b> preset gives you a starting text: replace its tax line with the wording above and your ARN (see <a href="invoices.html#terms-notes">Terms, notes and a private note</a>). The app looks for the words "LUT" or "Letter of Undertaking" in the terms to report an SEZ sale as without payment of tax.</li>
+  <li>Save your LUT's ARN and year in <a href="settings.html#lut">Settings, Company</a>. Invoices for such clients then tick <b>Export under LUT (no IGST)</b> by themselves: no IGST is added, and the declaration above prints with your ARN. Untick it to charge IGST; the "on payment" declaration prints instead. See <a href="invoices.html#lut">Exports and SEZ supplies under a LUT</a>.</li>
+  <li>The <b>Export / International (LUT)</b> terms preset adds payment and shipping terms for export invoices (see <a href="invoices.html#terms-notes">Terms, notes and a private note</a>).</li>
   <li>Bill in the client's currency if you like: see <a href="invoices.html#currency">Billing in another currency</a>.</li>
   <li>Exports to clients abroad are not in the app's GSTR-1 file. The app lists them, and you add them in Table 6A on the portal: see <a href="gst-returns.html#top-bar">the warnings above the tabs</a>.</li>
 </ul>

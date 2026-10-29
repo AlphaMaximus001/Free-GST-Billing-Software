@@ -217,12 +217,26 @@ export default [
   <li><strong>Record it</strong>Click ${ui('Record Payment')}. You see "Payment of ₹… recorded", the status becomes Partial or Paid, and the <a href="#receipt">payment receipt</a> opens, ready to print.</li>
 </ol>
 <p>${ui('Cancel')}, or a click outside the window, closes it without saving.</p>
-<p><b>TDS.</b> If the client deducts TDS (income tax) from your payment, the invoice records it (see <a href="invoices.html#tds-tcs">TDS and TCS</a>), and the balance here is already less that TDS. Paying that balance makes the invoice Paid.</p>
+<p><b>TDS.</b> If the invoice already shows TDS (see <a href="invoices.html#tds-tcs">TDS and TCS</a>), the balance here is already less that TDS, and paying that balance makes the invoice Paid. If the client deducted TDS the invoice does not show, record it here: see <a href="#payment-tds">TDS when recording a payment</a>.</p>
 <p><b>Overpayment.</b> If the amount is more than the balance, you are asked <b>Record as overpayment?</b>. ${ui('Yes, record overpayment')} keeps the extra as the client's credit, to use on <a href="invoices.html#client-credit">their next invoice</a>. The window then shows <b>Overpaid</b> in blue instead of a balance.</p>
 <p><b>Cancelled invoice.</b> A cancelled invoice cannot take a payment: you see "This invoice is cancelled. Change its status back before recording a payment." Undo the cancel first. On a cancelled or converted document that already has payments, the ${ui('₹')} button is called <b>Payment history</b> and opens the same window so you can see, reprint or fix them.</p>
 <figure><img src="assets/img/app-payment.png" alt="Recording the rest of a part-paid invoice. The earlier payment is under Payment History." loading="lazy"><figcaption>Recording the rest of a part-paid invoice. The earlier payment is under Payment History.</figcaption></figure>
 <div class="note tip"><strong>Something wrong?</strong>
 <p>"Enter a positive payment amount": the amount is empty, zero or not a number. A message "Reconciled 1 orphaned payment…" when the Dashboard opens means a receipt saved earlier had lost its link to the invoice; the app put the payment back on the invoice for you, and nothing else is needed. To record one payment that covers several invoices, record it on each invoice for its share.</p></div>
+</section>
+
+<section id="payment-tds">
+<h3>TDS when recording a payment</h3>
+<p>A business client often pays less than the invoice because it kept back income-tax TDS (for example 10% of the value before GST for professional fees under 194J) and deposited it against your PAN. Record that TDS so the invoice shows Paid instead of Partial for ever.</p>
+<p>On an Indian tax invoice, bill of supply or composition bill that does not already show TDS, the Record Payment window has a box <b>Client deducted TDS</b>:</p>
+<ol class="steps">
+  <li><strong>Tick it</strong>Tick <b>Client deducted TDS</b>. A section list and a rate box appear.</li>
+  <li><strong>Section and rate</strong>Pick the section the client used (it is on their payment advice or TDS certificate). The usual rate fills in; type another if needed. The line below shows the TDS amount and what the client now owes in all.</li>
+  <li><strong>Amount Received</strong>Type what actually reached your bank. Or leave it empty to record only the TDS, if you already recorded the payment.</li>
+  <li><strong>Record it</strong>Click ${ui('Record Payment')}. The TDS is saved on the invoice (as if you had ticked TDS under Customize), so it is owed only its Net Receivable, and it appears in <a href="reports.html#tds-by-clients">Reports, TDS &amp; TCS</a> for checking against your Form 26AS.</li>
+</ol>
+<p><b>Example.</b> Invoice ₹1,18,000 (₹1,00,000 + 18% GST). The client pays ₹1,08,000 and deducts ₹10,000 TDS under 194J. Tick <b>Client deducted TDS</b>, pick 194J at 10%, type 1,08,000 and record it: the invoice is Paid.</p>
+<p>To change or remove the TDS later, open the invoice and change TDS under ${ui('Customize')}.</p>
 </section>
 
 <section id="payment-history">
@@ -270,7 +284,7 @@ export default [
   <tr><td>${ui('⋯')} Duplicate</td><td>A new invoice with the same client and items, a new number and today's date. It starts Unpaid, with no payments. Handy for a client you bill the same things every month.</td></tr>
   <tr><td>${ui('⋯')} Print</td><td>Prints the invoice straight away: it opens for a moment, the print window appears, the print count goes up by one, and you are back on the Dashboard.</td></tr>
   <tr><td>${ui('⋯')} WhatsApp</td><td>Sends the invoice to the client. See <a href="#share">Sending an invoice by WhatsApp or email</a>.</td></tr>
-  <tr><td>${ui('⋯')} Send reminder</td><td>Shown while money is still owed. Opens WhatsApp with a payment reminder suited to the situation, as in <a href="#remind-all">Send Payment Reminders</a>. On a part-paid invoice it is called <b>Reminder (partial pending)</b> and asks for the balance.</td></tr>
+  <tr><td>${ui('⋯')} Send reminder</td><td>Shown only on tax invoices, bills of supply and composition bills while money is still owed (never on quotations, proformas, challans or credit notes). Opens WhatsApp with a payment reminder suited to the situation, as in <a href="#remind-all">Send Payment Reminders</a>. On a part-paid invoice it is called <b>Reminder (partial pending)</b> and asks for the balance.</td></tr>
   <tr><td>${ui('⋯')} Email</td><td>Opens your email program with the invoice details. See <a href="#share">Sending an invoice by WhatsApp or email</a>.</td></tr>
   <tr><td>${ui('⋯')} Cancel invoice</td><td>See <a href="#cancel">Cancelling an invoice</a>.</td></tr>
 </table>
@@ -316,7 +330,7 @@ export default [
 <p>Under GST an invoice number, once issued, must stay in your books, so an issued invoice is <b>cancelled</b>, never deleted. Cancel one that was made by mistake, or for a sale that did not happen. (If goods came back after a real sale, issue a <a href="invoices.html#credit-note">credit note</a> instead.)</p>
 <ol class="steps">
   <li><strong>Choose Cancel invoice</strong>In the ${ui('⋯')} menu on the row, click <b>Cancel invoice</b>. (Choosing <b>Cancelled</b> in the status dropdown does the same at once, without asking.)</li>
-  <li><strong>Confirm</strong>The window <b>Cancel this invoice?</b> explains what happens. Click ${ui('Cancel invoice')} to go ahead, or close it to keep the invoice.</li>
+  <li><strong>Confirm</strong>The window <b>Cancel this invoice?</b> explains what happens, and that you can undo it with the ${ui('Undo cancel')} arrow among the row's actions. Click ${ui('Cancel invoice')} to go ahead, or close it to keep the invoice.</li>
   <li><strong>Done</strong>You see "Invoice cancelled &amp; stock restored". The row shows <b>Cancelled</b> in grey.</li>
 </ol>
 <p>A cancelled invoice keeps its number but no longer counts in totals, reports or GST returns, and any stock it used goes back. If you saved or printed its PDF, the copy in the <code>Saved Invoices</code> folder gets <b>CANCELLED</b> across every page. It is never shown as overdue, and cannot take a payment.</p>

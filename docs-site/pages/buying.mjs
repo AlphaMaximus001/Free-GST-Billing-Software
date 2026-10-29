@@ -100,6 +100,17 @@ export default [
 <p><b>"Failed to save purchase"</b>: the app could not reach its data. See <a href="troubleshooting.html#saving">Saving problems</a>.</p></div>
 </section>
 
+<section id="purchase-tds">
+<h3>TDS on a purchase bill</h3>
+<p>If you must deduct income-tax TDS when you pay this supplier (a contractor under 194C, a professional under 194J, rent under 194I...), record it on the bill. Under the totals strip, tick <b>TDS deducted</b>:</p>
+<ol class="steps">
+  <li><strong>Section</strong>Pick the section. Its usual rate fills in.</li>
+  <li><strong>Rate or amount</strong>Check the <b>Rate %</b>: the TDS is worked out on the taxable value (before GST), and the amount box shows it as a hint. To use an exact figure instead, type it in the amount box.</li>
+  <li><strong>Check</strong>The strip shows <b>Less TDS</b> and <b>Paid to supplier</b> (the bill total less the TDS): that is what you pay the supplier. The bill's total itself does not change, and nor does the GST credit.</li>
+</ol>
+<p>The view and the PDF of the bill show the TDS and <b>Paid to supplier</b> under the total. Every bill with TDS is listed in <a href="reports.html#tds-on-purchases">Reports, TDS &amp; TCS</a>, totalled by section and quarter, for depositing the TDS and filing your Form 26Q. You need a TAN to deduct TDS; ask your CA whether a payment needs it.</p>
+</section>
+
 <section id="purchase-items">
 <h3>Items on the bill</h3>
 <p>Each row of <b>Items</b> is one line of the supplier's bill.</p>
