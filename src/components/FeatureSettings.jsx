@@ -186,6 +186,7 @@ export function FeaturesPanel({ features, regionMode }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
         {renderSection('main', 'Top of the menu')}
         {renderSection('bottom', 'Bottom of the menu')}
+        {renderSection('top', 'Buttons at the top right')}
       </div>
 
       <h4 style={{ margin: '1.25rem 0 0.5rem', fontSize: '0.92rem' }}>Features inside screens <HelpButton title="Features inside screens" doc="settings#features-inside-screens" size={16} style={{ marginLeft: 6 }} /></h4>

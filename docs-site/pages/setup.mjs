@@ -318,7 +318,7 @@ export default [
 
 <section id="features-menu">
 <h3>Menu: show, hide and reorder</h3>
-<p>The <b>Menu</b> part lists every item of the sidebar in two boxes, <b>Top of the menu</b> and <b>Bottom of the menu</b>, in the order they appear.</p>
+<p>The <b>Menu</b> part lists every item of the sidebar in two boxes, <b>Top of the menu</b> and <b>Bottom of the menu</b>, in the order they appear, and a third box, <b>Buttons at the top right</b>, for the User Guide, Notifications, Lock and Dark mode buttons.</p>
 <ul>
   <li>The tick box shows or hides the item.</li>
   <li>The ${ui('▲')} and ${ui('▼')} arrows on the left move the item up or down. ${ui('Default order')}, shown once you have moved something, puts the menu back in the usual order.</li>
@@ -346,7 +346,7 @@ export default [
 
 <section id="stock">
 <h2>Low-stock alerts</h2>
-<p>The ${ui('Stock')} tab. Warns you when a product is running out, so you reorder in time. It powers the 🔔 bell in the sidebar and the low-stock list on the Dashboard, and the Products screen colours a product amber when it is at or below the number you set.</p>
+<p>The ${ui('Stock')} tab. Warns you when a product is running out, so you reorder in time. It powers the 🔔 bell at the top right and the low-stock list on the Dashboard, and the Products screen colours a product amber when it is at or below the number you set.</p>
 <ol class="steps">
   <li><strong>Turn it on or off</strong><b>Show low-stock alerts</b> is ticked to start.</li>
   <li><strong>Pick the threshold</strong>Click a chip: <b>0</b> (only when fully out), <b>3</b> (very tight), <b>5</b> (recommended) or <b>10</b> (loose), or type any number from 0 in the box. The line above says <i>Alert when stock ≤ 5</i>.</li>
@@ -390,7 +390,7 @@ export default [
 </ol>
 <h3>When it is on</h3>
 <ul>
-  <li>${ui('Lock now')} locks the app straight away, when you step away. So do ${ui('Lock')} on the Dashboard, ${ui('Lock app')} in the sidebar and <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd> anywhere. Anything you were typing is still there after you unlock.</li>
+  <li>${ui('Lock now')} locks the app straight away, when you step away. So do ${ui('Lock')} on the Dashboard, the padlock at the top right and <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd> anywhere. Anything you were typing is still there after you unlock.</li>
   <li>${ui('Change PIN')} and ${ui('Turn off')} ask for the <b>Current PIN</b> first. ${ui('Cancel')} closes the form.</li>
   <li>After five wrong tries in a row, wait 30 seconds before the next.</li>
 </ul>

@@ -518,8 +518,55 @@ body {
    sidebar took most of the screen and squeezed every page into a sliver, so it
    now slides in from the left behind a menu button in a slim top bar and closes
    again once a page is picked. The desktop layout is unchanged. */
+/* v1.10.83 - Dark mode, Notifications, User guide and Lock at the top right of
+   every screen (they were in the sidebar). It sits in the content area's top
+   padding, so it costs almost no height. On phones the same buttons sit in
+   the phone top bar instead. */
+.app-topbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin: -1.25rem 0 0.6rem;
+}
+.topbar-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.topbar-btn:hover { color: var(--primary); background: var(--primary-light); }
+.topbar-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.topbar-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mobile-topbar .topbar-btn { flex-shrink: 0; border-color: transparent; background: rgba(255,255,255,0.08); color: inherit; }
+
 .mobile-topbar,
 .sidebar-backdrop { display: none; }
+@media (max-width: 768px) {
+  .app-topbar { display: none; }
+}
 @media (max-width: 768px) {
   .mobile-topbar {
     display: flex;
@@ -3507,7 +3554,8 @@ html:not([data-theme="dark"]) .profile-switcher-item:hover { background: rgba(15
 html:not([data-theme="dark"]) .profile-switcher-manage { border-top-color: var(--border); color: #64748b; }
 html:not([data-theme="dark"]) .server-status { background: rgba(15, 23, 42, 0.04); color: #64748b; }
 html:not([data-theme="dark"]) .mobile-topbar { background: #ffffff; color: #0f172a; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12); }
-html:not([data-theme="dark"]) .mobile-topbar-btn { background: rgba(15, 23, 42, 0.06); color: #0f172a; }
+html:not([data-theme="dark"]) .mobile-topbar-btn,
+html:not([data-theme="dark"]) .mobile-topbar .topbar-btn { background: rgba(15, 23, 42, 0.06); color: #0f172a; }
 
 /* v1.10.77 (#84) - PIN lock screen (AppLock.jsx) */
 .app-lock-screen {

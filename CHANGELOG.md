@@ -75,6 +75,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   report counts production by its date.
 
 ### Changed
+- **Dark mode, Notifications, User Guide and Lock moved to the top right** of
+  every screen as small buttons (on a phone, into the top bar), so the
+  sidebar holds only the screens. Settings → Features can hide or reorder
+  them.
 - **Settings opens as tabs**: one page per tab (Business type, Company,
   Profiles, Print & PDF, Features...) instead of one very long page.
 - **Every ? opens its guide at the right place**: the ? on each screen, each

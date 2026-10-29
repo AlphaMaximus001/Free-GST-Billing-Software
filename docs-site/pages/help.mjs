@@ -15,14 +15,14 @@ export default [
 <p>From top to bottom:</p>
 <ul>
   <li><strong>Your business</strong>, with a pencil to edit it. If you have more than one, click the name to <a href="#switch-business">switch</a>.</li>
-  <li><strong>The screens</strong>: Dashboard, New Invoice, Clients, Products, Expenses, Purchases, Recurring, Receipts, Reports, GST Returns, Income Tax, and <strong>User Guide</strong>, which opens this documentation in your browser (it needs internet). Features you <a href="settings.html#features">turn off</a> disappear from here.</li>
+  <li><strong>The screens</strong>: Dashboard, New Invoice, Clients, Products, Expenses, Purchases, Recurring, Receipts, Cash book, Reports, GST Returns and Income Tax. Features you <a href="settings.html#features">turn off</a> disappear from here.</li>
   <li><strong>Update to v…</strong>, when a new version is out.</li>
-  <li><strong>Notifications</strong>, <strong>Dark Mode</strong> or <strong>Light Mode</strong>, <a href="#support"><strong>Support &amp; About</strong></a>, <strong>Control Panel</strong> and <strong>Settings</strong>.</li>
+  <li><a href="#support"><strong>Support &amp; About</strong></a>, <strong>Control Panel</strong> and <strong>Settings</strong>.</li>
   <li>At the bottom, <b>App Ready</b> when all is well.</li>
 </ul>
 <p>At the end of the Dashboard, below the invoices, a small line shows the app's version, a link to DiceCodes and <a href="#support">Support</a>. It is never printed.</p>
 <p>The ☰ button beside the app name shrinks the sidebar to a slim strip of icons and gives the page more room; it is highlighted while the menu hides itself. Point at the strip to open it. Click ☰ again to keep the menu open.</p>
-<p>When a <a href="settings.html#lock">PIN</a> is set, <b>Lock app</b> in the sidebar locks the app.</p>
+<p><b>At the top right of every screen</b> are small buttons: <b>?</b> opens this User Guide in your browser (it needs internet), the 🔔 bell opens <a href="#notifications">Notifications</a>, the moon or sun switches <a href="#dark-mode">dark mode</a>, and, when a <a href="settings.html#lock">PIN</a> is set, the padlock locks the app. On a phone they sit in the bar at the top, beside the ☰ menu button. You can hide or reorder them in <a href="settings.html#features-menu">Settings → Features</a>.</p>
 <p>On a narrow screen, the sidebar folds away behind the ☰ menu button.</p>
 </section>
 
@@ -41,7 +41,7 @@ export default [
 
 <section id="notifications">
 <h2>Notifications</h2>
-<p>${ui('Notifications')} in the sidebar has a small red count when something needs you. It is your daily to-do list: who has not paid, what is due soon, which return to file, what to re-order. The app works it out by itself when it opens and again every 10 minutes; nothing is sent to you by SMS or email.</p>
+<p>The 🔔 bell at the top right of every screen has a small red count when something needs you. It is your daily to-do list: who has not paid, what is due soon, which return to file, what to re-order. The app works it out by itself when it opens and again every 10 minutes; nothing is sent to you by SMS or email.</p>
 <p>Click it to open the <b>Notifications</b> window. Each line is a button: click it and the window closes and takes you to the screen where you deal with it.</p>
 <div class="table-wrap"><table>
   <tr><th>Line</th><th>What it means</th><th>Clicking it opens</th></tr>
@@ -95,7 +95,7 @@ export default [
 
 <section id="dark-mode">
 <h2>Dark mode</h2>
-<p>${ui('Dark Mode')} in the sidebar switches the app to dark colours, and ${ui('Light Mode')} switches back. Invoices and PDFs always print in their normal colours.</p>
+<p>The moon button at the top right of every screen switches the app to dark colours, and the sun button switches back. Invoices and PDFs always print in their normal colours.</p>
 </section>
 
 <section id="install-as-app">
