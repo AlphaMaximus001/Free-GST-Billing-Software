@@ -4,7 +4,7 @@
 // this report reads every invoice and purchase, not just the open company's.
 import { useEffect, useState } from 'react';
 import { Package } from 'lucide-react';
-import { getAllBills, getAllProducts, getAllPurchases } from '../store';
+import { getAllBills, getAllProducts, getAllPurchases, getAllProductions } from '../store';
 import { localToday } from '../utils';
 import { closingStock, stockValueOf } from '../utils/products';
 import { toast } from './Toast';
@@ -24,11 +24,14 @@ export default function StockReport({ businessName }) {
   const [month, setMonth] = useState(localToday().slice(0, 7));
 
   useEffect(() => {
-    Promise.all([getAllProducts(), getAllBills(), getAllPurchases()])
-      .then(([products, bills, purchases]) => setData({
+    // v1.10.83 (#115) - production entries move stock too (always read, even
+    // with the feature off: entries saved earlier still moved stock).
+    Promise.all([getAllProducts(), getAllBills(), getAllPurchases(), getAllProductions().catch(() => [])])
+      .then(([products, bills, purchases, productions]) => setData({
         products: products || [],
         bills: bills || [],
         purchases: purchases || [],
+        productions: productions || [],
       }))
       .catch(() => toast('Failed to load stock', 'error'));
   }, []);
@@ -36,7 +39,7 @@ export default function StockReport({ businessName }) {
   if (!data) return <div className="glass-panel" style={{ padding: '1.25rem' }}>Loading stock…</div>;
 
   const asOf = monthEnd(month);
-  const qty = closingStock(data.products, data.bills, data.purchases, asOf);
+  const qty = closingStock(data.products, data.bills, data.purchases, asOf, data.productions);
   const rows = data.products
     .map((p) => ({ p, q: qty.get(p.id) ?? 0, ...stockValueOf(p, qty.get(p.id)) }))
     .sort((a, b) => String(a.p.name || '').localeCompare(String(b.p.name || '')));
@@ -97,7 +100,7 @@ export default function StockReport({ businessName }) {
         </div>
       )}
       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0 1.25rem 1rem', margin: 0 }}>
-        Worked back from today&apos;s stock using the dates of your invoices and purchase bills. Stock you typed in by hand on the Products screen has no date, so it counts as if it changed today.
+        Worked back from today&apos;s stock using the dates of your invoices, purchase bills{data.productions.length ? ' and production entries' : ''}. Stock you typed in by hand on the Products screen has no date, so it counts as if it changed today.
         Value is at purchase price; * means no purchase price is saved, so the selling price is used. Negative stock is shown in red and not counted in the total.
       </p>
     </div>

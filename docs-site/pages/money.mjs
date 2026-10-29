@@ -241,7 +241,7 @@ export default [
 <h2>Stock</h2>
 <p>Closing stock of every product at the end of a month, and what it is worth. Choose the month; the current month shows today's stock.</p>
 <ul>
-  <li><b>Closing qty</b> is worked back from today's stock, using the dates of your invoices and purchase bills.</li>
+  <li><b>Closing qty</b> is worked back from today's stock, using the dates of your invoices, purchase bills and <a href="products.html#manufacturing">production entries</a>.</li>
   <li><b>Rate</b> is the purchase price. A product with no purchase price is valued at its selling price, marked with *.</li>
   <li><b>Value</b> is quantity × rate, with the <b>Total stock value</b> at the bottom. Negative stock shows in red and is not added in.</li>
 </ul>

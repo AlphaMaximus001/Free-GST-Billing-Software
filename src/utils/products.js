@@ -36,8 +36,10 @@ export const bulkRowToProduct = (product, edits) => {
 // and add back what invoices dated after it took out (each invoice's own
 // stock record, see appliedStock). Stock typed in by hand on the Products
 // screen has no date, so it counts as if it happened today.
+// v1.10.83 (#115) - production entries dated after it are undone the same
+// way, from each entry's own stock record (raw materials back, made goods out).
 // Returns Map(productId -> quantity).
-export const closingStock = (products, bills, purchases, asOf) => {
+export const closingStock = (products, bills, purchases, asOf, productions = []) => {
   const qty = new Map((products || []).map((p) => [p.id, Number(p.stock) || 0]));
   const byName = new Map((products || []).map((p) => [String(p.name || '').trim().toLowerCase(), p.id]));
   for (const pur of purchases || []) {
@@ -51,6 +53,12 @@ export const closingStock = (products, bills, purchases, asOf) => {
     if (!b?.invoiceDate || b.invoiceDate <= asOf || isCancelledBill(b)) continue;
     for (const [id, change] of Object.entries(appliedStock(b))) {
       if (qty.has(id)) qty.set(id, qty.get(id) - change);
+    }
+  }
+  for (const pr of productions || []) {
+    if (!pr?.date || pr.date <= asOf) continue;
+    for (const [id, change] of Object.entries(pr.stockApplied || {})) {
+      if (qty.has(id)) qty.set(id, qty.get(id) - (Number(change) || 0));
     }
   }
   for (const [id, q] of qty) qty.set(id, Math.round(q * 1000) / 1000);

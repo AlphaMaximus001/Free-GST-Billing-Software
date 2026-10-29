@@ -312,6 +312,30 @@ A4 Paper Ream,4802,280,12,Nos,50
 Website Maintenance,998314,5000,18,Month,0</code></pre>
 <p>Products you already have (same name) are skipped, so importing the same file twice is safe.</p>
 </section>
+
+<section id="manufacturing">
+<h2>Manufacturing: making products from raw materials</h2>
+<p>If you make what you sell, the app can use up raw materials and add the finished product to stock in one step. Turn it on first: <a href="settings.html#modules">Settings → Features</a>, tick ${ui('Manufacturing (bill of materials)')}. It is off to start, and turning it off again hides it without deleting anything.</p>
+<h3>1. Give the product its raw materials (bill of materials)</h3>
+<p>Add each raw material as a normal product, with its purchase price and stock. Then open the finished product with ${ui('Edit')}, tick ${ui('Made here (from raw materials)')}, and for each material choose the product and type how much goes into <b>one</b> unit made. ${ui('Add material')} adds a line; the cross removes one. ${ui('Cost per unit')} below the list is the materials' purchase prices times those quantities. Click ${ui('Update')}.</p>
+<p>A product cannot be in its own list, every quantity must be more than 0, and two products cannot use each other (chair uses seat, seat uses chair): the app tells you which and does not save.</p>
+<h3>2. Record what you made</h3>
+<p>Click ${ui('Make')} at the top of Products. Choose the <b>Product made</b>, type the <b>Quantity made</b>, the <b>Date</b> and an optional <b>Note</b>. The table shows each raw material, how much will be used, the stock now and what will be left, and the finished product's stock after. Click ${ui('Save production')}.</p>
+<p>If a raw material would go below zero, it is shown in red and you are asked to confirm with ${ui('Save anyway')}. That is fine when you record production late and have not entered the purchase bill yet.</p>
+<h3>Worked example</h3>
+<p>Kaveri Stationers makes chairs. One chair takes 4 chair legs (₹50 each), 1 seat (₹300) and 0.2 kg screws (₹400 a kg), so the cost per unit is 4 × 50 + 300 + 0.2 × 400 = <b>₹580</b>. Stock before: 100 legs, 20 seats, 5 kg screws, 3 chairs.</p>
+<div class="table-wrap"><table>
+  <tr><th>Make 10 chairs</th><th>Used</th><th>Stock after</th></tr>
+  <tr><td>Chair leg</td><td>40</td><td>60</td></tr>
+  <tr><td>Seat</td><td>10</td><td>10</td></tr>
+  <tr><td>Screws</td><td>2 kg</td><td>3 kg</td></tr>
+  <tr><td>Chair (made)</td><td>+10</td><td>13</td></tr>
+</table></div>
+<p>The entry's cost of materials is 10 × ₹580 = ₹5,800.</p>
+<h3>The production list</h3>
+<p>Under the product table, <b>Production</b> lists the entries of the business you have open, newest first. ${ui('From')} and ${ui('To')} limit the dates. The eye button shows the materials used, at the purchase prices of the day it was saved. The bin button deletes an entry after asking, and puts its stock back exactly: in the example, 40 legs, 10 seats and 2 kg screws back, 10 chairs out.</p>
+<p>An entry cannot be edited: to change one, delete it and enter it again. The <a href="reports.html#stock">stock report</a> counts production by its date.</p>
+</section>
 `,
 },
 
