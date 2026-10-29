@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.10.83] - unreleased
 
 ### Added
+- **Products: Goods or Service.** The product form asks *This is a: Goods
+  (stock counted) / Service (no stock)*. A service has no stock box and is
+  never counted: selling it, buying it on a purchase bill, importing it or
+  using it in manufacturing moves no stock, and it never shows *Out of
+  Stock*, never appears in low-stock alerts, the bell or the stock report.
+  Its unit list shows service units (Hrs, Day, Month, Project, Page...) and
+  the code box says *SAC*. Products you already have stay Goods; open one and
+  pick *Service* to switch it. (#121, thanks @apfx007)
+- **Sample files for importing Products and Clients.** *Import CSV* now opens
+  a window with *Download sample file* (the exact column headings and two
+  demo rows), shows how many will be added and any row with a problem before
+  anything is saved, and points to *Dashboard → CSV import / export* for old
+  invoices. The products file has a *Type* column (Goods or Service), and the
+  Products CSV export imports straight back. (#121, thanks @apfx007)
 - **"Is it safe?"** A short *Safe and private* note on the first welcome
   screen and on Support & About (your data stays on this computer, no account,
   works offline, open source), linking to a new help page that answers the
@@ -152,6 +166,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wording.
 
 ### Fixed
+- **"Out of Stock" on things whose stock was never entered.** A product with
+  a blank stock is now "not counted" (shown as a dash), not 0; the Dashboard
+  low-stock strip, the bell and the products list all agree. A blank Stock box
+  in the form or in Bulk edit no longer saves 0. (#121, thanks @apfx007)
 - **GSTR-3B put supplies to SEZ units in 3.1(a)**; as zero-rated supplies they
   belong in 3.1(b) with exports (CBIC Circular 147/03/2021-GST). They are now
   there, in rupees, with their IGST if paid; the tax payable is unchanged.

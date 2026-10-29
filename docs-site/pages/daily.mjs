@@ -357,10 +357,11 @@ export default [
 
 <section id="csv">
 <h2>Importing and exporting invoices as CSV</h2>
-<p>For moving many invoices in from Excel, Tally or another program, or out to your CA, in one go. A CSV file is a plain spreadsheet file that Excel and Google Sheets can open and save.</p>
+<p>For moving many invoices in from Excel, Tally or another program, including <b>old invoices</b> from before you started using the app, or out to your CA, in one go. A CSV file is a plain spreadsheet file that Excel and Google Sheets can open and save.</p>
 <ol class="steps">
   <li><strong>Open it</strong>Click ${ui('CSV import / export')} at the top of the Dashboard. The window <b>Sales invoices: CSV import / export</b> opens.</li>
   <li><strong>Start from the template</strong>${ui('Template')} downloads <code>Sales-import-template.csv</code> with the right columns and one example invoice of two items. Open it in Excel or Google Sheets, replace the example with your invoices, and save it as <b>CSV (Comma delimited)</b>.</li>
+  <li><strong>Fill in your invoices</strong>One row per item; an invoice of three items is three rows with the same invoice number. Write the client name and invoice date on each invoice's first row. The table below says what goes in each column. Save as CSV again when done.</li>
   <li><strong>Choose the two options</strong><b>Take sold quantities out of product stock</b> (off to start): tick it for new sales; leave it off for old invoices whose stock you have already counted. <b>Add new clients to Clients</b> (on to start): clients not yet saved are added to your client list.</li>
   <li><strong>Choose the file</strong>${ui('Choose CSV file')} reads it and shows what will happen <b>before</b> anything is saved: the file name, how many invoices are ready, how many already exist and will be skipped, how many new clients there are, any warning about dates, and every invoice with a problem.</li>
   <li><strong>Import</strong>Click ${ui('Import')} (it shows the number ready, such as <b>Import 25</b>). It says "Importing…" while it works, then a message such as "25 invoices imported · 2 already there, skipped". The list refreshes by itself.</li>

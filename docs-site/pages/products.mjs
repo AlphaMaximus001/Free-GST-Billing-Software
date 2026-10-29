@@ -31,7 +31,7 @@ export default [
   <tr><td>Rate</td><td>The selling price.</td></tr>
   <tr><td>GST %</td><td>The GST rate.</td></tr>
   <tr><td>Unit</td><td>Pcs, Kg, Hrs and so on.</td></tr>
-  <tr><td>Stock</td><td>How many you have. <b>Out of Stock</b> in red at zero or below; the number in amber when it is at or below your <a href="#low-stock">low-stock threshold</a>.</td></tr>
+  <tr><td>Stock</td><td>How many you have. <b>Out of Stock</b> in red at zero or below; the number in amber when it is at or below your <a href="#low-stock">low-stock threshold</a>. <b>Service</b> for a <a href="#goods-or-service">service</a>, which has no stock, and a dash (-) for goods whose stock was never entered: neither is ever out of stock.</td></tr>
   <tr><td>Actions</td><td>The pencil (<b>Edit</b>) opens the product form; the bin (<b>Delete</b>) deletes it after asking.</td></tr>
 </table></div>
 <p>Products are shared by all your businesses, so each business sees the same list and the same stock.</p>
@@ -39,8 +39,8 @@ export default [
 
 <section id="product-export">
 <h3>Printing or exporting the list</h3>
-<p>${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} beside the table title save the products shown, with name, HSN/SAC, purchase price, selling price, GST %, unit and stock. Search first to save only some. ${ui('Print / PDF')} opens the print window, where you can choose a printer or <b>Save as PDF</b>. The buttons are hidden during a bulk edit.</p>
-<p>A CSV saved here can be opened in Excel, and is a handy way to send your price list to an accountant.</p>
+<p>${ui('Print / PDF')}, ${ui('Excel')} and ${ui('CSV')} beside the table title save the products shown, with name, type (Goods or Service), HSN/SAC, purchase price, selling price, GST %, unit and stock. Search first to save only some. ${ui('Print / PDF')} opens the print window, where you can choose a printer or <b>Save as PDF</b>. The buttons are hidden during a bulk edit.</p>
+<p>A CSV saved here can be opened in Excel, and is a handy way to send your price list to an accountant. It can also be brought back in with ${ui('Import CSV')}, or into another copy of the app.</p>
 </section>
 
 <section id="product-delete">
@@ -54,25 +54,46 @@ export default [
 <ol class="steps">
   <li><strong>Open the form</strong>Click ${ui('Add Product')}. To change a product, click its pencil instead; the form opens as <b>Edit Product</b>.</li>
   <li><strong>Name it</strong>Type the name as you want it printed on the invoice, such as "A4 Paper Ream 75 GSM" or "Website Maintenance".</li>
+  <li><strong>Goods or service</strong>Under <b>This is a</b>, leave <b>Goods (stock counted)</b> for things you keep on a shelf, or click <b>Service (no stock)</b> for work you do, such as printing, repairs or consulting. See <a href="#goods-or-service">Goods or service</a>.</li>
   <li><strong>Codes and prices</strong>Fill in the HSN or SAC code, the purchase price, the selling price and the GST %.</li>
-  <li><strong>Unit and stock</strong>Choose the unit and type how many you have today.</li>
+  <li><strong>Unit and stock</strong>Choose the unit and, for goods, type how many you have today. A service has no stock box.</li>
   <li><strong>Save</strong>Click ${ui('Save')} (or ${ui('Update')} when editing). You see "Product added" or "Product updated", and it appears in the list.</li>
 </ol>
 <p>${ui('Cancel')} closes the form without saving. So does clicking outside it, so finish and save before you click elsewhere.</p>
 <div class="table-wrap"><table>
   <tr><th>Field</th><th>What to know</th></tr>
   <tr><td>Product / Service Name *</td><td>Required. Two products should not share a name: invoices, purchase bills and imports find products by name.</td></tr>
-  <tr><td>HSN / SAC Code</td><td>HSN for goods, SAC for services. See <a href="#product-hsn">HSN and SAC codes</a>.</td></tr>
+  <tr><td>This is a</td><td><b>Goods (stock counted)</b> (to start) or <b>Service (no stock)</b>. See <a href="#goods-or-service">Goods or service</a>.</td></tr>
+  <tr><td>HSN / SAC Code</td><td>HSN for goods, SAC for services. For a service the box is labelled <b>SAC Code</b>. See <a href="#product-hsn">HSN and SAC codes</a>.</td></tr>
   <tr><td>Purchase Price</td><td>What you pay the supplier for one unit. Filled in on new purchase bills, used to value your stock and to cost things you make.</td></tr>
   <tr><td>Selling Price</td><td>What you charge for one unit. Filled in on new invoices, and shown as the <b>Rate</b> in the list. Type it the same way your invoices work: before GST, unless you make <a href="invoices.html#tax-inclusive">tax-inclusive</a> invoices.</td></tr>
   <tr><td>GST %</td><td>The GST rate, such as 5 or 18. 0 to 100; blank counts as 0. Since 22 September 2025 most goods are at 5%, 18% or 40%.</td></tr>
   <tr><td>Unit</td><td>Pcs to start. Pcs, Nos, Kg, g, Tonne, Ltr, ml, Mtr, cm, Ft, In, Sq.ft, Sq.m, Hrs, Day, Week, Month, Year, Visit, Session, Project, Word, Page, Box, Dozen, Pair, Set, Bag, Roll, Bottle, and your own <a href="invoices.html#items">custom units</a>, marked ★.</td></tr>
-  <tr><td>Stock Quantity</td><td>How many you have now. After this, sales and purchases change it for you; see <a href="#stock">How stock is counted</a>.</td></tr>
+  <tr><td>Stock Quantity</td><td>Goods only. How many you have now. After this, sales and purchases change it for you; see <a href="#stock">How stock is counted</a>. Left blank, the stock is <b>not counted</b>: the list shows a dash, never <b>Out of Stock</b>, until you type a number, buy it on a purchase bill or sell it.</td></tr>
   <tr><td>Description (optional)</td><td>For your own reference. It shows when you point at the name in the list.</td></tr>
   <tr><td>Made here (from raw materials)</td><td>Only when manufacturing is turned on. See <a href="#bill-of-materials">Bill of materials</a>.</td></tr>
 </table></div>
 <p>Changing a product's price or GST % does not change invoices already made. New invoices use the new figures.</p>
-<div class="note tip"><strong>Something wrong?</strong><p>"Product name is required": fill in the name. "GST % must be between 0 and 100": type just the number, such as 18, not 18% or 0.18.</p><p>A service shows <b>Out of Stock</b> in red: services have no stock, so you can ignore it. Selling one is still recorded normally.</p></div>
+<div class="note tip"><strong>Something wrong?</strong><p>"Product name is required": fill in the name. "GST % must be between 0 and 100": type just the number, such as 18, not 18% or 0.18.</p><p>A service shows <b>Out of Stock</b> in red: it was saved as Goods (all products made before version 1.10.83 are). Click its pencil, choose <b>Service (no stock)</b> and click ${ui('Update')}.</p></div>
+</section>
+
+<section id="goods-or-service">
+<h3>Goods or service</h3>
+<p>Every product is either <b>Goods</b>, things you buy, keep and sell, whose stock is counted, or a <b>Service</b>, work you do, such as printing, repairs, design, consulting or transport, which has no stock.</p>
+<div class="table-wrap"><table>
+  <tr><th></th><th>Goods (stock counted)</th><th>Service (no stock)</th></tr>
+  <tr><td>Stock box in the form</td><td>Yes</td><td>No</td></tr>
+  <tr><td>Selling it on an invoice</td><td>Takes the quantity out of stock</td><td>Moves no stock, and never says "out of stock"</td></tr>
+  <tr><td>Buying it on a purchase bill</td><td>Adds the quantity to stock</td><td>Moves no stock</td></tr>
+  <tr><td>Low-stock alerts, the bell, the Dashboard low-stock strip, the stock report</td><td>Included</td><td>Never included</td></tr>
+  <tr><td>Manufacturing</td><td>Can be a raw material or be made here</td><td>Neither</td></tr>
+  <tr><td>Code box</td><td>HSN / SAC Code</td><td>SAC Code</td></tr>
+  <tr><td>Unit list</td><td>Every unit</td><td>Service units first (Hrs, Day, Month, Project, Nos, Page...). A new service starts on Hrs; change it to whatever you bill by.</td></tr>
+  <tr><td>Stock column in the list</td><td>The count, or <b>Out of Stock</b></td><td><b>Service</b></td></tr>
+</table></div>
+<p><b>Products you already have</b> stay Goods. To switch one, click its pencil, choose <b>Service (no stock)</b> and click ${ui('Update')}; any stock it had is dropped. To switch back, choose <b>Goods</b> and type its stock.</p>
+<p>On an invoice, picking a service from your products fills in that line's SAC, unit, rate and GST; other lines are not touched. For a service billed as one fixed fee, with no quantity on the invoice, see <a href="invoices.html#goods-services">Goods, services or both</a>.</p>
+<p>When importing products from a spreadsheet, a <code>Type</code> column with <code>Service</code> makes the row a service. See <a href="#import">Importing products</a>.</p>
 </section>
 
 <section id="product-hsn">
@@ -112,6 +133,7 @@ export default [
   <li><strong>Making</strong>: a <a href="#make-production">production entry</a> uses up raw materials and adds the finished product.</li>
 </ul>
 <p><b>Out of Stock</b> shows in red at zero or below. Purchases and deletions never take stock below zero; selling more than you have does, so you notice.</p>
+<p>A <a href="#goods-or-service">service</a> is never counted. Goods whose stock box was left blank are not counted either until stock first moves: a purchase bill adds to them from zero, and a sale takes them below zero, so you notice.</p>
 <p>The <a href="reports.html#stock">stock report</a> shows each product's stock and value on any date.</p>
 </section>
 
@@ -133,29 +155,35 @@ export default [
 
 <section id="import">
 <h2>Importing products from a spreadsheet</h2>
-<p>Have your price list in Excel, or moving from another program? ${ui('Import CSV')} adds all the products at once.</p>
+<p>Have your price list in Excel, or moving from another program? ${ui('Import CSV')} adds all the products and services at once.</p>
 <ol class="steps">
-  <li><strong>Prepare the sheet</strong>Put the column headings in the first row and one product per row below.</li>
-  <li><strong>Save as CSV</strong>In Excel, <b>File → Save As → CSV (Comma delimited)</b> or <b>CSV UTF-8</b>. In Google Sheets, <b>File → Download → Comma-separated values</b>.</li>
-  <li><strong>Import</strong>Click ${ui('Import CSV')} on the Products screen and choose the file.</li>
-  <li><strong>Check</strong>You see "Imported 40 product(s)", plus how many were skipped, and they appear in the list.</li>
+  <li><strong>Open the window</strong>Click ${ui('Import CSV')} on the Products screen. The window <b>Import products from CSV</b> opens.</li>
+  <li><strong>Get the sample file</strong>Click ${ui('Download sample file')}. <code>Products-sample.csv</code> lands in your Downloads folder, with the right column headings and two demo rows: a product (Goods) and a service.</li>
+  <li><strong>Fill it in</strong>Open it in Excel or Google Sheets. Replace the two demo rows with your own, one product or service per row. Keep the first row (the headings) as it is.</li>
+  <li><strong>Save as CSV</strong>In Excel, <b>File → Save As → CSV UTF-8 (Comma delimited)</b> or <b>CSV (Comma delimited)</b>. In Google Sheets, <b>File → Download → Comma-separated values</b>.</li>
+  <li><strong>Choose the file</strong>Click ${ui('Choose CSV file')}. Nothing is saved yet: the window shows how many are ready, how many are already in your list (skipped), and every row with a problem.</li>
+  <li><strong>Import</strong>Click ${ui('Import')} (it shows the number, such as <b>Import 40</b>). You see "Imported 40 products", and they appear in the list.</li>
 </ol>
-<p>The headings the app reads (small or capital letters):</p>
-<table>
+<p>The columns (headings in small or capital letters, in any order; spaces and % do not matter):</p>
+<div class="table-wrap"><table>
   <tr><th>Column heading</th><th>Holds</th></tr>
-  <tr><td><code>name</code> (or <code>product</code>, <code>product name</code>)</td><td>Required. Rows without a name are skipped.</td></tr>
-  <tr><td><code>hsn</code> (or <code>hsn code</code>, <code>sac</code>)</td><td>HSN or SAC code</td></tr>
-  <tr><td><code>rate</code> (or <code>price</code>)</td><td>Selling price</td></tr>
-  <tr><td><code>gst%</code> (or <code>tax%</code>, <code>taxpercent</code>, <code>tax</code>)</td><td>GST rate, such as 18. Note: no space before the %.</td></tr>
-  <tr><td><code>unit</code></td><td>Nos if left out</td></tr>
-  <tr><td><code>stock</code> (or <code>quantity</code>)</td><td>Opening stock</td></tr>
-  <tr><td><code>description</code></td><td>Optional</td></tr>
-</table>
-<pre><code>name,hsn,rate,gst%,unit,stock
-A4 Paper Ream,4802,280,12,Nos,50
-Website Maintenance,998314,5000,18,Month,0</code></pre>
-<p>Products you already have (same name, any capitals) are skipped, and so are repeats inside the file, so importing the same file twice is safe. A purchase price is not imported: add it afterwards with ${ui('Bulk edit')}. Write the unit exactly as in the app's list (Kg, Ltr, Pcs), so the GST returns get the right unit code.</p>
-<div class="note tip"><strong>Something wrong?</strong><p>"CSV file is empty or has no data rows" or "Failed to parse CSV file": the file is not a plain CSV, or the headings are not in the first row. An <code>.xlsx</code> file renamed to <code>.csv</code> does not work. See <a href="troubleshooting.html#csv-import">A CSV import did not work</a>.</p><p>Products came in with no GST rate: the heading must be <code>gst%</code>, not <code>gst %</code> or <code>GST Rate</code>.</p></div>
+  <tr><td><code>Name</code> (or <code>Product</code>, <code>Product Name</code>, <code>Item</code>)</td><td>Required. Rows without a name are skipped.</td></tr>
+  <tr><td><code>Type</code></td><td><code>Goods</code> or <code>Service</code>. Blank means Goods. A service gets no stock. See <a href="#goods-or-service">Goods or service</a>.</td></tr>
+  <tr><td><code>HSN/SAC</code> (or <code>HSN</code>, <code>SAC</code>, <code>HSN Code</code>)</td><td>HSN or SAC code</td></tr>
+  <tr><td><code>Unit</code></td><td>Nos if left out. Write it as in the app's list (Kg, Ltr, Pcs, Hrs, Page), so the GST returns get the right unit code.</td></tr>
+  <tr><td><code>Purchase Price</code> (or <code>Cost</code>)</td><td>What you pay for one unit</td></tr>
+  <tr><td><code>Selling Price</code> (or <code>Rate</code>, <code>Price</code>)</td><td>What you charge for one unit</td></tr>
+  <tr><td><code>GST %</code> (or <code>GST Rate</code>, <code>Tax %</code>)</td><td>GST rate, such as 18. 0 to 100.</td></tr>
+  <tr><td><code>Stock</code> (or <code>Quantity</code>, <code>Opening Stock</code>)</td><td>Opening stock of goods. Leave it blank for a service, or for goods you do not count.</td></tr>
+  <tr><td><code>Description</code></td><td>Optional</td></tr>
+</table></div>
+<p>The sample file looks like this:</p>
+<pre><code>Name,Type,HSN/SAC,Unit,Purchase Price,Selling Price,GST %,Stock,Description
+Demo A4 Paper Ream 75 GSM,Goods,4802,Nos,220,280,18,50,Sample goods row - replace with your own
+Demo Printing service,Service,998912,Page,,5,18,,Sample service row - a service has no stock</code></pre>
+<p>Products you already have (same name, any capitals) are skipped, and so are repeats inside the file, so importing the same file twice is safe. The CSV saved by the ${ui('CSV')} button above the list uses the same columns, so you can export, edit in Excel and import into another copy of the app.</p>
+<div class="note info"><p><b>Old invoices</b> are imported somewhere else: on the Dashboard, with ${ui('CSV import / export')}, which has its own template. See <a href="dashboard.html#csv">Importing and exporting invoices as CSV</a>. The link at the bottom of the import window goes there too.</p></div>
+<div class="note tip"><strong>Something wrong?</strong><p>A row is listed as a problem, such as "Row 4 (Tea): GST % must be 0 to 100" or "Type must be Goods or Service": fix that row in the file and choose it again (the rows already imported are skipped). Nothing is read: the file is not a plain CSV, or the headings are not in the first row. An <code>.xlsx</code> file renamed to <code>.csv</code> does not work. See <a href="troubleshooting.html#csv-import">A CSV import did not work</a>.</p></div>
 </section>
 
 <section id="manufacturing">

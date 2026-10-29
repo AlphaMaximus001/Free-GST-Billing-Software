@@ -82,6 +82,7 @@ export default [
   <tr><td>🔀 Mixed</td><td>Every unit, unfiltered.</td><td>Selling goods and doing the work, such as supply and installation</td></tr>
 </table></div>
 <p>Your own custom units show in every mode. The choice is remembered for your next invoice.</p>
+<p><b>A service with no quantity (a fixed fee).</b> Keep the line's quantity at 1 and type the fee as the rate. Then click ${ui('Customize')} and untick <b>Qty column</b> (see <a href="invoice-options.html#show-items">Items table</a>): the invoice prints the item and its amount with no Qty column. Untick <b>Rate column</b> too if you want only the amount. Totals and GST do not change. The choice carries on to your next new invoices, so tick it again for an invoice that needs quantities; invoices already saved keep their own setting.</p>
 <p>In <b>Services</b> mode the unit list starts with the units services use most: Hrs, Day, Month, Project and Nos. The HSN/SAC box of each line is labelled <b>SAC</b>, and the unit is not printed next to the quantity unless you turn it on (see <a href="invoice-options.html#show-items">Unit next to Qty</a>).</p>
 </section>
 
