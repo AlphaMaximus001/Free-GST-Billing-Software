@@ -117,6 +117,7 @@ export default [
 <section id="total-invoiced">
 <h3>Total Invoiced</h3>
 <p>The grand total of your sales, <b>including GST</b>: the final amount printed on each invoice, added up, less credit notes. It is what you have billed, not what you have received.</p>
+<p>When you bill in more than one currency, each currency has its own line, and a small line under them gives <b>≈ ₹ in all</b>: every invoice in rupees at its own exchange rate. Invoices without a rate are left out of that line and counted beside it.</p>
 </section>
 
 <section id="tax-collected">
@@ -225,6 +226,20 @@ export default [
 <p>"Enter a positive payment amount": the amount is empty, zero or not a number. A message "Reconciled 1 orphaned payment…" when the Dashboard opens means a receipt saved earlier had lost its link to the invoice; the app put the payment back on the invoice for you, and nothing else is needed. To record one payment that covers several invoices, record it on each invoice for its share.</p></div>
 </section>
 
+<section id="payment-foreign">
+<h3>Payments from abroad</h3>
+<p>On an invoice billed in another currency (for example US dollars), the ${ui('Record Payment')} window has an extra, optional box, <b>Received from abroad</b>:</p>
+<div class="table-wrap"><table>
+  <tr><th>Box</th><th>What to type</th></tr>
+  <tr><td>Amount Received</td><td>The amount in the invoice's currency, as before (for example 1,000 USD). This is what marks the invoice paid.</td></tr>
+  <tr><td>Credited to your bank (₹)</td><td>The rupees that reached your account, from your bank statement.</td></tr>
+  <tr><td>Bank charges (₹)</td><td>What the banks took on the way, if anything.</td></tr>
+  <tr><td>FIRC / e-BRC number</td><td>The number on the Foreign Inward Remittance Certificate or e-BRC your bank issues. For an export of services it is the proof you were paid in foreign exchange; keep it with the invoice.</td></tr>
+</table></div>
+<p>The window shows the rate this works out to. The rupees and the FIRC number are saved with the payment and its receipt, and show in the payment history. They do not change the invoice or its GST figures, which stay at the invoice's own exchange rate.</p>
+<p>The <b>Client deducted TDS</b> box is not offered for a client outside India: foreign clients do not deduct Indian TDS.</p>
+</section>
+
 <section id="payment-tds">
 <h3>TDS when recording a payment</h3>
 <p>A business client often pays less than the invoice because it kept back income-tax TDS (for example 10% of the value before GST for professional fees under 194J) and deposited it against your PAN. Record that TDS so the invoice shows Paid instead of Partial for ever.</p>
@@ -237,6 +252,7 @@ export default [
 </ol>
 <p><b>Example.</b> Invoice ₹1,18,000 (₹1,00,000 + 18% GST). The client pays ₹1,08,000 and deducts ₹10,000 TDS under 194J. Tick <b>Client deducted TDS</b>, pick 194J at 10%, type 1,08,000 and record it: the invoice is Paid.</p>
 <p>To change or remove the TDS later, open the invoice and change TDS under ${ui('Customize')}.</p>
+<p>The TDS you record here stays as recorded. Opening the invoice later and saving it again no longer works it out afresh (for 194Q the ₹50 lakh threshold could turn it into zero). If you change the TDS section or rate on the invoice, it is worked out again from the new rate.</p>
 </section>
 
 <section id="payment-history">

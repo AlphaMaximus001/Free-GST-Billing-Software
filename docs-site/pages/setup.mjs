@@ -60,6 +60,7 @@ export default [
   <li><b>I picked a type but nothing changed</b>: you have not saved yet. The bottom bar shows <i>Unsaved changes in Business type</i>; click ${ui('Save all changes')}.</li>
   <li><b>It says Not chosen yet</b>: you used the app before this tab existed. Your switches stay exactly as they are until you pick a type and save.</li>
 </ul>
+<p id="business-type-invoices">Choosing <b>Freelancer / consultant</b> also sets how new invoices start: in <b>Services</b> mode, without the unit next to the quantity, and due in 15 days. Invoices you already made are not changed, and you can change any of it on the invoice.</p>
 </section>
 
 <section id="company-details">
@@ -168,6 +169,17 @@ export default [
   <tr><td>⭐ Set as default account</td><td>Tick to use this account on every new invoice. Only one account can be the default.</td></tr>
 </table></div>
 <p>Click ${ui('Save account')} to keep it, or ${ui('Cancel')} to close without changes. The message <i>Account added</i> or <i>Account updated</i> appears.</p>
+</section>
+
+<section id="paid-from-abroad">
+<h3>Getting paid from abroad</h3>
+<p>Two optional boxes in a payment account help clients outside India pay you:</p>
+<ul>
+  <li><b>SWIFT / BIC</b>: the code a foreign bank needs to send money to your bank. Ask your bank for it; it is printed with the bank details.</li>
+  <li><b>IBAN</b>: Indian banks do not use IBANs. Fill this only if you have an account abroad that has one (for example a Wise or Payoneer euro account). It prints under SWIFT.</li>
+  <li><b>Online payment link</b>: a PayPal.me, Wise or Payoneer link. It prints as <b>PAY ONLINE</b> on invoices in a foreign currency, in place of the UPI QR code (UPI only takes rupees). It does not print on rupee invoices.</li>
+</ul>
+<p>Money for an export of services should come in convertible foreign exchange (or in rupees where the RBI allows it). Ask your bank for the FIRC or e-BRC for each payment and note its number when you <a href="dashboard.html#payment-foreign">record the payment</a>.</p>
 </section>
 
 <section id="invoice-numbers">

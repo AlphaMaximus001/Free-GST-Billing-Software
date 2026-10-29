@@ -82,6 +82,7 @@ export default [
   <tr><td>🔀 Mixed</td><td>Every unit, unfiltered.</td><td>Selling goods and doing the work, such as supply and installation</td></tr>
 </table></div>
 <p>Your own custom units show in every mode. The choice is remembered for your next invoice.</p>
+<p>In <b>Services</b> mode the unit list starts with the units services use most: Hrs, Day, Month, Project and Nos. The HSN/SAC box of each line is labelled <b>SAC</b>, and the unit is not printed next to the quantity unless you turn it on (see <a href="invoice-options.html#show-items">Unit next to Qty</a>).</p>
 </section>
 
 <section id="billed-to">
@@ -162,6 +163,8 @@ export default [
 <div class="note tip"><strong>Something wrong?</strong>
 <p><b>"Invoice number ... already exists"</b> or <b>"was already used — saved as ... instead"</b>: see <a href="troubleshooting.html#duplicate-number">Invoice number already exists</a>.</p>
 <p><b>The number jumped</b>, for example from 0007 to 0009: another invoice, a quotation of the same series or a restored backup used it. Numbers are only taken on save, never by opening the screen.</p></div>
+<p id="due-in">Under <b>Due Date</b>, the buttons ${ui('7 days')}, ${ui('15 days')} and ${ui('30 days')} set the due date that many days after the invoice date. If your business type is Freelancer, new invoices start due in 15 days.</p>
+<p>The <b>Currency</b> box appears here when you bill abroad; see <a href="#currency">Billing in another currency</a>.</p>
 </section>
 
 <section id="lut">
@@ -362,12 +365,36 @@ export default [
 
 <section id="currency">
 <h2>Billing in another currency</h2>
-<p>Under ${ui('Customize')}, <b>Currency</b> lists the currencies of the countries the app supports, each with its own symbol and amount in words (fewer if <a href="settings.html#region">Settings, Region</a> limits the list). Rupees (INR) is the default.</p>
-<p>For anything other than rupees, an <b>Exchange Rate (optional, snapshot)</b> box appears: type how many rupees one unit was worth that day, such as 83.20 for 1 USD. It is kept with the invoice, so later reports stay right even when rates change, and it prints as an EXCHANGE RATE line.</p>
+<p>If you bill clients abroad, you can make the invoice in their currency: US dollars, euros, pounds, dirhams and the other currencies of the countries the app supports.</p>
+<h3>Where the currency box is</h3>
+<p>A <b>Currency</b> box (for example <b>$ USD</b>) sits in the <a href="#details">Invoice Details</a> card, next to the dates, when any of these is true:</p>
 <ul>
-  <li>The currency decides the money symbol, not the tax. A client outside India is an export whatever currency you bill in.</li>
-  <li>The UPI QR code only prints on rupee invoices.</li>
-  <li>A saved client can have a preferred currency, applied when you pick them on a new invoice.</li>
+  <li><a href="settings.html#region">Settings, Region</a> is <b>International</b> or <b>Both / Auto</b>.</li>
+  <li>The client's country is not India.</li>
+  <li>The invoice is already in a currency other than rupees.</li>
+</ul>
+<p>If your Region is <b>India only</b> and you bill an Indian client in rupees, the box stays out of the way. It is always in ${ui('Customize')} at the top of the panel.</p>
+<p>Changing the currency changes every money symbol on the screen and in the preview at once. The Rate box of each line shows the symbol too, such as <b>Rate ($)</b>.</p>
+<h3>Which currency a new invoice starts in</h3>
+<ul>
+  <li>A client you saved with a <b>Preferred currency</b> gets that currency.</li>
+  <li>A client abroad without one gets their country's currency (a UK client gets pounds). For the country <b>Other</b>, the last foreign currency you used is picked.</li>
+  <li>An Indian client gets rupees. Before, the app kept whatever the last invoice used, so after a dollar invoice the next Indian client was billed in dollars too.</li>
+  <li>When you save, the currency is remembered on the client, so the next invoice for them starts the same way.</li>
+</ul>
+<h3>The exchange rate</h3>
+<p>For any currency other than rupees, a second box asks <b>1 USD = ? INR</b>. Type how many rupees one unit was worth on the invoice date, such as 84.10. Use your bank's rate for that day or the RBI reference rate. The app does not fetch rates from the internet.</p>
+<ul>
+  <li>Under the boxes the app shows the invoice total in rupees, for example <b>≈ ₹84,100.00 in all</b>.</li>
+  <li>The rate is saved with the invoice. GST returns, reports, the Dashboard and income tax turn the invoice into rupees with this rate, never with today's, so a return you filed last month gives the same figures today.</li>
+  <li>The rate you last typed for a currency shows in grey in the box as a reminder. It is not filled in for you, because rates change every day.</li>
+  <li>If you leave the rate empty, a warning says so. The GST returns screen then lists the invoice as an error and will not make the GSTR-1 file until you add the rate.</li>
+</ul>
+<h3>What prints on the invoice</h3>
+<ul>
+  <li>An <b>EXCHANGE RATE</b> line, such as <i>1 USD = 84.1000 INR</i>. Turn on <a href="print-settings.html#dual-currency">Print Settings, Dual currency display</a> to add the rupee total to that line: <i>1 USD = 84.1000 INR · Total ₹84,100.00</i>.</li>
+  <li>The UPI QR code is left off: UPI only takes rupees. If your payment account has an <a href="settings.html#paid-from-abroad">online payment link</a> (PayPal, Wise, Payoneer), it prints instead as <b>PAY ONLINE</b>.</li>
+  <li>The currency decides the money symbol, not the tax. A client outside India is an export whatever currency you bill in; see <a href="gst-basics.html#exports">Exports</a> and <a href="gst-basics.html#lut">LUT</a>.</li>
 </ul>
 </section>
 
@@ -581,8 +608,8 @@ export default [
 <div class="table-wrap"><table>
   <tr><th>Box</th><th>What it does</th></tr>
   <tr><td>Invoice Title</td><td>Replaces the printed title, such as TAX INVOICE. The box shows the type's own title in grey; leave it blank to use that. Useful for wording such as <i>INVOICE CUM CHALLAN</i>. Thermal receipts ignore it.</td></tr>
-  <tr><td>Currency</td><td>Rupees (INR) to start. See <a href="invoices.html#currency">Billing in another currency</a>.</td></tr>
-  <tr><td>Exchange Rate (optional, snapshot)</td><td>Only for currencies other than rupees: how many rupees one unit is worth, such as 83.20 for 1 USD. Kept with the invoice and printed as an EXCHANGE RATE line.</td></tr>
+  <tr><td>Currency</td><td>The same box as in Invoice Details. See <a href="invoices.html#currency">Billing in another currency</a>.</td></tr>
+  <tr><td>1 USD = ? INR</td><td>Only for currencies other than rupees: how many rupees one unit was worth on the invoice date, such as 84.10. Kept with the invoice; returns and reports use it.</td></tr>
 </table></div>
 <p>A custom title is remembered for your next invoice too (see <a href="#remembered">Your choices become the default</a>). Clear the box when you go back to normal invoices.</p>
 </section>
@@ -701,8 +728,8 @@ export default [
 <div class="table-wrap"><table>
   <tr><th>Option</th><th>Turning it off</th></tr>
   <tr><td>HSN/SAC column</td><td>Hides the column on the invoice and the HSN/SAC box in each row of the form. GST rules require HSN for most businesses, so keep it on for tax invoices.</td></tr>
-  <tr><td>Qty column</td><td>Hides the quantity column on the invoice (the unit goes with it). The form keeps its Qty box.</td></tr>
-  <tr><td>Unit suffix (next to Qty)</td><td>Prints "5" instead of "5 Nos". The unit is part of the Qty column, not a column of its own.</td></tr>
+  <tr><td>Qty column</td><td>Hides the quantity column on the invoice (the unit goes with it). The form keeps its Qty box. Useful for a fixed-fee job billed as quantity 1.</td></tr>
+  <tr><td>Unit (Hrs, Nos...) next to Qty</td><td>Prints "5" instead of "5 Hrs". In Classic, Modern, Minimal and on thermal receipts the unit is part of the Qty column; in Boxed grid the UNIT column goes away, and in Tally style the "per" column goes away. <b>It turns off by itself</b> when you pick <b>Services</b> for an invoice (and back on for Goods or Mixed), until you tick or untick it yourself; after that your choice stays. A freelancer's invoices start with it off.</td></tr>
   <tr><td>Rate column</td><td>Hides the price per unit; the Amount still prints.</td></tr>
   <tr><td>Discount column</td><td>Hides the Disc. column and the Discount box in each row.</td></tr>
   <tr><td>Tax % column (GST/VAT/etc.)</td><td>No GST is charged at all: the tax columns and tax rows disappear, and the GST % box goes from the form. Bill of Supply, Composition and Delivery Challan turn it off for you.</td></tr>

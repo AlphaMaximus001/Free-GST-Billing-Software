@@ -222,9 +222,14 @@ export default [
 <section id="exports">
 <h3>Exports and SEZ</h3>
 <ul>
-  <li><strong>Exports</strong>: an invoice to a client whose country is not India. It is kept out of B2B and B2C, because the portal's export table (6A) needs the shipping bill number, date and port code, which the app does not record. Its value and IGST are counted in GSTR-3B Table 3.1(b), and its items are in the HSN and document summaries. The red box lists these invoices: enter them in Table 6A on the portal.</li>
+  <li><strong>Exports</strong>: an invoice to a client whose country is not India. It is kept out of B2B and B2C and out of the JSON file, because the portal's export table (6A) can need the shipping bill number, date and port code, which the app does not record. The <b>Exports — Table 6A</b> table on the GSTR-1 tab lists them, ready to type into Table 6A on the portal: type <b>WPAY</b> (IGST paid) or <b>WOPAY</b> (under a LUT, no IGST), invoice number and date, rate, taxable value, IGST and invoice value. ${ui('Exports')} saves the same rows as <code>GSTR1_Exports_6A.csv</code>. For services no shipping bill is needed; for goods add it on the portal.</li>
   <li><strong>SEZ units</strong>: a client with <b>SEZ</b> ticked is a B2B sale, always inter-state. In the JSON it is an SEZ supply with payment of tax, or without payment if the invoice is under LUT.</li>
+  <li><strong>GSTR-3B</strong>: both exports and SEZ supplies are zero-rated, so their value (and IGST, if paid) goes in Table 3.1(b), not 3.1(a). See <a href="#gstr-3b">GSTR-3B</a>.</li>
 </ul>
+<h3 id="foreign-currency">Invoices in dollars, euros and other currencies</h3>
+<p>Every figure on this screen is in rupees. An invoice billed in another currency is turned into rupees at the exchange rate saved on that invoice (see <a href="invoices.html#currency">Billing in another currency</a>): its value, taxable value and tax in every table, the HSN summary and GSTR-3B. The Exports table shows each invoice's currency and rate, for example <i>USD @ 84.1</i>.</p>
+<p>An invoice in another currency <b>without</b> a rate cannot be turned into rupees. It is listed in the red box, its row in the Exports table shows <i>no rate</i>, and the GSTR-1 file is not made until you open the invoice and type the rate. Under GST the rate to use is the one for the date of the invoice: the RBI reference rate, or your bank's rate for that day.</p>
+<p>The rupee value is worked out from the invoice amounts and rounded to the paisa. If your accountant or the shipping bill uses a different rate, the portal figures follow theirs; ask them which to use.</p>
 </section>
 
 <section id="gstr-1-files">
@@ -292,6 +297,7 @@ export default [
 <div class="note warn"><strong>Check the credit against GSTR-2B</strong>
 <p>The credit here is everything you entered. Usually only what appears in your GSTR-2B can be claimed. Use the <a href="#gstr-2b">GSTR-2B Reconciliation</a> tab to check.</p></div>
 <figure><img src="assets/img/app-gstr3b.png" alt="The GSTR-3B tab." loading="lazy"><figcaption>The GSTR-3B tab.</figcaption></figure>
+<p id="zero-rated">Table <b>3.1(b) Zero-rated supplies</b> holds exports and supplies to SEZ units or developers, with or without IGST, in rupees. Supplies to an SEZ used to be counted in 3.1(a) with the other B2B sales; CBIC Circular 147/03/2021-GST (paragraph 3) treats that as a mistake that blocks the IGST refund, so they are now in 3.1(b). The IGST on them still counts in the tax you pay. Their credit notes reduce 3.1(b).</p>
 </section>
 
 <section id="table-3-1">

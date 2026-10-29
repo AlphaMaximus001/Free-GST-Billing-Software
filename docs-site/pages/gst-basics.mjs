@@ -341,6 +341,14 @@ ${src(a('https://ewaybillgst.gov.in/', 'E-way bill portal'), a('https://einvoice
 </ul>
 <p>Selling a service to a foreign client counts as an export when you are in India, the client is outside India, the place of supply is outside India, you are paid in foreign currency (or in rupees where the RBI allows it), and the client is not your own branch abroad.</p>
 ${src(a('https://taxinformation.cbic.gov.in/', 'IGST Act sections 2(6) and 16 on the CBIC Tax Information portal'))}
+<h3 id="exports-in-app">Doing it in the app</h3>
+<ul>
+  <li>Save the client with their country (for example United States). No GSTIN or state is needed; their own tax ID, such as a VAT number, can go in the tax ID box and prints on the invoice. See <a href="clients.html#foreign-client">Clients abroad</a>.</li>
+  <li>On the invoice, pick their currency and type the exchange rate for the invoice date. See <a href="invoices.html#currency">Billing in another currency</a>.</li>
+  <li>With a LUT saved in Settings, the invoice is under LUT (no IGST) by itself. The place of supply prints as <i>Outside India</i>.</li>
+  <li>When the money arrives, record the rupees your bank credited and the FIRC / e-BRC number your bank gives you: that is the proof you were paid in foreign exchange. See <a href="dashboard.html#payment-foreign">Payments from abroad</a>.</li>
+  <li>In GST returns the invoice is reported in rupees: GSTR-1 Table 6A and GSTR-3B Table 3.1(b). See <a href="gst-returns.html#exports">Exports and SEZ</a>.</li>
+</ul>
 </section>
 
 <section id="lut">
