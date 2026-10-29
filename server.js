@@ -90,7 +90,7 @@ app.use((req, res, next) => {
 });
 
 // Ensure data directory and sub-directories exist
-const DIRS = ['bills', 'clients', 'templates', 'products', 'expenses', 'recurring', 'receipts', 'profiles', 'purchases'];
+const DIRS = ['bills', 'clients', 'templates', 'products', 'expenses', 'recurring', 'receipts', 'profiles', 'purchases', 'productions'];
 for (const dir of DIRS) {
   const dirPath = path.join(DATA_DIR, dir);
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
@@ -417,6 +417,90 @@ app.delete('/api/products/:id', (req, res) => {
 });
 
 // ========================
+// PRODUCTION (manufacturing, v1.10.83 #115)
+// ========================
+// A production entry and the stock it moves are saved by ONE request: the
+// app works out entry.stockApplied ({ productId: change }, the same kind of
+// record an invoice keeps), and this applies it with the same arithmetic as
+// applyStockChanges in store.js. Doing it here, synchronously, means no other
+// request can run in between, and if any file write fails every file already
+// written is put back - a production is never half saved.
+const PRODUCTIONS_DIR = path.join(DATA_DIR, 'productions');
+const productFileFor = (id) => path.join(DATA_DIR, 'products', safeFileName(id) + '.json');
+
+// Validates and works out the new products. Throws { status, code } when bad.
+// skipMissing: on delete, a product removed from the catalog since is skipped
+// (there is no stock left to put back on it).
+function stockMoves(changes, skipMissing) {
+  if (!changes || typeof changes !== 'object' || Array.isArray(changes)) throw { status: 400, code: 'bad-request' };
+  const out = [];
+  for (const [id, change] of Object.entries(changes)) {
+    const file = productFileFor(id);
+    if (!isPathInside(file, path.join(DATA_DIR, 'products'))) throw { status: 400, code: 'invalid-path' };
+    if (typeof change !== 'number' || !Number.isFinite(change)) throw { status: 400, code: 'bad-request' };
+    const product = readJSON(file, null);
+    if (!product) { if (skipMissing) continue; throw { status: 400, code: 'Product not found. Reload the page and try again.' }; }
+    out.push({ file, before: product, after: { ...product, stock: Math.round(((Number(product.stock) || 0) + change) * 1000) / 1000 } });
+  }
+  return out;
+}
+
+// Writes the products, then runs `finish` (save or delete the entry). On any
+// failure the products already written are restored.
+function commitStock(moves, finish) {
+  const done = [];
+  try {
+    for (const m of moves) { writeJSON(m.file, m.after); done.push(m); }
+    finish();
+  } catch (err) {
+    for (const m of done) { try { writeJSON(m.file, m.before); } catch { /* logged below */ } }
+    throw err;
+  }
+}
+
+app.get('/api/productions', (req, res) => {
+  const rows = readAllFromDir('productions');
+  rows.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  res.json(rows);
+});
+
+app.post('/api/productions', (req, res) => {
+  const entry = req.body;
+  if (!entry || typeof entry !== 'object' || typeof entry.id !== 'string' || !entry.id) return errRes(res, 400, 'bad-request');
+  const file = path.join(PRODUCTIONS_DIR, safeFileName(entry.id) + '.json');
+  if (!isPathInside(file, PRODUCTIONS_DIR)) return errRes(res, 400, 'invalid-path');
+  // Never saved twice: a second save would move the stock a second time.
+  // Editing is delete + enter again.
+  if (fs.existsSync(file)) return errRes(res, 409, 'conflict');
+  try {
+    commitStock(stockMoves(entry.stockApplied, false), () => writeJSON(file, entry));
+    invalidateCache('products');
+    res.json({ success: true, id: entry.id });
+  } catch (err) {
+    if (err?.status) return errRes(res, err.status, err.code);
+    errRes(res, 500, 'server-error', err);
+  }
+});
+
+app.delete('/api/productions/:id', (req, res) => {
+  const file = path.join(PRODUCTIONS_DIR, safeFileName(req.params.id) + '.json');
+  if (!isPathInside(file, PRODUCTIONS_DIR)) return errRes(res, 400, 'invalid-path');
+  const entry = readJSON(file, null);
+  if (!entry) return errRes(res, 404, 'not-found');
+  // Exactly the reverse of what this entry recorded it did.
+  const back = {};
+  for (const [id, change] of Object.entries(entry.stockApplied || {})) back[id] = -(Number(change) || 0);
+  try {
+    commitStock(stockMoves(back, true), () => deleteFile(file));
+    invalidateCache('products');
+    res.json({ success: true });
+  } catch (err) {
+    if (err?.status) return errRes(res, err.status, err.code);
+    errRes(res, 500, 'server-error', err);
+  }
+});
+
+// ========================
 // EXPENSES
 // ========================
 app.get('/api/expenses', (req, res) => {
@@ -682,6 +766,7 @@ app.get('/api/export', (req, res) => {
     receipts: readAllFromDir('receipts'),
     profiles: readAllFromDir('profiles'),
     purchases: readAllFromDir('purchases'),
+    productions: readAllFromDir('productions'), // v1.10.83 (#115)
     // v1.10.77 - never the PIN hash: a backup file can travel (email, Drive).
     meta: withoutLock(readJSON(META_PATH, {})),
     exportedAt: new Date().toISOString(),
@@ -713,6 +798,7 @@ app.post('/api/import', (req, res) => {
     receiptCount: 0, receiptSkipped: 0,
     profileCount: 0, profileSkipped: 0,
     purchaseCount: 0, purchaseSkipped: 0,
+    productionCount: 0, productionSkipped: 0,
   };
 
   // Helper: upsert one entity to a directory, honouring the overwrite flag.
@@ -739,6 +825,9 @@ app.post('/api/import', (req, res) => {
   (data.receipts || []).forEach(r => upsertOne('receipts', r, 'receiptCount', 'receiptSkipped'));
   (data.profiles || []).forEach(p => upsertOne('profiles', p, 'profileCount', 'profileSkipped'));
   (data.purchases || []).forEach(p => upsertOne('purchases', p, 'purchaseCount', 'purchaseSkipped'));
+  // v1.10.83 (#115) - saved as they are: the products in the same backup
+  // already hold the stock these entries moved, so nothing is applied again.
+  (data.productions || []).forEach(p => upsertOne('productions', p, 'productionCount', 'productionSkipped'));
 
   // meta.json — same gating. Previously always overwrote → counters could
   // regress below existing bill numbers → collision loop on next save.

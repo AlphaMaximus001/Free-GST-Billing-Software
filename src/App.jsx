@@ -1009,7 +1009,8 @@ function App() {
           <ClientsView onNew={handleNewInvoice} onEdit={handleEditInvoice} onDuplicate={handleDuplicateInvoice} />
         )}
         {currentView === 'inventory' && (
-          <InventoryView />
+          // v1.10.83 (#115) - remounted per business, like the screens below, so its production list follows the switch.
+          <InventoryView key={businessKey} />
         )}
         {/* v1.10.66 (#64 item 1) — `key={businessKey}` remounts these screens
             when the business changes. Each reads the business once when it

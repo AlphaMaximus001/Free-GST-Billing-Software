@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Package, Search, Plus, Edit3, Trash2, X, Save, Upload, Table2 } from 'lucide-react';
-import { getAllProducts, saveProduct, deleteProduct, getProfile, getStockAlertSettings } from '../store';
-import { getAllUnits, getCountryConfig, formatCurrency } from '../utils';
+import { Package, Search, Plus, Edit3, Trash2, X, Save, Upload, Table2, Factory } from 'lucide-react';
+import { getAllProducts, saveProduct, deleteProduct, getProfile, getStockAlertSettings, getEnabledModules } from '../store';
+import { getAllUnits, getCountryConfig, formatCurrency, isModuleEnabled } from '../utils';
+import { bomError, unitCost } from '../utils/manufacturing';
+import { BomEditor, MakeModal, ProductionList } from './Manufacturing';
 import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
 import HelpButton from './HelpButton';
@@ -16,6 +18,7 @@ import TableExport from './TableExport';
 // dead state removed for clarity.
 const emptyForm = {
   name: '', hsn: '', purchasePrice: '', sellingPrice: '', taxPercent: '', unit: 'Pcs', stock: '', description: '',
+  madeHere: false, bom: [],
 };
 
 export default function InventoryView() {
@@ -35,6 +38,12 @@ export default function InventoryView() {
   // as everything else (still "Out of Stock" red for 0 — that's a hard fact,
   // not an alert preference).
   const [stockAlerts, setStockAlerts] = useState({ enabled: true, threshold: 5 });
+  // v1.10.83 (#115) - manufacturing (Settings -> Features). When off, nothing
+  // below changes: no Make button, no BOM in the form, no production list.
+  const mfgOn = isModuleEnabled('manufacturing', getEnabledModules());
+  const [showMake, setShowMake] = useState(false);
+  const [mfgReload, setMfgReload] = useState(0);
+  const afterProduction = () => { setShowMake(false); setMfgReload((n) => n + 1); loadProducts(); };
 
   const loadProducts = async () => {
     try {
@@ -78,6 +87,8 @@ export default function InventoryView() {
       unit: product.unit || 'Nos',
       stock: product.stock ?? '', // v1.10.74 - was `|| ''`, which blanked a stock of 0
       description: product.description || '',
+      madeHere: !!product.madeHere,
+      bom: (product.bom || []).map((l) => ({ productId: l.productId, qty: String(l.qty ?? '') })),
     });
     setEditingId(product.id);
     setShowForm(true);
@@ -100,6 +111,12 @@ export default function InventoryView() {
       toast('GST % must be between 0 and 100', 'warning');
       return;
     }
+    // v1.10.83 (#115) - a raw materials list must be complete, positive and loop-free.
+    const bom = form.bom.map((l) => ({ productId: l.productId, qty: Number(l.qty) }));
+    if (mfgOn && form.madeHere) {
+      const err = bomError(editingId || '_new', bom, products);
+      if (err) { toast(err, 'warning'); return; }
+    }
     try {
       // v1.10.29 — Persist both prices. `rate` mirrors sellingPrice so any
       // old caller reading .rate still gets the right number.
@@ -119,6 +136,9 @@ export default function InventoryView() {
         unit: form.unit,
         stock: form.stock ? parseFloat(form.stock) : 0,
         description: form.description.trim(),
+        // Only written while the feature is on; otherwise the fields a product
+        // already has are kept as they are (spread above).
+        ...(mfgOn ? (form.madeHere ? { madeHere: true, bom } : { madeHere: false }) : {}),
       };
       await saveProduct(product);
       toast(editingId ? 'Product updated' : 'Product added', 'success');
@@ -130,9 +150,12 @@ export default function InventoryView() {
   };
 
   const handleDelete = async (id) => {
+    // v1.10.83 (#115) - say so when a made product uses it as a raw material.
+    const usedIn = mfgOn ? products.filter((p) => p.madeHere && (p.bom || []).some((l) => l.productId === id)).map((p) => p.name) : [];
     if (await confirmAction({
       title: 'Delete this product?',
-      message: 'Existing invoices that used this product keep their line items unchanged. This just removes the product from your catalog.',
+      message: 'Existing invoices that used this product keep their line items unchanged. This just removes the product from your catalog.'
+        + (usedIn.length ? ` It is a raw material of ${usedIn.join(', ')}: remove it from their raw materials list too.` : ''),
       confirmLabel: 'Delete',
       tone: 'danger',
     })) {
@@ -225,10 +248,12 @@ export default function InventoryView() {
               <li><strong>Stock</strong> goes down when you save an invoice and up when you save a purchase bill.</li>
               <li><strong>Import CSV</strong>: columns <code>name, hsn, rate, gst%, unit, stock</code>.</li>
               <li><strong>Low stock</strong> shows in amber, none in red. Set the level in Settings → Low-stock alerts.</li>
+              {mfgOn && <li><strong>Make</strong>: tick <em>Made here</em> on a product and list its raw materials, then Make records production. Delete an entry to put its stock back.</li>}
             </ul>
           </HelpButton>
         </div>
-        <div className="flex gap-2">
+        {/* Wraps on a phone: with Make there are four buttons (v1.10.83, #115). */}
+        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
           <input type="file" accept=".csv" ref={csvInputRef} style={{ display: 'none' }} onChange={handleCSVImport} />
           <button className="btn btn-secondary" onClick={() => csvInputRef.current?.click()}>
             <Upload size={16} /> Import CSV
@@ -237,11 +262,18 @@ export default function InventoryView() {
             title="Edit name, HSN, prices, GST %, unit and stock of many products at once">
             <Table2 size={16} /> Bulk edit
           </button>
+          {mfgOn && (
+            <button className="btn btn-secondary" onClick={() => setShowMake(true)} disabled={bulkEdit}
+              title="Record production: uses up raw materials and adds the finished product to stock">
+              <Factory size={16} /> Make
+            </button>
+          )}
           <button className="btn btn-primary" onClick={openAdd}>
             <Plus size={18} /> Add Product
           </button>
         </div>
       </div>
+      {showMake && <MakeModal products={products} currency={profileCurrency} onClose={() => setShowMake(false)} onSaved={afterProduction} />}
 
       {/* Search */}
       <div className="glass-panel p-4 mb-6">
@@ -313,6 +345,10 @@ export default function InventoryView() {
                 <input type="text" className="form-input" value={form.description}
                   onChange={e => updateField('description', e.target.value)} placeholder="Brief description..." />
               </div>
+              {mfgOn && (
+                <BomEditor productId={editingId} madeHere={form.madeHere} bom={form.bom} products={products} currency={profileCurrency}
+                  onChange={({ madeHere, bom }) => setForm((prev) => ({ ...prev, madeHere, bom }))} />
+              )}
             </div>
             <div className="flex gap-2 justify-end mt-4">
               <button className="btn btn-secondary" onClick={closeForm}>Cancel</button>
@@ -361,7 +397,14 @@ export default function InventoryView() {
               <tbody>
                 {filtered.map(product => (
                   <tr key={product.id}>
-                    <td className="font-medium" title={product.description || ''}>{product.name}</td>
+                    <td className="font-medium" title={product.description || ''}>
+                      {product.name}
+                      {mfgOn && product.madeHere && (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                          Made here · cost {formatCurrency(unitCost(product, products), profileCurrency)} per {product.unit || 'unit'}
+                        </div>
+                      )}
+                    </td>
                     <td className="text-muted">{product.hsn || '-'}</td>
                     <td className="font-bold">{product.rate ? formatCurrency(product.rate, profileCurrency) : '-'}</td>
                     <td>{product.taxPercent ? `${product.taxPercent}%` : '-'}</td>
@@ -392,6 +435,7 @@ export default function InventoryView() {
           </div>
         )}
       </div>
+      {mfgOn && <ProductionList products={products} currency={profileCurrency} reloadKey={mfgReload} onChanged={afterProduction} />}
     </div>
   );
 }

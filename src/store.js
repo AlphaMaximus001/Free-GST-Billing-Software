@@ -280,6 +280,13 @@ export const deleteProduct = async (id) => {
   return apiFetch(`${API}/products/${encodeURIComponent(id)}`, { method: 'DELETE' });
 };
 
+// ---- Production (manufacturing, v1.10.83 #115) ----
+// Saving or deleting an entry moves its stock on the server in the same step
+// (see POST /api/productions), so these do not call applyStockChanges.
+export const getAllProductions = () => apiFetch(`${API}/productions`);
+export const saveProduction = (entry) => apiFetch(`${API}/productions`, { method: 'POST', body: JSON.stringify(entry) });
+export const deleteProduction = (id) => apiFetch(`${API}/productions/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
 // ---- Expenses ----
 export const getAllExpenses = async () => {
   return apiFetch(`${API}/expenses`);
@@ -483,6 +490,8 @@ export const exportAllData = async (selection) => {
   if (sel.clients)        data.clients = all.clients;
   if (sel.termsTemplates) data.termsTemplates = all.termsTemplates;
   if (sel.products)       data.products = all.products;
+  // v1.10.83 (#115) - production entries travel with products: stock is the result of both.
+  if (sel.products && all.productions) data.productions = all.productions;
   if (sel.expenses)       data.expenses = all.expenses;
   if (sel.recurring)      data.recurring = all.recurring;
   if (sel.receipts)       data.receipts = all.receipts;
@@ -535,6 +544,7 @@ export const importData = async (jsonString, selection) => {
   if (sel.clients && data.clients)               payload.clients = data.clients;
   if (sel.termsTemplates && data.termsTemplates) payload.termsTemplates = data.termsTemplates;
   if (sel.products && data.products)             payload.products = data.products;
+  if (sel.products && data.productions)          payload.productions = data.productions;
   if (sel.expenses && data.expenses)             payload.expenses = data.expenses;
   if (sel.recurring && data.recurring)           payload.recurring = data.recurring;
   if (sel.receipts && data.receipts)             payload.receipts = data.receipts;

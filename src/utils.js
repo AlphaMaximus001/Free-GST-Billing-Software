@@ -1871,6 +1871,9 @@ export const FEATURE_GROUPS = [
     modules: [
       { id: 'clients',   label: 'Clients',   nav: 'clients', core: true },
       { id: 'inventory', label: 'Products & Services (inventory)', nav: 'inventory', defaultOn: true },
+      // v1.10.83 (#115) - bill of materials + "Make" on the Products screen.
+      // Off by default: most shops buy and sell, they do not make.
+      { id: 'manufacturing', label: 'Manufacturing (bill of materials)', nav: null, defaultOn: false },
     ],
   },
   {
