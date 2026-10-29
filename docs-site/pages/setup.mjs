@@ -128,7 +128,7 @@ export default [
   <tr><td>Directory</td><td>Clients (always on), Products &amp; Services</td></tr>
   <tr><td>Purchases &amp; Expenses</td><td>Expense tracker, Purchase bills, GSTR-2B reconciliation</td></tr>
   <tr><td>GST &amp; Tax (India)</td><td>GSTR-1 / GSTR-3B, E-Way Bill, TDS / TCS on invoices (<b>off</b> to start), Income Tax Helper</td></tr>
-  <tr><td>Reports</td><td>Dashboard (always on), Reports</td></tr>
+  <tr><td>Reports</td><td>Dashboard (always on), Reports, Cost centres (<b>off</b> to start; see <a href="reports.html#cost-centres">By cost centre</a>)</td></tr>
   <tr><td>Integrations</td><td>Google Drive backup, UPI QR code on invoices</td></tr>
 </table></div>
 <p>🇮🇳 marks features that only apply in India. They are hidden when Region is International. ${ui('Reset to default')} puts every feature back as it was on install.</p>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package, Boxes } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package, Boxes, Building2 } from 'lucide-react';
 import { getAllBills, getAllExpenses, getProfile } from '../store';
 import { formatCurrency, getFYOptions, belongsToProfile, isCancelledBill, salesSign, countsAsSales, calculateLineItemTax, roundQty, parseLocalDate, amountDue } from '../utils';
 import { toast } from './Toast';
@@ -8,6 +8,8 @@ import PartyOutstandingReport from './PartyOutstandingReport';
 import StockReport from './StockReport';
 import TableExport from './TableExport';
 import { billCurrency } from '../utils/partyOutstanding';
+import CostCentreReport from './CostCentreReport';
+import { costCentresOn } from './useCostCentres';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -29,6 +31,9 @@ export default function ReportsView() {
   const [agingSearch, setAgingSearch] = useState('');
   const [currencyFilter, setCurrencyFilter] = useState('INR');
   const [businessName, setBusinessName] = useState('');
+  // v1.10.83 (#112) - the By cost centre tab needs the business itself.
+  const [ownerProfile, setOwnerProfile] = useState(null);
+  const [ccOn] = useState(costCentresOn);
 
   const fyOptions = getFYOptions();
   const currentYear = new Date().getFullYear();
@@ -48,6 +53,7 @@ export default function ReportsView() {
       // company's expenses in each company's profit and loss.
       setExpenses((expData || []).filter(e => belongsToProfile(e, prof)));
       setBusinessName(prof?.businessName || '');
+      setOwnerProfile(prof);
     } catch {
       toast('Failed to load data', 'error');
     }
@@ -97,6 +103,17 @@ export default function ReportsView() {
   const periodLabel = filterMode === 'fy'
     ? (fyOptions.find(f => f.value === fyFilter)?.label || '')
     : `${MONTHS[parseInt(monthFilter)] || ''} ${yearFilter}`;
+  // The same period as dates, both days included (By cost centre).
+  const periodRange = (() => {
+    if (filterMode === 'fy') {
+      const fy = fyOptions.find(f => f.value === fyFilter);
+      return fy ? { from: fy.from, to: fy.to } : { from: '', to: '' };
+    }
+    const y = parseInt(yearFilter), m = parseInt(monthFilter) + 1;
+    if (!y || !m) return { from: '', to: '' };
+    const mm = String(m).padStart(2, '0');
+    return { from: `${y}-${mm}-01`, to: `${y}-${mm}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}` };
+  })();
   const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
   const exportSubtitle = (extra = '') => [businessName, periodLabel, currencyFilter !== 'INR' ? currencyFilter : '', extra].filter(Boolean).join(', ');
 
@@ -196,6 +213,7 @@ export default function ReportsView() {
               <li><strong>Outstanding &amp; Aging</strong>: who owes you and how late, in 30-day groups.</li>
               <li><strong>Party Outstanding</strong>: what each party owes, month by month (April-March or January-December), with totals. Print or CSV.</li>
               <li><strong>Client Analytics</strong> and <strong>Product Performance</strong>: your best clients and items.</li>
+              {ccOn && <li><strong>By cost centre</strong>: sales, purchases, expenses and profit for each branch, site or project.</li>}
               <li>Only real sales count: estimates, challans and cancelled invoices are left out, credit notes are subtracted.</li>
             </ul>
           </HelpButton>
@@ -228,6 +246,12 @@ export default function ReportsView() {
           onClick={() => setActiveTab('stock')}>
           <Boxes size={16} /> Stock
         </button>
+        {ccOn && (
+          <button className={`btn ${activeTab === 'costcentres' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('costcentres')}>
+            <Building2 size={16} /> By cost centre
+          </button>
+        )}
       </div>
 
       {/* v1.10.74 - Period + Currency Selector, shared by P&L, Client Analytics
@@ -406,6 +430,12 @@ export default function ReportsView() {
       )}
 
       {activeTab === 'party' && <PartyOutstandingReport bills={bills} businessName={businessName} />}
+
+      {activeTab === 'costcentres' && ccOn && (
+        <CostCentreReport bills={bills} expenses={expenses} profile={ownerProfile}
+          from={periodRange.from} to={periodRange.to} currency={currencyFilter}
+          subtitle={exportSubtitle('before tax, GST left out')} periodLabel={periodLabel} />
+      )}
 
       {activeTab === 'stock' && <StockReport businessName={businessName} />}
 

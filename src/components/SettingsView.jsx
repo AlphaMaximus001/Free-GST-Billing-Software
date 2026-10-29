@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getRegionMode, setRegionMode, getEnabledModules, setEnabledModules, getStockAlertSettings, saveStockAlertSettings, renameNumberSeries, getInvoiceDisplayOptions, saveInvoiceDisplayOptions } from '../store';
+import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getRegionMode, setRegionMode, getEnabledModules, setEnabledModules, getStockAlertSettings, saveStockAlertSettings, renameNumberSeries, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getCostCentres, saveCostCentres } from '../store';
 import { ensureToken, findOrCreateFolder, uploadJSON } from '../services/googleDrive';
 import { getCountryConfig, getStatesForCountry, validateTaxId, getCountriesForRegion, FEATURE_GROUPS, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, findSameBusiness, businessKeyOf, stockDelta } from '../utils';
 // v1.10.36 — lucide's `Image` icon was imported as `Image`, which
@@ -16,6 +16,8 @@ import { confirmAction } from './ConfirmModal';
 import PrintSettings from './PrintSettings';
 import HelpButton from './HelpButton';
 import AppLockSettings from './AppLockSettings';
+import CostCentreSettings from './CostCentreSettings';
+import { rekeyCentres } from '../utils/costCentres';
 import InvoiceNumberSettings from './InvoiceNumberSettings';
 import SignatureImages, { SIGN_LAYOUTS } from './SignatureImages';
 import { getBackupsList, restoreBackup, triggerBackup, deleteBackup, getTrashedBills, restoreTrashedBill, purgeTrashedBill, runUpdateNow, saveBill, applyStockChanges, getBackupFolder, setBackupFolder } from '../store';
@@ -444,6 +446,12 @@ export default function SettingsView({ onSaved }) {
       const oldKey = businessKeyOf(activeBusiness);
       const newKey = businessKeyOf(profile);
       if (oldKey && newKey && oldKey !== newKey) await renameNumberSeries(oldKey, newKey).catch(() => {});
+      // v1.10.83 (#112) - and its cost centres.
+      if (oldKey && newKey && oldKey !== newKey) {
+        await getCostCentres()
+          .then((list) => list.some((c) => c.business === oldKey) && saveCostCentres(rekeyCentres(list, oldKey, newKey)))
+          .catch(() => {});
+      }
       // v1.10.16 — reported: "uploaded logo and saved but it's not showing on
       // invoice". Root cause was a stale `freegstbill_invoiceOptions.showLogo`
       // in localStorage from before the upload — DEFAULT_OPTIONS has it true,
@@ -1060,6 +1068,11 @@ export default function SettingsView({ onSaved }) {
           ))}
         </div>
       </div>
+
+      {/* v1.10.83 (#112) - only while the feature is on, right under Features. */}
+      {isModuleEnabled('costCentres', enabledModules) && (
+        <div id="section-costcentres" style={{ order: 5 }}><CostCentreSettings profile={activeBusiness} /></div>
+      )}
 
       {/* ---- Region Preference ---- */}
       <div id="section-region" className="glass-panel p-6 mb-6" style={{ order: 7 }}>
