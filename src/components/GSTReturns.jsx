@@ -459,12 +459,12 @@ PENALTY: ₹20/day late fee for NIL GSTR-3B (₹10 CGST + ₹10 SGST), capped at
   },
 ];
 
-function StepList({ steps, title }) {
+function StepList({ steps, title, doc }) {
   const [expanded, setExpanded] = useState({});
   const [checked, setChecked] = useState({});
   return (
     <div className="glass-panel mb-4">
-      <div className="table-header"><h3>{title}</h3></div>
+      <div className="table-header"><h3>{title}{doc && <HelpButton title={title} doc={doc} size={16} />}</h3></div>
       <div style={{ padding: '0.5rem 0' }}>
         {steps.map((step, i) => (
           <div key={i} style={{ borderBottom: i < steps.length - 1 ? '1px solid var(--border)' : 'none' }}>
@@ -1532,6 +1532,7 @@ export default function GSTReturns() {
             style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', background: periodFiling.gstr3b ? '#ecfdf5' : '#fef2f2', color: periodFiling.gstr3b ? '#059669' : '#dc2626', fontWeight: 600 }}>
             3B {periodFiling.gstr3b ? 'Filed' : 'Pending'}
           </button>
+          <HelpButton title="Return period and filed status" doc="gst-returns#period" size={16} />
         </div>
         <a href="https://gst.gov.in" target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>
           <ExternalLink size={14} /> GST Portal
@@ -1543,6 +1544,7 @@ export default function GSTReturns() {
         <div style={{ padding: '0.5rem 0.75rem', marginBottom: '0.75rem', borderRadius: '8px', background: 'var(--danger-light, #fef2f2)', fontSize: '0.8rem', color: '#dc2626' }}>
           <AlertTriangle size={13} style={{ verticalAlign: '-2px', marginRight: '0.35rem' }} />
           {warnings.filter(w => w.type === 'error').slice(0, 3).map(w => w.msg).join(' | ')}
+          <HelpButton title="Warnings" doc="gst-returns#warnings" size={16} />
         </div>
       )}
       {/* v1.10.74 - warnings (missing HSN, GSTIN without a state) were worked
@@ -1554,6 +1556,7 @@ export default function GSTReturns() {
             <AlertTriangle size={13} style={{ verticalAlign: '-2px', marginRight: '0.35rem' }} />
             {list.slice(0, 3).map(w => w.msg).join(' | ')}
             {list.length > 3 && ` | +${list.length - 3} more`}
+            <HelpButton title="Warnings" doc="gst-returns#warnings" size={16} />
           </div>
         );
       })()}
@@ -1562,6 +1565,7 @@ export default function GSTReturns() {
       {isNilReturn && (
         <div style={{ padding: '0.5rem 0.75rem', marginBottom: '0.75rem', borderRadius: '8px', background: 'var(--warn-bg)', color: 'var(--warn-text)', fontSize: '0.8rem' }}>
           No invoices or expenses found — file a NIL return on the GST portal. NIL returns are mandatory.
+          <HelpButton title="NIL returns" doc="gst-returns#nil-return" size={16} />
         </div>
       )}
 
@@ -1575,6 +1579,7 @@ export default function GSTReturns() {
           <div><p className="stat-label" style={{ margin: 0, fontSize: '0.7rem' }}>Tax</p><strong style={{ fontSize: '1rem' }}>{formatCurrency(totalTax)}</strong></div>
           <div style={{ width: '1px', height: '2rem', background: 'var(--border)' }} />
           <div><p className="stat-label" style={{ margin: 0, fontSize: '0.7rem' }}>Net Payable</p><strong style={{ fontSize: '1rem', color: 'var(--primary)' }}>{formatCurrency(netPayable)}</strong></div>
+          <HelpButton title="Summary strip" doc="gst-returns#summary-strip" size={16} />
         </div>
       </div>
 
@@ -1593,6 +1598,7 @@ export default function GSTReturns() {
             <tab.icon size={14} /> {tab.label}
           </button>
         ))}
+        <HelpButton title="This tab" doc={{ gstr1: 'gst-returns#gstr-1', gstr3b: 'gst-returns#gstr-3b', gstr2b: 'gst-returns#gstr-2b', tds: 'gst-returns#tds-tcs', guide: 'gst-returns#filing-guide' }[activeTab]} size={16} style={{ alignSelf: 'center' }} />
       </div>
 
       {/* ===================== GSTR-1 TAB ===================== */}
@@ -1606,6 +1612,7 @@ export default function GSTReturns() {
             <button className="btn btn-secondary" onClick={exportHSN} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> HSN</button>
             <button className="btn btn-secondary" onClick={exportCDNR} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> CDNR</button>
             <button className="btn btn-secondary" onClick={exportDocSummary} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> Docs</button>
+            <HelpButton title="GSTR-1 downloads" doc="gst-returns#gstr-1-files" size={16} />
             {!periodFiling.gstr1 && (
               <button className="btn btn-secondary" onClick={() => markFiled('gstr1')} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem', marginLeft: 'auto', color: '#059669', borderColor: '#bbf7d0' }}>
                 <CheckCircle size={13} /> Mark Filed
@@ -1616,7 +1623,7 @@ export default function GSTReturns() {
           {/* B2B — Table 4A */}
           <div className="glass-panel mb-4">
             <div className="table-header">
-              <h3>B2B Sales — Table 4A</h3>
+              <h3>B2B Sales — Table 4A<HelpButton title="B2B Sales" doc="gst-returns#b2b" size={16} /></h3>
               <span className="text-muted" style={{ fontSize: '0.82rem' }}>{b2bRows.length} invoice{b2bRows.length !== 1 ? 's' : ''}</span>
             </div>
             {b2bRows.length === 0 ? (
@@ -1666,7 +1673,7 @@ export default function GSTReturns() {
           {creditNotes.length > 0 && (
             <div className="glass-panel mb-4">
               <div className="table-header">
-                <h3>Credit/Debit Notes — Table 9B</h3>
+                <h3>Credit/Debit Notes — Table 9B<HelpButton title="Credit/Debit Notes" doc="gst-returns#credit-notes" size={16} /></h3>
                 <span className="text-muted" style={{ fontSize: '0.85rem' }}>{creditNotes.length} note{creditNotes.length !== 1 ? 's' : ''}</span>
               </div>
               <div className="table-scroll">
@@ -1697,7 +1704,7 @@ export default function GSTReturns() {
           {/* B2C — Table 7 (only show if data exists) */}
           <div className="glass-panel mb-4">
             <div className="table-header">
-              <h3>B2C Sales — Table 7</h3>
+              <h3>B2C Sales — Table 7<HelpButton title="B2C Sales" doc="gst-returns#b2c" size={16} /></h3>
               <span className="text-muted" style={{ fontSize: '0.82rem' }}>
                 {b2cBills.length} invoice{b2cBills.length !== 1 ? 's' : ''}
                 {b2cLarge.length > 0 && <> ({b2cLarge.length} B2C Large)</>}
@@ -1755,7 +1762,7 @@ export default function GSTReturns() {
           {/* HSN Summary — Table 12 */}
           <div className="glass-panel mb-4">
             <div className="table-header">
-              <h3>HSN Summary — Table 12</h3>
+              <h3>HSN Summary — Table 12<HelpButton title="HSN Summary" doc="gst-returns#hsn-summary" size={16} /></h3>
               <span className="text-muted" style={{ fontSize: '0.82rem' }}>{hsnRows.length} code{hsnRows.length !== 1 ? 's' : ''}</span>
             </div>
             {hsnRows.length === 0 ? (
@@ -1795,7 +1802,7 @@ export default function GSTReturns() {
 
           {/* Document Summary — Table 13 */}
           <div className="glass-panel mb-4">
-            <div className="table-header"><h3>Document Summary — Table 13</h3></div>
+            <div className="table-header"><h3>Document Summary — Table 13<HelpButton title="Document Summary" doc="gst-returns#doc-summary" size={16} /></h3></div>
             {Object.keys(docSummary).length === 0 ? (
               <p style={{ padding: '1rem 1.25rem', margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>No documents issued.</p>
             ) : (
@@ -1820,7 +1827,7 @@ export default function GSTReturns() {
 
           {/* Grand Summary */}
           <div className="glass-panel">
-            <div className="table-header"><h3>GSTR-1 Summary Totals</h3></div>
+            <div className="table-header"><h3>GSTR-1 Summary Totals<HelpButton title="GSTR-1 Summary Totals" doc="gst-returns#gstr-1-summary" size={16} /></h3></div>
             <div className="table-scroll">
               <table className="data-table">
                 <thead><tr><th>Category</th><th style={{ textAlign: 'right' }}>Taxable</th><th style={{ textAlign: 'right' }}>CGST</th><th style={{ textAlign: 'right' }}>SGST</th><th style={{ textAlign: 'right' }}>IGST</th><th style={{ textAlign: 'right' }}>Total</th></tr></thead>
@@ -1847,6 +1854,7 @@ export default function GSTReturns() {
           <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem', alignItems: 'center' }}>
             <button className="btn btn-secondary" onClick={exportGSTR3B} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> 3B CSV</button>
             <button className="btn btn-primary" onClick={exportGSTR3BJSON} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Upload size={13} /> 3B JSON</button>
+            <HelpButton title="GSTR-3B downloads" doc="gst-returns#gstr-3b-files" size={16} />
             {!periodFiling.gstr3b && (
               <button className="btn btn-secondary" onClick={() => markFiled('gstr3b')} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem', marginLeft: 'auto', color: '#059669', borderColor: '#bbf7d0' }}>
                 <CheckCircle size={13} /> Mark Filed
@@ -1856,7 +1864,7 @@ export default function GSTReturns() {
 
           {/* Table 3.1 — Output Tax */}
           <div className="glass-panel mb-4">
-            <div className="table-header"><h3>Table 3.1 — Outward Supplies & Tax</h3></div>
+            <div className="table-header"><h3>Table 3.1 — Outward Supplies & Tax<HelpButton title="Table 3.1" doc="gst-returns#table-3-1" size={16} /></h3></div>
             <div className="table-scroll">
               <table className="data-table" style={{ minWidth: '600px' }}>
                 <thead><tr><th>Nature of Supplies</th><th style={{ textAlign: 'right' }}>Taxable Value</th><th style={{ textAlign: 'right' }}>IGST</th><th style={{ textAlign: 'right' }}>CGST</th><th style={{ textAlign: 'right' }}>SGST</th></tr></thead>
@@ -1891,7 +1899,7 @@ export default function GSTReturns() {
             if (rows.length === 0) return null;
             return (
               <div className="glass-panel mb-4">
-                <div className="table-header"><h3>Table 3.2 — Inter-state Supplies to Unregistered Persons</h3></div>
+                <div className="table-header"><h3>Table 3.2 — Inter-state Supplies to Unregistered Persons<HelpButton title="Table 3.2" doc="gst-returns#table-3-2" size={16} /></h3></div>
                 <div className="table-scroll">
                   <table className="data-table" style={{ minWidth: '400px' }}>
                     <thead><tr><th>Place of Supply</th><th style={{ textAlign: 'right' }}>Taxable Value</th><th style={{ textAlign: 'right' }}>IGST</th></tr></thead>
@@ -1911,7 +1919,7 @@ export default function GSTReturns() {
 
           {/* Table 4 — ITC */}
           <div className="glass-panel mb-4">
-            <div className="table-header"><h3>Table 4 — Eligible ITC (from Expenses & Purchases)</h3></div>
+            <div className="table-header"><h3>Table 4 — Eligible ITC (from Expenses & Purchases)<HelpButton title="Table 4 — Eligible ITC" doc="gst-returns#table-4-itc" size={16} /></h3></div>
             <div className="table-scroll">
               <table className="data-table" style={{ minWidth: '500px' }}>
                 <thead><tr><th>Details</th><th style={{ textAlign: 'right' }}>IGST</th><th style={{ textAlign: 'right' }}>CGST</th><th style={{ textAlign: 'right' }}>SGST</th></tr></thead>
@@ -1928,7 +1936,7 @@ export default function GSTReturns() {
 
           {/* Table 6 — Tax Payment */}
           <div className="glass-panel mb-4">
-            <div className="table-header"><h3>Table 6 — Tax Payment Summary</h3></div>
+            <div className="table-header"><h3>Table 6 — Tax Payment Summary<HelpButton title="Table 6 — Tax Payment" doc="gst-returns#table-6-payment" size={16} /></h3></div>
             <div className="table-scroll">
               <table className="data-table" style={{ minWidth: '600px' }}>
                 <thead><tr><th>Description</th><th style={{ textAlign: 'right' }}>IGST</th><th style={{ textAlign: 'right' }}>CGST</th><th style={{ textAlign: 'right' }}>SGST</th><th style={{ textAlign: 'right' }}>Total</th></tr></thead>
@@ -1957,7 +1965,7 @@ export default function GSTReturns() {
 
           {/* Net Payable */}
           <div className="glass-panel" style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.25rem' }}>Net GST Payable</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.25rem' }}>Net GST Payable<HelpButton title="Net GST Payable" doc="gst-returns#net-payable" size={16} /></p>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
               {formatCurrency(netPayable)}
             </h2>
@@ -2030,6 +2038,7 @@ export default function GSTReturns() {
                   </button>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
                     Imported for {gstr2bData.gstin || '?'} · period {gstr2bData.rtnprd || gstr2bData.fp || '?'}
+                    <HelpButton title="Reading the GSTR-2B results" doc="gst-returns#gstr-2b-results" size={16} />
                   </span>
                 </>
               )}
@@ -2214,7 +2223,7 @@ export default function GSTReturns() {
             <div className="glass-panel" style={{ padding: '0.85rem 1rem', marginBottom: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>TDS Receivable (deducted by clients)</h3>
+                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>TDS Receivable (deducted by clients)<HelpButton title="TDS Receivable" doc="gst-returns#tds-receivable" size={16} /></h3>
                   <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     Total TDS your clients should have deducted. You can claim this as credit against your own income tax.
                   </p>
@@ -2267,7 +2276,7 @@ export default function GSTReturns() {
             <div className="glass-panel" style={{ padding: '0.85rem 1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>TCS Collected (from clients)</h3>
+                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>TCS Collected (from clients)<HelpButton title="TCS Collected" doc="gst-returns#tcs-collected" size={16} /></h3>
                   <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     TCS you collected from buyers. Must be deposited to the Income Tax Department and reported in Form 27EQ quarterly.
                   </p>
@@ -2346,10 +2355,10 @@ export default function GSTReturns() {
 
                 {guideTab === 'regular' && (
                   <>
-                    <StepList steps={GSTR1_STEPS} title="GSTR-1 — Sales Return (File This First)" />
+                    <StepList steps={GSTR1_STEPS} title="GSTR-1 — Sales Return (File This First)" doc="gst-returns#guide-gstr1-steps" />
 
                     <div className="glass-panel p-4 mb-4" style={{ background: '#f0fdf4' }}>
-                      <h4 style={{ color: '#059669', marginBottom: '0.5rem', fontSize: '0.9rem' }}>GSTR-1 Pro Tips</h4>
+                      <h4 style={{ color: '#059669', marginBottom: '0.5rem', fontSize: '0.9rem' }}>GSTR-1 Pro Tips<HelpButton title="Pro Tips" doc="gst-returns#guide-pro-tips" size={16} /></h4>
                       <ul style={{ fontSize: '0.82rem', color: '#047857', lineHeight: 1.8, paddingLeft: '1.25rem' }}>
                         <li><strong>Fastest method:</strong> Export GSTR-1 JSON from the GSTR-1 tab above → Go to GST portal → GSTR-1 → Prepare Offline → Download Offline Tool → Import JSON → Upload. Saves 90% of time.</li>
                         <li>If turnover {'<'} ₹5 Cr, opt for QRMP scheme — file quarterly instead of monthly. Apply via Services → User Services → Opt-in for QRMP.</li>
@@ -2359,10 +2368,10 @@ export default function GSTReturns() {
                       </ul>
                     </div>
 
-                    <StepList steps={GSTR3B_STEPS} title="GSTR-3B — Summary Return + Tax Payment (File After GSTR-1)" />
+                    <StepList steps={GSTR3B_STEPS} title="GSTR-3B — Summary Return + Tax Payment (File After GSTR-1)" doc="gst-returns#guide-gstr3b-steps" />
 
                     <div className="glass-panel p-4 mb-4" style={{ background: '#eff6ff' }}>
-                      <h4 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>GSTR-3B Pro Tips</h4>
+                      <h4 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>GSTR-3B Pro Tips<HelpButton title="Pro Tips" doc="gst-returns#guide-pro-tips" size={16} /></h4>
                       <ul style={{ fontSize: '0.82rem', color: '#1e40af', lineHeight: 1.8, paddingLeft: '1.25rem' }}>
                         <li><strong>From July 2025:</strong> Table 3 auto-populates from GSTR-1 — just VERIFY, don't re-enter values.</li>
                         <li><strong>ITC matching:</strong> Always check GSTR-2B statement BEFORE claiming ITC. Go to Returns → GSTR-2B → Download. Only claim ITC that appears in GSTR-2B.</li>
@@ -2378,7 +2387,7 @@ export default function GSTReturns() {
                 {guideTab === 'nil' && (
                   <>
                     <div className="glass-panel p-4 mb-4" style={{ borderLeft: '4px solid #f59e0b', background: 'var(--warn-bg)', color: 'var(--warn-text)' }}>
-                      <h4 style={{ color: '#92400e', marginBottom: '0.5rem', fontSize: '0.9rem' }}>When to File NIL Return</h4>
+                      <h4 style={{ color: '#92400e', marginBottom: '0.5rem', fontSize: '0.9rem' }}>When to File NIL Return<HelpButton title="NIL returns" doc="gst-returns#nil-return" size={16} /></h4>
                       <ul style={{ fontSize: '0.85rem', color: '#a16207', lineHeight: 1.8, paddingLeft: '1.25rem' }}>
                         <li>You had <strong>ZERO outward supplies</strong> (no sales/services) during the period</li>
                         <li>You have <strong>NO input tax credit</strong> to claim</li>
@@ -2391,11 +2400,11 @@ export default function GSTReturns() {
                       </p>
                     </div>
 
-                    <StepList steps={NIL_GSTR1_STEPS} title="NIL GSTR-1 — File First (Even with Zero Sales)" />
-                    <StepList steps={NIL_GSTR3B_STEPS} title="NIL GSTR-3B — File After NIL GSTR-1" />
+                    <StepList steps={NIL_GSTR1_STEPS} title="NIL GSTR-1 — File First (Even with Zero Sales)" doc="gst-returns#nil-return" />
+                    <StepList steps={NIL_GSTR3B_STEPS} title="NIL GSTR-3B — File After NIL GSTR-1" doc="gst-returns#nil-return" />
 
                     <div className="glass-panel p-4" style={{ background: '#f0fdf4' }}>
-                      <h4 style={{ color: '#059669', marginBottom: '0.5rem', fontSize: '0.9rem' }}>NIL Return Quick Summary</h4>
+                      <h4 style={{ color: '#059669', marginBottom: '0.5rem', fontSize: '0.9rem' }}>NIL Return Quick Summary<HelpButton title="NIL returns" doc="gst-returns#nil-return" size={16} /></h4>
                       <ul style={{ fontSize: '0.82rem', color: '#047857', lineHeight: 1.8, paddingLeft: '1.25rem' }}>
                         <li>NIL GSTR-1 and NIL GSTR-3B are <strong>separate returns</strong> — file both</li>
                         <li>NIL filing takes 2-3 minutes per return — just login, verify zeros, submit, file</li>
@@ -2411,7 +2420,7 @@ export default function GSTReturns() {
                 {guideTab === 'errors' && (
                   <>
                     <div className="glass-panel mb-4">
-                      <div className="table-header"><h3>Common GST Portal Errors & How to Fix Them</h3></div>
+                      <div className="table-header"><h3>Common GST Portal Errors & How to Fix Them<HelpButton title="Common GST Portal Errors" doc="gst-returns#guide-errors" size={16} /></h3></div>
                       <div style={{ padding: '1rem 1.25rem' }}>
                         {[
                           { error: '"Invalid GSTIN" when adding B2B invoice', fix: 'Verify the client GSTIN on the portal: Services → User Services → Search Taxpayer. The GSTIN must be active. Cancelled/surrendered GSTINs are rejected. Also check for typos — GSTIN is 15 characters: 2 digits (state) + 10 chars (PAN) + 1 entity code + 1 check digit.' },
@@ -2435,7 +2444,7 @@ export default function GSTReturns() {
                     </div>
 
                     <div className="glass-panel p-4" style={{ background: '#f8fafc' }}>
-                      <h4 style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Key GST Rules to Remember</h4>
+                      <h4 style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Key GST Rules to Remember<HelpButton title="Key GST Rules" doc="gst-returns#guide-rules" size={16} /></h4>
                       <ul style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.8, paddingLeft: '1.25rem' }}>
                         <li><strong>Section 16(4):</strong> ITC for any invoice must be claimed by the due date of September return of the following FY, or the date of filing annual return — whichever is earlier.</li>
                         <li><strong>Section 34:</strong> Credit notes must be issued before September 30 following the end of FY of the original invoice or annual return filing — whichever is earlier.</li>

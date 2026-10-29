@@ -13,7 +13,7 @@ export function EInvoiceReport({ title, intro, rows, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title}>
-        <h3 className="section-title" style={{ marginTop: 0 }}>{title} <HelpButton title="E-invoicing" doc="gst-returns#e-invoice" size={16} style={{ marginLeft: 6 }} /></h3>
+        <h3 className="section-title" style={{ marginTop: 0 }}>{title} <HelpButton title="E-invoice results" doc="gst-returns#e-invoice-report" size={16} style={{ marginLeft: 6 }} /></h3>
         {intro && <p style={{ fontSize: '0.85rem', marginTop: 0 }}>{intro}</p>}
         <ul style={{ paddingLeft: '1.1rem', fontSize: '0.84rem', lineHeight: 1.5 }}>
           {rows.map((r, i) => (
@@ -57,7 +57,7 @@ export function EInvoiceEditorModal({ bill, profile, bills, saved, onSaveIrn, on
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="E-invoice" style={{ maxWidth: 620 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 className="section-title" style={{ margin: 0 }}>E-invoice (IRN) <HelpButton title="E-invoicing" doc="gst-returns#e-invoice" size={16} style={{ marginLeft: 6 }} /></h3>
+          <h3 className="section-title" style={{ margin: 0 }}>E-invoice (IRN) <HelpButton title="E-invoice (IRN) window" doc="gst-returns#e-invoice-dialog" size={16} style={{ marginLeft: 6 }} /></h3>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={16} /></button>
         </div>
         <ol style={{ paddingLeft: '1.2rem', fontSize: '0.84rem', lineHeight: 1.55 }}>
