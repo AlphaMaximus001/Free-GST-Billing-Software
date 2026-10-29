@@ -15,10 +15,13 @@ import { docsLink } from '../utils';
  */
 export default function HelpButton({ title, doc, size = 18, style }) {
   const label = `${title ? title.replace(/\s*[—-]\s*how to use$/i, '') : 'This screen'}: open the guide (opens in your browser)`;
+  // A small "?" sits inline after a card or section title: a compact box and a
+  // gap from the text, so it does not make the title row taller.
+  const inline = size < 18 ? { width: size + 8, height: size + 8, marginLeft: 6, flexShrink: 0 } : null;
   return (
     <a href={docsLink(doc || '')} target="_blank" rel="noopener noreferrer"
       className="icon-btn" title={label} aria-label={label}
-      style={{ color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', ...style }}>
+      style={{ color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', ...inline, ...style }}>
       <HelpCircle size={size} />
     </a>
   );
