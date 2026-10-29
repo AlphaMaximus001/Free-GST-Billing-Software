@@ -124,6 +124,7 @@ export default [
 <section id="wizard-business-type">
 <h3>What kind of business do you run?</h3>
 <p>Click the card that fits you best; it turns blue. Each card has a one-line hint:</p>
+<figure><img src="assets/img/setup-business-type.png" alt="Step 1 of the setup window: seven business type cards, with Freelancer / consultant picked and shown in blue." loading="lazy" style="max-width:min(480px,100%)"><figcaption>Step 1 of 3: the picked card turns blue. ${ui('Continue')} moves to paper size and language.</figcaption></figure>
 <div class="table-wrap"><table>
   <tr><th>Card</th><th>For</th></tr>
   <tr><td>Retail shop / kirana</td><td>Selling from a counter, keeping stock, buying from suppliers.</td></tr>

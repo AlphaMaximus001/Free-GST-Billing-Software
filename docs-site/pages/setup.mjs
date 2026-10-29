@@ -36,6 +36,7 @@ export default [
 <h2>Business type</h2>
 <p>The first tab. Pick what kind of business you run, and the app shows the screens and features that business needs and hides the rest, so the menu stays short. Use it when you first set the app up, or when the menu shows things you never use.</p>
 <p>The card shows <b>Your business type:</b> with the type that is saved now, or <b>Not chosen yet</b>.</p>
+<figure><img src="assets/img/settings-business-type.png" alt="Settings, Business type tab: the row of Settings tabs at the top and seven business type cards, with Everything picked." loading="lazy"><figcaption>The Business type tab. The saved type is shown in blue; the Save all changes bar is at the bottom.</figcaption></figure>
 <ol class="steps">
   <li><strong>Pick a type</strong>Click one of the seven cards. Each says in one line who it is for.</li>
   <li><strong>Check what will change</strong>A yellow box, <b>Not saved yet</b>, lists what will be turned on (<i>Turn on: …</i>) and turned off (<i>Turn off: …</i>). The tick boxes on the Features tab are filled in to match.</li>
@@ -111,6 +112,7 @@ export default [
 <h2>LUT for exports and SEZ supplies</h2>
 <p>A second grey box inside Company Details, shown only when the country is India. Fill it in if you export, or sell to units in a Special Economic Zone (SEZ), <b>without charging IGST</b>.</p>
 <p><b>What a LUT is.</b> A Letter of Undertaking (form <b>GST RFD-11</b>) is a promise to the GST department that you will follow the export rules. With a LUT, exports and SEZ supplies are billed without IGST (they are "zero-rated"), so you do not pay the tax and then wait months for a refund. Without one, you must charge IGST and claim it back. It is free, filed online in a few minutes, and valid for <b>one financial year</b>: file a fresh one every April, before your first export of the year. How to file it, step by step: <a href="gst-basics.html#lut">GST basics: LUT</a>.</p>
+<figure><img src="assets/img/settings-lut.png" alt="The LUT for exports and SEZ supplies box: LUT ARN AD290426123456X, financial year FY 2026-27 and the date filed." loading="lazy"><figcaption>The LUT box in Settings, Company, filled in.</figcaption></figure>
 <div class="table-wrap"><table>
   <tr><th>Field</th><th>What to put in</th></tr>
   <tr><td>LUT ARN (acknowledgement number)</td><td>The ARN the GST portal gave you when you filed the LUT, such as <code>AD290426123456X</code>: usually 15 letters and digits starting with AD. Spaces are removed and letters made capital for you. If it does not look like an ARN, an amber note asks you to check it, but it is still saved.</td></tr>
@@ -333,6 +335,7 @@ export default [
   <li><strong>Save</strong>Click ${ui('Save all changes')} at the bottom. Only then does the menu change. ${ui('Discard')} undoes your ticks.</li>
 </ol>
 <p>Unticked things disappear from the menu and the screens. <b>Nothing is deleted</b>: your data is kept, and ticking it again brings it all back. Each switch has a line saying what it does.</p>
+<figure><img src="assets/img/settings-features.png" alt="Settings, Features tab: tick boxes for the top of the menu, the bottom of the menu and the buttons at the top right, each with arrows to change the order." loading="lazy"><figcaption>The Features tab. Tick what you want in the menu, and use the arrows to change its order.</figcaption></figure>
 <p>${ui('Reset to my business type')}, at the top right, sets every switch back to what your <a href="#business-type">business type</a> gives; save to apply it. Before a business type is chosen, the button is ${ui('Reset to default')}.</p>
 <p>When <b>Cost centres</b> is on, a <b>Cost centres</b> card appears under Features on this tab, to add your branches, sites or projects: see <a href="reports.html#cost-centres">Cost centres</a>.</p>
 <h3>Something wrong?</h3>
