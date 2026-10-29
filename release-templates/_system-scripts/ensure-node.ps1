@@ -112,8 +112,14 @@ function Test-AppFolderWritable {
 function Test-DiskSpace {
   try {
     $root = [IO.Path]::GetPathRoot($PSScriptRoot)
-    $drive = Get-PSDrive -Name $root.Substring(0, 1) -ErrorAction Stop
-    $freeMB = [int]($drive.Free / 1MB)
+    # v1.10.83 - Get-PSDrive's Free is empty on some PCs, which read as
+    # "0 MB free" and refused to install on a nearly empty drive (reported by
+    # e-mail). Ask Windows directly; a value that cannot be read does not block.
+    $free = $null
+    try { $free = ([IO.DriveInfo]::new($root)).AvailableFreeSpace } catch { $free = $null }
+    if ($null -eq $free -or $free -le 0) { $free = (Get-PSDrive -Name $root.Substring(0, 1) -ErrorAction Stop).Free }
+    if ($null -eq $free -or $free -le 0) { return $true }   # cannot tell: do not block on it
+    $freeMB = [int]($free / 1MB)
     if ($freeMB -ge $NeedFreeMB) { return $true }
     Write-Problem "Drive $root is almost full." @(
       "It has $freeMB MB free; the app needs about $NeedFreeMB MB to install.",

@@ -33,7 +33,7 @@ Your data never leaves your computer. No cloud. No signup. No tracking. No limit
 - **Other computers cannot open it.** The app's server listens only on `127.0.0.1`, this computer itself, and refuses requests from other websites.
 - **Open source — check every line.** The full code is right here under the MIT licence; the release ZIP is built from it with `npm run release:zip`.
 - **No admin rights needed.** It installs into your own user folder, and your data is backed up automatically every day.
-- **Works offline, and says what it connects to.** On its own it contacts only GitHub (the update check and the public supporters list) and Google Fonts (its text font) — plus your own Google Drive, only if you connect it.
+- **Works offline, and says what it connects to.** On its own it contacts only GitHub (the update check and the public supporters list) — plus your own Google Drive, only if you connect it. Even its font is built in.
 
 **[Read the full answer: every address the app connects to, and how to check it yourself →](https://dicecodes.com/free-gst-software-documentation/security.html)**
 
@@ -99,15 +99,24 @@ From then on, click the Desktop shortcut. To update / backup / restore / move to
 
 ## Screenshots
 
-<div align="center">
+Real screens from the app, with a made-up demo business (DiceCodes, fake GSTIN and bank details).
 
-![Free GST Billing Software dashboard — invoices list with overdue tracking, multi-currency totals, and per-status badges](docs/screenshots/dashboard.png)
+<table>
+  <tr>
+    <td width="50%"><img src="docs-site/assets/img/app-dashboard.png" alt="The Dashboard: overdue banner, totals in rupees and dollars, low stock and the invoice list"><br><sub><b>Dashboard</b>: overdue invoices, totals, low stock and every invoice in one list.</sub></td>
+    <td width="50%"><img src="docs-site/assets/img/app-invoice-editor.png" alt="The invoice screen: the form on the left and the live preview on the right"><br><sub><b>New invoice</b>: fill in the form, the preview updates as you type.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs-site/assets/img/invoice-lut-export.png" alt="An export invoice in US dollars under a LUT, with the Rule 46 declaration and ARN"><br><sub><b>Exports under LUT</b>: bill in dollars, no IGST, the declaration printed for you.</sub></td>
+    <td width="50%"><img src="docs-site/assets/img/app-gstr1.png" alt="The GSTR-1 tab: B2B sales and the Exports Table 6A for one month"><br><sub><b>GST returns</b>: GSTR-1 and GSTR-3B built from your invoices.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs-site/assets/img/cash-book.png" alt="The Cash book: cash in hand, a new entry form and the month's entries with a running balance"><br><sub><b>Cash book</b>: cash in and out, with the cash in hand.</sub></td>
+    <td width="50%"><img src="docs-site/assets/img/invoice-editor-dark.png" alt="The invoice screen in dark mode"><br><sub><b>Dark mode</b>: one click at the top right. Invoices still print in normal colours.</sub></td>
+  </tr>
+</table>
 
-*Dashboard view — recent invoices, currency-aware revenue cards, overdue alerts, low-stock indicators, and one-click actions.*
-
-</div>
-
-> 📸 **Want more screenshots?** Open an issue and we'll add captures of the New Invoice form, GSTR-2B Reconciliation tab, Multi-Account Payments manager, PRs welcome too.
+More screenshots, next to the steps they show, in the [documentation](https://dicecodes.com/free-gst-software-documentation/).
 
 ---
 

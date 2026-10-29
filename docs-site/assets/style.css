@@ -243,7 +243,7 @@ pre code { background: none; padding: 0; color: inherit; font-size: .9rem; line-
 
 figure { margin: 1.4rem 0 1.8rem; }
 figure img { display: block; border: 1px solid var(--rule); border-radius: 12px; background: var(--sheet); box-shadow: var(--shadow); }
-figure.narrow img { max-width: 360px; }
+figure.narrow img { max-width: min(360px, 100%); }
 figure.pair { display: flex; gap: 1rem; flex-wrap: wrap; }
 figure.pair img { flex: 1 1 240px; max-width: 320px; }
 figcaption { font-size: .9rem; color: var(--ink-faint); margin-top: .5rem; flex-basis: 100%; }

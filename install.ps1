@@ -100,8 +100,15 @@ function Test-Writable([string]$dir) {
   } catch { return $false }
 }
 
+# Free space on the drive of $dir, in MB. Get-PSDrive's Free is empty on some
+# PCs, which read as 0 MB and refused to install on a nearly empty drive:
+# ask Windows directly, and a value that cannot be read never blocks.
 function Get-FreeMB([string]$dir) {
-  try { return [int]((Get-PSDrive -Name $dir.Substring(0, 1) -ErrorAction Stop).Free / 1MB) } catch { return [int]::MaxValue }
+  $free = $null
+  try { $free = ([IO.DriveInfo]::new([IO.Path]::GetPathRoot($dir))).AvailableFreeSpace } catch { $free = $null }
+  if ($null -eq $free -or $free -le 0) { try { $free = (Get-PSDrive -Name $dir.Substring(0, 1) -ErrorAction Stop).Free } catch { $free = $null } }
+  if ($null -eq $free -or $free -le 0) { return [int]::MaxValue }
+  return [int]($free / 1MB)
 }
 
 function Test-Online {

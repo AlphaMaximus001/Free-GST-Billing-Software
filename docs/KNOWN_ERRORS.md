@@ -720,6 +720,29 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-067 - "Drive C:\ is almost full. It has 0 MB free" on a nearly empty drive
+
+**Version:** v1.10.81 - v1.10.82 installers · fixed in v1.10.83
+**Reported by:** Vijay Darshana, by e-mail (29 Oct 2026), with a photo of the installer
+
+**Symptom** - the Windows installer stopped with "Drive C:\ is almost full. It
+has 0 MB free; the app needs about 400 MB" although C: had plenty of space and
+the Recycle Bin was empty.
+
+**Cause** - `Test-DiskSpace` (ensure-node.ps1) and `Get-FreeMB` (install.ps1)
+read `(Get-PSDrive C).Free`. On some PCs that property is empty; `[int]($null /
+1MB)` is 0, so "cannot tell" became "0 MB free" and the install was refused.
+
+**Rule** - free space comes from `[IO.DriveInfo]::new(root).AvailableFreeSpace`
+first, Get-PSDrive second; an empty or zero reading means "cannot tell" and
+never blocks (a truly full disk still fails later with a clear npm/copy error).
+
+**Guard** - both functions treat `$null` / 0 as unknown. Workaround for older
+versions: install to another drive (`$env:FREEGSTBILL_DIR = 'D:\Free GST
+Billing'` before the one-line install, or extract the ZIP on D:).
+
+---
+
 ## ERR-066 - A server restart filled the Problem log with one entry per request
 
 **Version:** since v1.10.83 (Problem log) · fixed before release

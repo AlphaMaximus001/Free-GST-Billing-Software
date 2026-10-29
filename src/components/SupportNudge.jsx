@@ -27,8 +27,9 @@ const LINES = [
 
 export default function SupportNudge({ invoiceCount, onOpen }) {
   const [state, setState] = useState(read);
-  const tracker = useSupporters();
-  if (!shouldShowSupportNudge(invoiceCount, state)) return null;
+  const visible = shouldShowSupportNudge(invoiceCount, state);
+  const tracker = useSupporters(visible);
+  if (!visible) return null;
   const save = (v) => { write(v); setState(v); };
   const hideToday = () => save({ ...state, hiddenOn: localDay() });
   const now = new Date();

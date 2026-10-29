@@ -174,6 +174,7 @@ export default [
   <li><strong>Ticked</strong>: the supply is zero-rated. No IGST (and no cess) is charged, the items keep their GST rate for the returns, and the total is the taxable value. The invoice prints, word for word, the declaration Rule 46 requires: <i>SUPPLY MEANT FOR EXPORT/SUPPLY TO SEZ UNIT OR SEZ DEVELOPER FOR AUTHORISED OPERATIONS UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX - LUT ARN AD290426123456X (FY 2026-27)</i>. Every invoice design prints it, the thermal receipt too.</li>
   <li><strong>Not ticked</strong>: IGST is charged ("with payment of IGST"), which you claim back later as a refund. The invoice prints the matching declaration <i>…ON PAYMENT OF INTEGRATED TAX</i>.</li>
 </ul>
+<figure><img src="assets/img/invoice-lut-export.png" alt="An export invoice to a client in the United States, billed in US dollars: Export under LUT under the place of supply, IGST 0%, and the green LUT declaration with the ARN under the total." loading="lazy" style="max-width:min(600px,100%)"><figcaption>An export under a LUT: no IGST, and the Rule 46 declaration with the ARN printed under the total.</figcaption></figure>
 <p>On a new invoice the box is ticked for you when your business has a LUT saved in <a href="settings.html#lut">Settings, Company</a> for the financial year of the invoice date. Untick it to charge IGST instead. An invoice saved earlier keeps its own choice. The ARN and year are copied onto the invoice when you tick it, so a new LUT next year never changes an old invoice.</p>
 <p>Under the box:</p>
 <ul>
@@ -384,6 +385,7 @@ export default [
 </ul>
 <h3>The exchange rate</h3>
 <p>For any currency other than rupees, a second box asks <b>1 USD = ? INR</b>. Type how many rupees one unit was worth on the invoice date, such as 84.10. Use your bank's rate for that day or the RBI reference rate. The app does not fetch rates from the internet.</p>
+<figure><img src="assets/img/invoice-currency.png" alt="The Currency box set to $ USD, the rate box 1 USD = ? INR filled in with 84.2, and the total in rupees shown below." loading="lazy" style="max-width:min(480px,100%)"><figcaption>A US dollar invoice: the currency, the rate for the invoice date, and the total in rupees under them.</figcaption></figure>
 <ul>
   <li>Under the boxes the app shows the invoice total in rupees, for example <b>≈ ₹84,100.00 in all</b>.</li>
   <li>The rate is saved with the invoice. GST returns, reports, the Dashboard and income tax turn the invoice into rupees with this rate, never with today's, so a return you filed last month gives the same figures today.</li>
