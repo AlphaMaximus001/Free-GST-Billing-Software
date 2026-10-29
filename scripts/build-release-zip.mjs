@@ -151,6 +151,8 @@ copyFileSync(join(REPO_ROOT, 'src', 'utils.js'), join(SYSTEM, 'src', 'utils.js')
 // rules (standalone too). assertServerImportsResolve() below checks it.
 mkdirSync(join(SYSTEM, 'src', 'utils'), { recursive: true });
 copyFileSync(join(REPO_ROOT, 'src', 'utils', 'errorReport.js'), join(SYSTEM, 'src', 'utils', 'errorReport.js'));
+// The cash book endpoints check entries with the form's own rules (imports ../utils.js only).
+copyFileSync(join(REPO_ROOT, 'src', 'utils', 'cashBook.js'), join(SYSTEM, 'src', 'utils', 'cashBook.js'));
 
 copyDirRecursive(join(REPO_ROOT, 'dist'), join(SYSTEM, 'dist'));
 // Only ship the scripts that postinstall / release-time need — not the

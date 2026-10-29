@@ -388,6 +388,12 @@ export const deleteRecurring = async (id) => {
   return apiFetch(`${API}/recurring/${encodeURIComponent(id)}`, { method: 'DELETE' });
 };
 
+// ---- Cash book (v1.10.83) ----
+export const getAllCashEntries = () => apiFetch(`${API}/cash-book`);
+// Returns the entry as stored (with its id).
+export const saveCashEntry = async (entry) => (await apiFetch(`${API}/cash-book`, { method: 'POST', body: JSON.stringify(entry) })).entry;
+export const deleteCashEntry = (id) => apiFetch(`${API}/cash-book/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
 // ---- Receipts / Payment Vouchers ----
 export const getAllReceipts = async () => {
   return apiFetch(`${API}/receipts`);
@@ -543,6 +549,7 @@ export const exportAllData = async (selection) => {
   // v1.10.83 (#115) - production entries travel with products: stock is the result of both.
   if (sel.products && all.productions) data.productions = all.productions;
   if (sel.expenses)       data.expenses = all.expenses;
+  if (sel.expenses)       data.cashBook = all.cashBook; // v1.10.83 - the cash book travels with expenses
   if (sel.recurring)      data.recurring = all.recurring;
   if (sel.receipts)       data.receipts = all.receipts;
   if (sel.purchases)      data.purchases = all.purchases;
@@ -597,6 +604,7 @@ export const importData = async (jsonString, selection) => {
   if (sel.products && data.products)             payload.products = data.products;
   if (sel.products && data.productions)          payload.productions = data.productions;
   if (sel.expenses && data.expenses)             payload.expenses = data.expenses;
+  if (sel.expenses && data.cashBook)             payload.cashBook = data.cashBook;
   if (sel.recurring && data.recurring)           payload.recurring = data.recurring;
   if (sel.receipts && data.receipts)             payload.receipts = data.receipts;
   if (sel.purchases && data.purchases)           payload.purchases = data.purchases;

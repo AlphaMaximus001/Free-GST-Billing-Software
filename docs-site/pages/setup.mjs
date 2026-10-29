@@ -126,7 +126,7 @@ export default [
   <tr><th>Group</th><th>Features</th></tr>
   <tr><td>Sales &amp; Invoicing</td><td>Invoices (always on), Recurring invoices, Payment receipts</td></tr>
   <tr><td>Directory</td><td>Clients (always on), Products &amp; Services, <a href="products.html#manufacturing">Manufacturing (bill of materials)</a> (<b>off</b> to start)</td></tr>
-  <tr><td>Purchases &amp; Expenses</td><td>Expense tracker, Purchase bills, GSTR-2B reconciliation, <a href="purchases.html#purchase-orders">Purchase orders</a> (<b>off</b> to start)</td></tr>
+  <tr><td>Purchases &amp; Expenses</td><td>Expense tracker, <a href="cash-book.html">Cash book</a>, Purchase bills, GSTR-2B reconciliation, <a href="purchases.html#purchase-orders">Purchase orders</a> (<b>off</b> to start)</td></tr>
   <tr><td>GST &amp; Tax (India)</td><td>GSTR-1 / GSTR-3B, E-Way Bill, <a href="gst-returns.html#e-invoice">E-invoicing (IRN)</a> (<b>off</b> to start), TDS / TCS on invoices (<b>off</b> to start), Income Tax Helper</td></tr>
   <tr><td>Reports</td><td>Dashboard (always on), Reports, Cost centres (<b>off</b> to start; see <a href="reports.html#cost-centres">By cost centre</a>)</td></tr>
   <tr><td>Integrations</td><td>Google Drive backup, UPI QR code on invoices</td></tr>
@@ -225,7 +225,7 @@ export default [
 <section id="export-import">
 <h2>Export everything to one file</h2>
 <p>In <b>Settings, Data Management</b>, ${ui('Export Backup…')} lets you tick what to include; everything is ticked to start:</p>
-<p>active business profile, all business profiles, invoices, clients, products, expenses, purchase bills, recurring invoices, receipts, terms templates, app settings, and local preferences such as custom units and theme.</p>
+<p>active business profile, all business profiles, invoices, clients, products, expenses (with the cash book), purchase bills, recurring invoices, receipts, terms templates, app settings, and local preferences such as custom units and theme.</p>
 <p>${ui('Download Backup')} saves <code>freegstbill-backup-<i>date</i>.json</code>. Tick <b>Also save a copy to my Google Drive</b> if you have connected Drive.</p>
 <p>${ui('Import Backup…')} reads a backup file and shows what is in it, with a count for each part, before anything changes. Tick the parts to restore and click ${ui('Restore selected')}. Records in the file replace the matching records in the app; anything you did not tick is left alone. Export your current data first, just in case.</p>
 </section>

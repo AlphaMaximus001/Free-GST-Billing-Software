@@ -17,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Business Profile → *Signature and stamp layout*: side by side, the stamp
   above the signature, or the stamp on the signature, with a preview. Every
   invoice design follows it.
+- **Cash book:** a new screen in the sidebar for cash in and out that is not
+  on an invoice or bill: counter sales, advances, salary, tea, auto fare,
+  money taken home, deposits to the bank. Each entry is Money in or Money out
+  with an amount, name, note, date and category, typed in the form at the top
+  (Enter saves). Shows cash in hand, today's and this month's in and out, a
+  running balance, search, dates (this month, last month, this financial
+  year, your own dates, all) and Print / PDF, Excel and CSV. Cash payments on
+  invoices, cash receipts and cash expenses show in it on their own, read-only,
+  each counted once. One per business; on to start (Settings → Features).
 
 - **Purchase orders** (#112, thanks @vhoramunis9510). Turn on in Settings →
   Features. Make a purchase order for a supplier (own number PO/26-27/0001

@@ -521,7 +521,7 @@ export default function SettingsView({ onSaved }) {
     { id: 'bills',          label: 'Invoices / bills',         hint: 'Tax invoices, proforma, credit notes, etc.' },
     { id: 'clients',        label: 'Clients',                  hint: 'Saved client directory' },
     { id: 'products',       label: 'Products / Inventory',     hint: 'Product catalog with HSN, rate, stock' },
-    { id: 'expenses',       label: 'Expenses',                 hint: 'Expense tracker entries' },
+    { id: 'expenses',       label: 'Expenses',                 hint: 'Expense tracker entries and the cash book' },
     { id: 'purchases',      label: 'Purchase bills',           hint: 'Vendor bills used for ITC, and purchase orders' },
     { id: 'recurring',      label: 'Recurring invoices',       hint: 'Auto-billing schedule entries' },
     { id: 'receipts',       label: 'Receipts',                 hint: 'Payment receipts' },

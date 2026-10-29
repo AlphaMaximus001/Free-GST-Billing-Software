@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url';
 // v1.10.1 extraction fixed. Same source of truth now.
 // v1.10.83 - same redaction as the browser's Problem log, for errors.log lines.
 import { redact } from './src/utils/errorReport.js';
+import { validateCashEntry, cleanCashEntry } from './src/utils/cashBook.js';
 import { templateTotals, clientYearToDate, nextCounterValue, startFor, numberSeriesFor, counterKeyFor, formatDocNumber, businessKeyOf, getFinancialYearLabel, INVOICE_TYPES } from './src/utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -92,7 +93,7 @@ app.use((req, res, next) => {
 });
 
 // Ensure data directory and sub-directories exist
-const DIRS = ['bills', 'clients', 'templates', 'products', 'expenses', 'recurring', 'receipts', 'profiles', 'purchases', 'productions', 'purchase-orders'];
+const DIRS = ['bills', 'clients', 'templates', 'products', 'expenses', 'recurring', 'receipts', 'profiles', 'purchases', 'productions', 'purchase-orders', 'cash-book'];
 // v1.10.83 - a data folder the app may not write to (inside Program Files, a
 // read-only drive, antivirus "controlled folder access") or a full disk used
 // to crash here with a raw stack trace the launcher never showed. Say it in
@@ -658,6 +659,44 @@ app.post('/api/purchase-orders', (req, res) => {
   res.json({ success: true, id: order.id });
 });
 
+// v1.10.83 - the cash book's own entries (cash recorded on invoices, receipts
+// and expenses is read from those, never copied here). Checked with the same
+// rules as the form, and only known fields are stored.
+app.get('/api/cash-book', (req, res) => {
+  const entries = readAllFromDir('cash-book');
+  entries.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  res.json(entries);
+});
+
+app.post('/api/cash-book', (req, res) => {
+  const problem = validateCashEntry(req.body);
+  if (problem) return res.status(400).json({ error: problem, code: 'bad-request' });
+  const entry = cleanCashEntry(req.body);
+  if (!entry.id) entry.id = 'cash_' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex');
+  else entry.updatedAt = new Date().toISOString();
+  const dir = path.join(DATA_DIR, 'cash-book');
+  const filePath = path.join(dir, safeFileName(entry.id) + '.json');
+  if (!isPathInside(filePath, dir)) return errRes(res, 400, 'invalid-path');
+  try {
+    writeJSON(filePath, entry);
+    res.json({ success: true, id: entry.id, entry });
+  } catch (err) {
+    errRes(res, 500, 'server-error', err);
+  }
+});
+
+app.delete('/api/cash-book/:id', (req, res) => {
+  const dir = path.join(DATA_DIR, 'cash-book');
+  const filePath = path.join(dir, safeFileName(req.params.id) + '.json');
+  if (!isPathInside(filePath, dir)) return errRes(res, 400, 'invalid-path');
+  try {
+    deleteFile(filePath);
+    res.json({ success: true });
+  } catch (err) {
+    errRes(res, 500, 'server-error', err);
+  }
+});
+
 // ========================
 // BUSINESS PROFILES (multi-business)
 // ========================
@@ -834,6 +873,7 @@ app.get('/api/export', (req, res) => {
     purchases: readAllFromDir('purchases'),
     productions: readAllFromDir('productions'), // v1.10.83 (#115)
     purchaseOrders: readAllFromDir('purchase-orders'),
+    cashBook: readAllFromDir('cash-book'),
     // v1.10.77 - never the PIN hash: a backup file can travel (email, Drive).
     meta: withoutLock(readJSON(META_PATH, {})),
     exportedAt: new Date().toISOString(),
@@ -867,6 +907,7 @@ app.post('/api/import', (req, res) => {
     purchaseCount: 0, purchaseSkipped: 0,
     productionCount: 0, productionSkipped: 0,
     purchaseOrderCount: 0, purchaseOrderSkipped: 0,
+    cashBookCount: 0, cashBookSkipped: 0,
   };
 
   // Helper: upsert one entity to a directory, honouring the overwrite flag.
@@ -897,6 +938,8 @@ app.post('/api/import', (req, res) => {
   // already hold the stock these entries moved, so nothing is applied again.
   (data.productions || []).forEach(p => upsertOne('productions', p, 'productionCount', 'productionSkipped'));
   (data.purchaseOrders || []).forEach(p => upsertOne('purchase-orders', p, 'purchaseOrderCount', 'purchaseOrderSkipped'));
+  // v1.10.83 - a cash entry that fails the form's checks is skipped, not saved.
+  (data.cashBook || []).forEach(c => { if (validateCashEntry(c)) counts.cashBookSkipped++; else upsertOne('cash-book', cleanCashEntry(c), 'cashBookCount', 'cashBookSkipped'); });
 
   // meta.json — same gating. Previously always overwrote → counters could
   // regress below existing bill numbers → collision loop on next save.

@@ -1882,6 +1882,8 @@ export const FEATURE_GROUPS = [
     description: 'Vendor bills, expense tracking, ITC',
     modules: [
       { id: 'expenses',  label: 'Expense tracker', nav: 'expenses',  defaultOn: true },
+      // v1.10.83 - money in and out in cash, with cash in hand.
+      { id: 'cashBook',  label: 'Cash book', nav: 'cashbook', defaultOn: true },
       { id: 'purchases', label: 'Purchase bills',  nav: 'purchases', defaultOn: true },
       // v1.10.83 (#112) - a tab on the Purchases screen; off until wanted.
       { id: 'purchaseOrders', label: 'Purchase orders', nav: null, defaultOn: false },
