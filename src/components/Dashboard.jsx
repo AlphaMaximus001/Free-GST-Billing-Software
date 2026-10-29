@@ -3,6 +3,7 @@ import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search
 import HelpButton from './HelpButton';
 import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts, markSavedPdfCancelled, getEnabledModules } from '../store';
 import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES, localToday, amountDue, paymentStatusFor, isModuleEnabled, TDS_SECTIONS } from '../utils';
+import { billInInr, billCurrency as fxBillCurrency, baseCurrencyOf } from '../utils/fx';
 import { withClientTds } from '../utils/tdsTcs';
 import { prepareEInvoices, parseIrpResponse, matchIrnEntries, downloadJson, einvoiceFileName } from '../utils/einvoice';
 import { EInvoiceReport } from './EInvoiceModal';
@@ -208,6 +209,18 @@ function ReceiptModal({ target, onClose }) {
   );
 }
 
+// v1.10.83 - a payment on an invoice in a foreign currency: the rupees that
+// reached the bank, its charges and the FIRC / e-BRC number, when filled in.
+const foreignReceiptFields = (input) => {
+  const inr = Number(input?.inrReceived), charges = Number(input?.bankCharges);
+  const firc = String(input?.fircRef || '').trim();
+  return {
+    ...(inr > 0 ? { inrReceived: Math.round(inr * 100) / 100 } : {}),
+    ...(charges > 0 ? { bankCharges: Math.round(charges * 100) / 100 } : {}),
+    ...(firc ? { fircRef: firc.slice(0, 60) } : {}),
+  };
+};
+
 export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConvert, onOpenProducts, onOpenSettings, onOpenGuide, onOpenSupport, activeProfile }) {
   // v1.10.64 — requested (#55, @sangwanmail-eng): "An invoice belonging to one
   // company should not appear under the other."
@@ -246,6 +259,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
   // loadBills() from the raw server response, so Total Invoiced, Tax Collected,
   // Outstanding and the invoice count added up EVERY company's invoices while
   // the table underneath showed only one.
+  const baseCur = baseCurrencyOf(profile);
   const stats = useMemo(() => {
     // v1.10.67 (#66 item 7, @sangwanmail-eng) — these cards are turnover, so
     // only real sales count. A proforma is a quote, a delivery challan moves
@@ -263,8 +277,19 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       byCurrency[cur].tax += sign * (b.totalTaxAmount || 0);
       if (sign > 0 && b.status !== 'paid') byCurrency[cur].unpaid += Math.max(0, amountDue(b) - (b.paidAmount || 0));
     }
-    return { byCurrency, count };
-  }, [bills]);
+    // v1.10.83 - more than one currency: the total in rupees too, each
+    // invoice at its own exchange rate (one without a rate is counted apart).
+    let inBase = 0, noRate = 0;
+    if (Object.keys(byCurrency).length > 1) {
+      for (const b of bills) {
+        const sign = salesSign(b);
+        if (sign === 0) continue;
+        const c = billInInr(b, baseCur);
+        if (c) inBase += sign * (c.totalAmount || 0); else noRate += 1;
+      }
+    }
+    return { byCurrency, count, inBase, noRate };
+  }, [bills, baseCur]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -600,7 +625,9 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
   // TDS can be added while recording a payment on an Indian sales invoice that
   // does not already show TDS (one that does is owed its Net Receivable).
   const tdsEntryAllowed = (bill) => !!bill && SALES_INVOICE_TYPES.includes(bill.invoiceType || 'tax-invoice')
-    && (bill.data?.profile?.country || 'India') === 'India' && !(Number(bill.data?.totals?.tdsAmount) > 0);
+    && (bill.data?.profile?.country || 'India') === 'India' && !(Number(bill.data?.totals?.tdsAmount) > 0)
+    // v1.10.83 - a client abroad does not deduct Indian TDS.
+    && ['', 'India'].includes(String(bill.data?.client?.country || '').trim());
 
   const recordPayment = async () => {
     // v1.10.74 - a payment used to flip a cancelled invoice to paid/partial
@@ -645,6 +672,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       id: 'pay_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       amount, date: paymentInput.date, mode: paymentInput.mode,
       note: paymentInput.note, recordedAt: new Date().toISOString(),
+      ...foreignReceiptFields(paymentInput),
     };
     const payments = [...(bill.payments || []), paymentEntry];
     const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
@@ -671,6 +699,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         againstInvoice: bill.invoiceNumber || bill.id || '',
         note: paymentEntry.note || '',
         currency: bill.currency || bill.data?.invoiceOptions?.currency || 'INR',
+        ...foreignReceiptFields(paymentInput),
         source: 'auto-from-payment',
         billId: bill.id,
         // The business that raised the invoice: without it the receipt was
@@ -1339,7 +1368,8 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       { key: 'bank', done: hasBank,
         title: 'Add bank details or UPI', hint: 'So clients can pay you, with a UPI QR on the invoice',
         cta: 'Open Settings', go: onOpenSettings },
-    ];
+    // v1.10.83 - no products step when Products is switched off (a freelancer).
+    ].filter(s => s.key !== 'products' || isModuleEnabled('inventory', getEnabledModules()));
     return steps.every(s => s.done) ? null : steps;
   }, [guideDismissed, productCount, profile, allBills.length, onNew, onOpenProducts, onOpenSettings]);
 
@@ -1503,6 +1533,11 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
               </div>
             ))}
             {Object.keys(stats.byCurrency).length === 0 && <h2 className="stat-value">—</h2>}
+            {Object.keys(stats.byCurrency).length > 1 && (
+              <div className="text-muted" style={{ fontSize: '0.72rem', marginTop: 2 }} title="Each invoice at the exchange rate saved on it">
+                ≈ {formatCurrency(stats.inBase, baseCur)} in all{stats.noRate ? ` (${stats.noRate} without a rate left out)` : ''}
+              </div>
+            )}
           </div>
         </div>
         <div className="stat-card">
@@ -1898,6 +1933,38 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                   placeholder="Transaction ID, ref..." />
               </div>
             </div>
+            {/* v1.10.83 - paid from abroad: what reached the bank in rupees, the
+                bank's charges and the FIRC / e-BRC number (the proof of foreign
+                exchange received for an export). All optional. */}
+            {fxBillCurrency(paymentModal) !== baseCur && (
+              <div style={{ marginTop: '0.5rem', padding: '0.6rem', borderRadius: 6, border: '1px dashed var(--border)' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>
+                  Received from abroad (optional) <HelpButton title="Payments from abroad" doc="dashboard#payment-foreign" size={14} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="pay-inr">Credited to your bank ({baseCur})</label>
+                    <input id="pay-inr" type="number" min="0" step="any" className="form-input" value={paymentInput.inrReceived || ''}
+                      onChange={e => setPaymentInput(prev => ({ ...prev, inrReceived: e.target.value }))} placeholder="As on the bank statement" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="pay-charges">Bank charges ({baseCur})</label>
+                    <input id="pay-charges" type="number" min="0" step="any" className="form-input" value={paymentInput.bankCharges || ''}
+                      onChange={e => setPaymentInput(prev => ({ ...prev, bankCharges: e.target.value }))} placeholder="0" />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label" htmlFor="pay-firc">FIRC / e-BRC number</label>
+                    <input id="pay-firc" type="text" className="form-input" value={paymentInput.fircRef || ''}
+                      onChange={e => setPaymentInput(prev => ({ ...prev, fircRef: e.target.value }))} placeholder="From your bank, for export of services" />
+                  </div>
+                </div>
+                {Number(paymentInput.inrReceived) > 0 && Number(paymentInput.amount) > 0 && (
+                  <p className="text-muted" style={{ margin: '0.3rem 0 0', fontSize: '0.75rem' }}>
+                    Works out to 1 {fxBillCurrency(paymentModal)} = {((Number(paymentInput.inrReceived) + (Number(paymentInput.bankCharges) || 0)) / Number(paymentInput.amount)).toFixed(4)} {baseCur} before bank charges.
+                  </p>
+                )}
+              </div>
+            )}
             {tdsEntryAllowed(paymentModal) && (() => {
               const preview = withClientTds(paymentModal, { section: paymentInput.tdsSection, rate: paymentInput.tdsRate }).data.totals;
               return (
@@ -1946,6 +2013,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                       <span className="font-bold" style={{ minWidth: 100 }}>{formatCurrency(p.amount, paymentModal.currency)}</span>
                       <span className="text-muted" style={{ minWidth: 90 }}>{paymentModeName(p.mode)}</span>
                       {p.note && <span className="text-muted" style={{ flex: 1 }}>· {p.note}</span>}
+                      {p.inrReceived > 0 && <span className="text-muted">· {formatCurrency(p.inrReceived, baseCur)} credited{p.fircRef ? ` · FIRC ${p.fircRef}` : ''}</span>}
                       <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.25rem' }}>
                         <button className="btn btn-secondary" style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}
                           onClick={() => openReceiptFor(paymentModal, p)}

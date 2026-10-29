@@ -223,6 +223,7 @@ export default [
   <li><b>Display position</b>: on a line below the ₹ amount, or in brackets after it.</li>
 </ul>
 <p>Shown for the Freelancer and Service business types, or with none chosen.</p>
+<p>On an invoice billed in another currency (for example US dollars), the same switch adds the rupee total to the invoice's EXCHANGE RATE line, at that invoice's own rate: <i>1 USD = 84.1000 INR · Total ₹84,100.00</i>. See <a href="invoices.html#currency">Billing in another currency</a>.</p>
 </section>
 
 <section id="letterhead">

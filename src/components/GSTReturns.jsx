@@ -4,6 +4,8 @@ import { getAllBills, getAllExpenses, getAllPurchases, getProfile, getEnabledMod
 import { formatCurrency, INVOICE_TYPES, getStateCode, formatDateGST, getFilingPeriod, hsnUqc, getFYOptions, belongsToProfile, toCsvLine, isCancelledBill, b2clThreshold, GST_PORTAL_RATES, setOffITC, splitLineTax, roundQty, placeOfSupplyLabel, countsAsSales, parseLocalDate, isModuleEnabled } from '../utils';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
+import { billInInr } from '../utils/fx';
+import { zeroRatedTotals, withoutZeroRated } from '../utils/lut';
 
 const GST_TYPES = ['tax-invoice', 'credit-note'];
 // GSTR-1 Table 13 "nature of document" codes.
@@ -557,7 +559,11 @@ export default function GSTReturns() {
       // v1.10.64 (#55) — a GST return must cover ONE GSTIN. Showing another
       // business's invoices here would misstate the return being filed.
       // v1.10.67 (#66 item 12) — a cancelled invoice is not reported.
-      setBills((b || []).filter(bill => belongsToProfile(bill, p) && !isCancelledBill(bill)));
+      // v1.10.83 - returns are in rupees: an invoice in USD, EUR... is turned
+      // into rupees at the exchange rate saved on it. One without a rate stays
+      // as it is, marked fxMissing, and is listed as an error below.
+      const inRupees = (bill) => billInInr(bill) || { ...bill, fxMissing: true };
+      setBills((b || []).filter(bill => belongsToProfile(bill, p) && !isCancelledBill(bill)).map(inRupees));
       setCancelledBills((b || []).filter(bill => belongsToProfile(bill, p) && isCancelledBill(bill)));
       // v1.10.66 (#64) — and only its own expenses and purchases. Left
       // unfiltered, GSTR-3B Table 4 claimed input tax credit on purchases made
@@ -650,6 +656,19 @@ export default function GSTReturns() {
       && bill.data?.totals?.isInterstate !== false;
   };
   const exportBills = regularBills.filter(isExportBill);
+  // v1.10.83 - GSTR-1 Table 6A, in rupees (each invoice at its own rate). WPAY
+  // = with payment of IGST, WOPAY = without (under a LUT).
+  const exportRows = exportBills.map(b => {
+    const t = b.data?.totals || {};
+    const rates = [...new Set((b.data?.items || []).map(i => Number(i.taxPercent) || 0))];
+    return {
+      id: b.id, invoiceNo: b.invoiceNumber || '', date: b.invoiceDate || '',
+      client: b.data?.client?.name || b.clientName || '', country: b.data?.client?.country || '',
+      type: t.lutZeroRated ? 'WOPAY' : 'WPAY', rates: rates.join(', '),
+      currency: b.fxFrom?.currency || b.currency || 'INR', fxRate: b.fxFrom?.rate || (b.fxMissing ? 0 : 1),
+      value: t.total || 0, taxable: getTaxableAmount(t), igst: t.igst || 0, cess: t.cess || 0, missing: !!b.fxMissing,
+    };
+  });
   const b2bRegular = regularBills.filter(b => b.data?.client?.gstin && !isExportBill(b));
   const b2cRegular = regularBills.filter(b => !b.data?.client?.gstin && !isExportBill(b));
   const b2cLarge = b2cRegular.filter(b => {
@@ -815,11 +834,13 @@ export default function GSTReturns() {
   // v1.10.66 (#61) — exports are zero-rated supplies, GSTR-3B 3.1(b). IGST paid
   // on an export is still tax payable, so it joins the output tax below even
   // though the export itself is reported outside 3.1(a).
-  const exportTotals = exportBills.reduce((acc, b) => {
-    const t = b.data?.totals || {};
-    return { taxable: acc.taxable + getTaxableAmount(t), igst: acc.igst + (t.igst || 0), cess: acc.cess + (t.cess || 0) };
-  }, { taxable: 0, igst: 0, cess: 0 });
-  const outputTax = { cgst: grandTotals.cgst, sgst: grandTotals.sgst, igst: grandTotals.igst + exportTotals.igst };
+  // v1.10.83 - supplies to an SEZ are zero-rated too and belong in 3.1(b),
+  // not in 3.1(a) with the B2B sales (see zeroRatedTotals in utils/lut.js).
+  // GSTR-1 still lists them in B2B (SEWP / SEWOP), as the portal wants.
+  const zeroRated = zeroRatedTotals(filteredBills, isExportBill);
+  const exportTotals = zeroRated.zero; // 3.1(b)
+  const outward31a = withoutZeroRated(grandTotals, zeroRated.inDomestic); // 3.1(a)
+  const outputTax = { cgst: outward31a.cgst, sgst: outward31a.sgst, igst: outward31a.igst + exportTotals.igst };
   // ITC from expenses — P1 #15 fix: route to IGST when the expense is
   // interstate (vendor charged IGST, e.g. AWS / Google / Adobe from an
   // out-of-state office). Was unconditionally splitting 50/50 into
@@ -891,6 +912,17 @@ export default function GSTReturns() {
   const warnings = [];
   filteredBills.forEach(bill => {
     const { client, items } = bill.data;
+    if (bill.fxMissing) {
+      warnings.push({ type: 'error', msg: `Invoice ${bill.invoiceNumber} is in ${bill.currency || bill.data?.invoiceOptions?.currency} with no exchange rate: until you add it, its amounts are counted here as if they were rupees. Open it and enter the rate (Invoice Details → Currency).` });
+    }
+    // v1.10.83 - a client abroad has no GSTIN: the number there is their own
+    // tax ID (VAT, EIN...), and an export has no Indian state.
+    if (isExportBill(bill)) {
+      (items || []).forEach(item => {
+        if (!item.hsn || item.hsn === 'N/A') warnings.push({ type: 'warning', msg: `Invoice ${bill.invoiceNumber}: Item "${item.name || 'Unnamed'}" has no HSN/SAC code` });
+      });
+      return;
+    }
     // Official GSTIN format: 2 digits state code, 5 letters PAN holder, 4 digits PAN number,
     // 1 letter PAN entity, 1 digit, 1 letter (Z by default), 1 alphanumeric checksum.
     // The last char can be a letter or digit, so the final group is [A-Z\d], not \d.
@@ -921,7 +953,7 @@ export default function GSTReturns() {
   // Put first, so the three-message limit on the banner can never hide it.
   if (exportBills.length > 0) {
     const listed = exportBills.slice(0, 3).map(b => b.invoiceNumber).join(', ') + (exportBills.length > 3 ? ', …' : '');
-    warnings.unshift({ type: 'error', msg: `${exportBills.length} export invoice(s) (${listed}) are not in the GSTR-1 file. Add them in Table 6A on the GST portal with the shipping bill details — their value is in GSTR-3B 3.1(b).` });
+    warnings.unshift({ type: 'error', msg: `${exportBills.length} export invoice(s) (${listed}) are not in the GSTR-1 file. Enter them in Table 6A on the GST portal from the Exports table below (in rupees) — their value is in GSTR-3B 3.1(b).` });
   }
 
   // ========== Filing Period Key ==========
@@ -1088,6 +1120,13 @@ export default function GSTReturns() {
     toast('Credit Notes exported', 'success');
   };
 
+  const exportExports = () => {
+    if (exportRows.length === 0) { toast('No export invoices', 'warning'); return; }
+    downloadCSV('GSTR1_Exports_6A.csv', ['Export Type', 'Invoice Number', 'Invoice Date', 'Invoice Value (INR)', 'Rate', 'Taxable Value (INR)', 'IGST (INR)', 'Cess (INR)', 'Client', 'Country', 'Currency', 'Exchange Rate'],
+      exportRows.map(r => [r.type, r.invoiceNo, formatDateGST(r.date), r.value.toFixed(2), r.rates, r.taxable.toFixed(2), r.igst.toFixed(2), r.cess.toFixed(2), r.client, r.country, r.currency, r.missing ? 'MISSING' : r.fxRate]));
+    toast('Exports (Table 6A) CSV downloaded', 'success');
+  };
+
   const exportDocSummary = () => {
     if (Object.keys(docSummary).length === 0) { toast('No documents', 'warning'); return; }
     downloadCSV('GSTR1_Doc_Summary.csv', ['Document Type', 'Sr. No. From', 'Sr. No. To', 'Total Number', 'Cancelled'],
@@ -1097,7 +1136,8 @@ export default function GSTReturns() {
 
   const exportGSTR3B = () => {
     downloadCSV('GSTR3B_Summary.csv', ['Description', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'Total'], [
-      ['3.1(a) Outward taxable supplies', grandTotals.taxable.toFixed(2), grandTotals.igst.toFixed(2), grandTotals.cgst.toFixed(2), grandTotals.sgst.toFixed(2), (grandTotals.igst + grandTotals.cgst + grandTotals.sgst).toFixed(2)],
+      ['3.1(a) Outward taxable supplies', outward31a.taxable.toFixed(2), outward31a.igst.toFixed(2), outward31a.cgst.toFixed(2), outward31a.sgst.toFixed(2), (outward31a.igst + outward31a.cgst + outward31a.sgst).toFixed(2)],
+      ['3.1(b) Zero rated (exports, SEZ)', exportTotals.taxable.toFixed(2), exportTotals.igst.toFixed(2), '0.00', '0.00', exportTotals.igst.toFixed(2)],
       ['4(A) ITC Available', '', itcFromExpenses.igst.toFixed(2), itcFromExpenses.cgst.toFixed(2), itcFromExpenses.sgst.toFixed(2), (itcFromExpenses.igst + itcFromExpenses.cgst + itcFromExpenses.sgst).toFixed(2)],
       ['6.1 ITC utilised', '', setOff.used.igst.toFixed(2), setOff.used.cgst.toFixed(2), setOff.used.sgst.toFixed(2), (setOff.used.igst + setOff.used.cgst + setOff.used.sgst).toFixed(2)],
       ['6.1 Tax Payable in cash', '', netTax.igst.toFixed(2), netTax.cgst.toFixed(2), netTax.sgst.toFixed(2), (netTax.igst + netTax.cgst + netTax.sgst).toFixed(2)],
@@ -1126,13 +1166,13 @@ export default function GSTReturns() {
         // v1.10.31 — GST-C3: cess populated (was hardcoded 0 → GSTR-1 emitted
         // cess but GSTR-3B did not → Section 61 mismatch notice for
         // tobacco / coal / aerated / motor-vehicle sellers).
-        txval: round2(grandTotals.taxable),
-        iamt: round2(grandTotals.igst),
-        camt: round2(grandTotals.cgst),
-        samt: round2(grandTotals.sgst),
-        csamt: round2(grandTotals.cess),
+        txval: round2(outward31a.taxable),
+        iamt: round2(outward31a.igst),
+        camt: round2(outward31a.cgst),
+        samt: round2(outward31a.sgst),
+        csamt: round2(outward31a.cess),
       },
-      // v1.10.66 (#61) — exports, kept out of osup_det above.
+      // v1.10.66 (#61) — exports, kept out of osup_det above. v1.10.83 - and SEZ supplies.
       osup_zero: { txval: round2(exportTotals.taxable), iamt: round2(exportTotals.igst), csamt: round2(exportTotals.cess) },
       osup_nil_exmp: { txval: 0 },
       // v1.10.31 — GST-M10: RCM inward supplies populated from purchases
@@ -1233,6 +1273,12 @@ export default function GSTReturns() {
     // Invoice number rules (RET191115) — portal rejects the whole file
     // if any inum is >16 chars or has disallowed chars. Collect the
     // offenders so the user can fix them in the source invoice.
+    // v1.10.83 - an invoice in another currency without a rate would go into
+    // the HSN summary in dollars as if they were rupees.
+    const noRate = bills.filter(b => b.fxMissing);
+    if (noRate.length > 0) {
+      blocked.push(`${noRate.length} invoice(s) in a foreign currency have no exchange rate (${noRate.slice(0, 3).map(b => b.invoiceNumber).join(', ')}). Open each and enter the rate.`);
+    }
     const badInums = bills.filter(b => !INUM_REGEX.test(b.invoiceNumber || ''));
     if (badInums.length > 0) {
       blocked.push(`${badInums.length} invoice number(s) violate portal rules (≤16 chars, only letters, digits, "-" or "/"). First: ${badInums.slice(0, 3).map(b => b.invoiceNumber).join(', ')}`);
@@ -1620,6 +1666,7 @@ export default function GSTReturns() {
             <button className="btn btn-secondary" onClick={exportHSN} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> HSN</button>
             <button className="btn btn-secondary" onClick={exportCDNR} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> CDNR</button>
             <button className="btn btn-secondary" onClick={exportDocSummary} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> Docs</button>
+            {exportRows.length > 0 && <button className="btn btn-secondary" onClick={exportExports} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> Exports</button>}
             <HelpButton title="GSTR-1 downloads" doc="gst-returns#gstr-1-files" size={16} />
             {!periodFiling.gstr1 && (
               <button className="btn btn-secondary" onClick={() => markFiled('gstr1')} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem', marginLeft: 'auto', color: '#059669', borderColor: '#bbf7d0' }}>
@@ -1676,6 +1723,42 @@ export default function GSTReturns() {
               </div>
             )}
           </div>
+
+          {/* v1.10.83 - Exports, Table 6A, in rupees. */}
+          {exportRows.length > 0 && (
+            <div className="glass-panel mb-4">
+              <div className="table-header">
+                <h3>Exports — Table 6A<HelpButton title="Exports in GSTR-1" doc="gst-returns#exports" size={16} /></h3>
+                <span className="text-muted" style={{ fontSize: '0.82rem' }}>{exportRows.length} invoice{exportRows.length !== 1 ? 's' : ''} · in ₹ at each invoice&apos;s exchange rate</span>
+              </div>
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead><tr>
+                    <th>Type</th><th>Invoice No</th><th>Date</th><th>Client</th><th>Billed in</th><th>Rate %</th>
+                    <th style={{ textAlign: 'right' }}>Taxable (₹)</th><th style={{ textAlign: 'right' }}>IGST (₹)</th><th style={{ textAlign: 'right' }}>Invoice value (₹)</th>
+                  </tr></thead>
+                  <tbody>
+                    {exportRows.map(r => (
+                      <tr key={r.id || r.invoiceNo}>
+                        <td><span className="type-badge" title={r.type === 'WOPAY' ? 'Without payment of IGST (under LUT)' : 'With payment of IGST'}>{r.type}</span></td>
+                        <td>{r.invoiceNo}</td>
+                        <td className="text-muted">{r.date ? new Date(r.date).toLocaleDateString('en-IN') : ''}</td>
+                        <td className="font-medium">{r.client}{r.country ? <span className="text-muted"> · {r.country}</span> : null}</td>
+                        <td className="text-muted">{r.currency === 'INR' ? 'INR' : r.missing ? <span style={{ color: 'var(--danger)' }}>{r.currency}, no rate</span> : `${r.currency} @ ${r.fxRate}`}</td>
+                        <td className="text-muted">{r.rates}</td>
+                        <td style={{ textAlign: 'right' }}>{r.missing ? '—' : formatCurrency(r.taxable)}</td>
+                        <td style={{ textAlign: 'right' }}>{r.missing ? '—' : formatCurrency(r.igst)}</td>
+                        <td style={{ textAlign: 'right' }} className="font-bold">{r.missing ? '—' : formatCurrency(r.value)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p style={{ padding: '0.6rem 1.25rem', margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Enter these in Table 6A on the GST portal (they are not in the JSON file). For services no shipping bill is needed; for goods add the shipping bill number, date and port code.
+              </p>
+            </div>
+          )}
 
           {/* Credit/Debit Notes — Table 9B */}
           {creditNotes.length > 0 && (
@@ -1877,8 +1960,8 @@ export default function GSTReturns() {
               <table className="data-table" style={{ minWidth: '600px' }}>
                 <thead><tr><th>Nature of Supplies</th><th style={{ textAlign: 'right' }}>Taxable Value</th><th style={{ textAlign: 'right' }}>IGST</th><th style={{ textAlign: 'right' }}>CGST</th><th style={{ textAlign: 'right' }}>SGST</th></tr></thead>
                 <tbody>
-                  <tr><td className="font-medium">(a) Outward taxable supplies (other than zero-rated, nil-rated and exempted)</td><td style={{ textAlign: 'right' }}>{formatCurrency(grandTotals.taxable)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(grandTotals.igst)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(grandTotals.cgst)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(grandTotals.sgst)}</td></tr>
-                  <tr><td className="font-medium">(b) Zero-rated supplies</td><td style={{ textAlign: 'right' }}>{formatCurrency(exportTotals.taxable)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(exportTotals.igst)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(0)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(0)}</td></tr>
+                  <tr><td className="font-medium">(a) Outward taxable supplies (other than zero-rated, nil-rated and exempted)</td><td style={{ textAlign: 'right' }}>{formatCurrency(outward31a.taxable)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(outward31a.igst)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(outward31a.cgst)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(outward31a.sgst)}</td></tr>
+                  <tr><td className="font-medium">(b) Zero-rated supplies (exports, SEZ)</td><td style={{ textAlign: 'right' }}>{formatCurrency(exportTotals.taxable)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(exportTotals.igst)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(0)}</td><td style={{ textAlign: 'right' }}>{formatCurrency(0)}</td></tr>
                   <tr><td className="font-medium">(c) Other outward supplies (nil rated, exempted)</td><td style={{ textAlign: 'right' }}>{formatCurrency(0)}</td><td colSpan={3} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>N/A</td></tr>
                 </tbody>
               </table>

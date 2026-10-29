@@ -55,6 +55,7 @@ export default [
 </table></div>
 <p>The small ${ui('?')} at the end of this box opens this section.</p>
 <div class="note tip"><strong>Something wrong?</strong><p>A figure looks too small or is zero: check the period (a month you have not billed in shows nothing), the business at the top of the sidebar, and the currency. An invoice dated 31 March belongs to the financial year that ends that day, not the next one.</p></div>
+<p id="all-in-rupees">If you bill in more than one currency, the <b>Currency</b> list starts with <b>All, in ₹</b> (the default): every invoice is counted, a foreign-currency one in rupees at the exchange rate saved on it, so export income is in your profit and loss with your rupee expenses. Pick one currency to see only its invoices, in that currency. Invoices with no exchange rate are left out of <b>All, in ₹</b> and named above the statement, so you can add the rate.</p>
 </section>
 
 <section id="export">

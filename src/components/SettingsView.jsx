@@ -1254,6 +1254,8 @@ export default function SettingsView({ onSaved }) {
                           {a.accountNumber && <span>A/C {maskAccountNumber(a.accountNumber)} · </span>}
                           {a.ifsc && <span>{bankCC.bankLabel || 'IFSC'} {a.ifsc}</span>}
                           {a.swift && <span> · SWIFT {a.swift}</span>}
+                          {a.iban && <span> · IBAN {a.iban}</span>}
+                          {a.paymentLink && <span> · 🔗 {a.paymentLink}</span>}
                           {a.upiId && <span> · 📱 {a.upiId}</span>}
                         </div>
                       </div>
@@ -1341,6 +1343,20 @@ export default function SettingsView({ onSaved }) {
                         <input type="text" className="form-input" value={editingAccount.swift}
                           onChange={e => setEditingAccount(a => ({ ...a, swift: e.target.value }))}
                           placeholder="e.g. HDFCINBB" />
+                      </div>
+                      {/* v1.10.83 - getting paid from abroad. */}
+                      <div className="form-group">
+                        <label className="form-label">IBAN (optional) <HelpButton title="Getting paid from abroad" doc="settings#paid-from-abroad" size={14} /></label>
+                        <input type="text" className="form-input" value={editingAccount.iban || ''}
+                          onChange={e => setEditingAccount(a => ({ ...a, iban: e.target.value.toUpperCase() }))}
+                          placeholder="Only if a foreign bank gave you one" />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Online payment link (optional)</label>
+                        <input type="text" className="form-input" value={editingAccount.paymentLink || ''}
+                          onChange={e => setEditingAccount(a => ({ ...a, paymentLink: e.target.value }))}
+                          placeholder="PayPal, Wise or Payoneer link" />
+                        <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Printed on invoices in a foreign currency.</small>
                       </div>
                       <div className="form-group" style={{ gridColumn: 'span 2' }}>
                         <label className="form-label">UPI ID (optional — drives the QR for this account)</label>

@@ -42,6 +42,14 @@ export const BUSINESS_TYPES = [
 
 export const businessTypeById = (id) => BUSINESS_TYPES.find(t => t.id === id) || null;
 
+// v1.10.83 - what a type sets on NEW invoices (saved as the invoice defaults
+// when the type is chosen; invoices already made keep their own options).
+// A freelancer bills services by the hour, day or job, so invoices start in
+// Services mode and the unit is not printed next to the quantity.
+export const invoiceDefaultsForType = (typeId) => (typeId === 'freelancer'
+  ? { invoiceMode: 'services', showItemUnit: false }
+  : {});
+
 // The full switch map a type gives: every switchable module, true or false.
 export const modulesForType = (typeId) => {
   const type = businessTypeById(typeId);

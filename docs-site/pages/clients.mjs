@@ -74,6 +74,18 @@ export default [
 <p>Changing a client's details does not change invoices already made: each invoice keeps the details it was saved with. To correct one, open it, pick the client again under <b>Client Name</b>, and save.</p>
 </section>
 
+<section id="foreign-client">
+<h3>Clients abroad</h3>
+<p>Pick the client's country. For a country other than India:</p>
+<ul>
+  <li>No GSTIN and no state are needed. The state box is marked optional, and the postal code box takes that country's name for it (ZIP Code, Postcode...).</li>
+  <li>The tax ID box is named after their country's tax ID (VAT Number, EIN / TIN, TRN...). If the client gave you one, type it: it prints on the invoice with that name. It is optional.</li>
+  <li>Their country prints under their address, and the place of supply prints as <i>Outside India (country)</i>, because an export is supplied outside India.</li>
+  <li><b>Preferred currency</b> lists every currency the app knows. Left blank, invoices to them start in their country's currency. See <a href="invoices.html#currency">Billing in another currency</a>.</li>
+</ul>
+<p>Billing such a client is an export: see <a href="gst-basics.html#exports">Exports and foreign clients</a> and <a href="gst-basics.html#lut">LUT</a>.</p>
+</section>
+
 <section id="client-gstin">
 <h3>The GSTIN check</h3>
 <p>A GSTIN is the 15-character GST number of a registered business. Its first two digits are the state code (03 is Punjab, 27 is Maharashtra), the next ten are the PAN, and the last is a check character. When you click out of the GSTIN box, the app reads it. This works offline; nothing is looked up on the GST portal.</p>

@@ -10,6 +10,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.10.83] - unreleased
 
 ### Added
+- **Change the currency right on the invoice.** If you bill abroad (Region
+  International or Both, or a client outside India), a *Currency* box such as
+  "$ USD" sits in Invoice Details, with *1 USD = ? INR* for the exchange rate
+  and the total in rupees under it. Every amount on screen and in the preview
+  switches at once. Each client remembers their currency; a new client abroad
+  starts in their own country's currency.
+- **Getting paid from abroad**: a payment account can have an IBAN and an
+  online payment link (PayPal, Wise, Payoneer), printed as *Pay online* on
+  invoices in a foreign currency, where the UPI QR (rupees only) is left off.
+  Record Payment on such an invoice can note the rupees credited, bank
+  charges and the FIRC / e-BRC number.
+- **Clients abroad**: no GSTIN or state needed; their own tax ID (VAT number,
+  EIN...) and country print on the invoice, and the place of supply prints as
+  *Outside India*. Preferred currency lists every currency, not seven.
+- **GSTR-1 lists exports (Table 6A) in rupees**, each at its invoice's own
+  exchange rate, with WPAY / WOPAY, ready to type into the portal, and an
+  *Exports* CSV.
+- **Reports: "All, in ₹"** - with invoices in more than one currency, profit
+  and loss and the other reports count every invoice in rupees at its own
+  rate (the default). The Dashboard shows "≈ ₹ in all" under the totals.
+- **Freelancers**: choosing the Freelancer business type starts new invoices
+  in Services mode, without the unit next to the quantity, due in 15 days.
+  *Due in 7 / 15 / 30 days* buttons under the due date for everyone. In
+  Services mode the unit list starts with Hrs, Day, Month, Project, Nos, the
+  HSN box is labelled SAC, and the unit is left off the printed invoice
+  unless you turn it on (Customize → Items table).
 - **Business type comes first.** Settings has a new first tab, *Business
   type*: pick Retail shop, Freelancer, Restaurant, Wholesale, Manufacturing,
   Service / repair or Everything, and the Features tick boxes are filled in
@@ -96,6 +122,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once the rest arrives. You can also record the TDS on its own.
 
 ### Changed
+- **GST returns, income tax and the TDS & TCS report count invoices billed in
+  dollars, euros... in rupees**, at the exchange rate saved on each invoice.
+  An invoice in another currency without a rate is listed so you can add it,
+  and the GSTR-1 file waits for it.
 - **Dark mode, Notifications, User Guide and Lock moved to the top right** of
   every screen as small buttons (on a phone, into the top bar), so the
   sidebar holds only the screens. Settings → Features can hide or reorder
@@ -117,6 +147,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wording.
 
 ### Fixed
+- **GSTR-3B put supplies to SEZ units in 3.1(a)**; as zero-rated supplies they
+  belong in 3.1(b) with exports (CBIC Circular 147/03/2021-GST). They are now
+  there, in rupees, with their IGST if paid; the tax payable is unchanged.
+- **Foreign-currency invoices were added up as if they were rupees** in the
+  GST returns (Table 3.1(b), the HSN summary) and left out of income tax.
+- **TDS recorded with a payment (Client deducted TDS) could turn into 0** when
+  the invoice was opened and saved again (the 194Q ₹50 lakh threshold was
+  applied afresh). It now stays as recorded unless you change its rate.
+- **After a dollar invoice, the next Indian client was billed in dollars too.**
+  An Indian client now starts in rupees.
+- **A foreign client's VAT number printed as "GSTIN"** and was flagged as an
+  invalid GSTIN on the GST returns screen.
+- **Boxed grid and Tally style kept the unit column** when the unit was
+  switched off; thermal receipts printed "Rs." on a dollar invoice.
 - **Purchase bills took 18% GST for every product picked on a new line**,
   instead of the product's own rate (a 12% item was booked at 18%, giving the
   wrong input tax credit). A product with no rate saved still gets 18%.
