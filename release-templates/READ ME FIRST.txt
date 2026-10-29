@@ -35,6 +35,17 @@
 
   A small window opens with one button.
 
+  MAC: install Node.js first (free): https://nodejs.org ->
+  macOS Installer (LTS). Then hold Control, click
+  "Free GST Billing - MAC" and choose Open, then Open again.
+  A Terminal window asks "Install now? [Y/n]": press Return.
+
+  LINUX: see the step-by-step guide below.
+
+  STEP-BY-STEP GUIDES, for every computer, with every click
+  explained (no technical knowledge needed):
+  https://dicecodes.com/free-gst-software-documentation/install.html
+
 
 -----------------------------------------------------------
   STEP 3 - CLICK INSTALL, THEN WAIT

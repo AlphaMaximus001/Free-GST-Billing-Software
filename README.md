@@ -424,6 +424,8 @@ If we priced every 🆕 feature at the going rate on the paid alternatives:
 
 ## Quick Start / Installation
 
+> **New to computers?** Follow the step-by-step guides, with every click explained: [Windows](https://dicecodes.com/free-gst-software-documentation/install.html) · [Mac](https://dicecodes.com/free-gst-software-documentation/install-mac.html) · [Linux / NAS](https://dicecodes.com/free-gst-software-documentation/install-linux.html) · [Updating](https://dicecodes.com/free-gst-software-documentation/update.html) · [Using the Terminal](https://dicecodes.com/free-gst-software-documentation/terminal.html)
+
 ### Prerequisites
 
 - **Windows 10/11** for the one-click installer, **OR** **Node.js 18+** for macOS / Linux
