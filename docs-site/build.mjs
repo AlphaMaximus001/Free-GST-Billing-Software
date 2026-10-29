@@ -93,6 +93,14 @@ for (const p of PAGES) {
         throw new Error(`${file}: Help button links to missing docs section "${m[1]}#${m[2]}"`);
       }
     }
+    // Links built in code (doc={a ? 'x#y' : 'x#z'}, a map of tab -> section):
+    // any quoted 'page#section' naming a real docs page must name a real section.
+    for (const m of readFileSync(file, 'utf8').matchAll(/['"`]([a-z0-9-]+)#([a-z0-9-]+)['"`]/g)) {
+      const target = bySlug.get(m[1]);
+      if (target && !sectionsOf(target).some((s) => s.id === m[2])) {
+        throw new Error(`${file}: links to missing docs section "${m[1]}#${m[2]}"`);
+      }
+    }
   }
 }
 
