@@ -51,8 +51,10 @@ for (const group of NAV) for (const slug of group.pages) {
 for (const p of PAGES) {
   if (!NAV.some((g) => g.pages.includes(p.slug))) throw new Error(`page "${p.slug}" is not in the sidebar`);
 }
-const sectionsOf = (p) => [...p.body.matchAll(/<section id="([a-z0-9-]+)"[^>]*>\s*<h2>([\s\S]*?)<\/h2>/g)]
-  .map((m) => ({ id: m[1], title: text(m[2]) }));
+// v1.10.83 - an <h3> section is an entry under the <h2> group before it (the
+// Troubleshooting error catalogue): linkable and searchable, not in the TOC.
+const sectionsOf = (p) => [...p.body.matchAll(/<section id="([a-z0-9-]+)"[^>]*>\s*<h([23])>([\s\S]*?)<\/h\2>/g)]
+  .map((m) => ({ id: m[1], title: text(m[3]), level: Number(m[2]) }));
 for (const p of PAGES) {
   const ids = sectionsOf(p).map((s) => s.id);
   const dupe = ids.find((id, i) => ids.indexOf(id) !== i);
@@ -85,6 +87,17 @@ for (const p of PAGES) {
         throw new Error(`${file}: Help button links to missing docs section "${m[1]}#${m[2]}"`);
       }
     }
+  }
+}
+
+// v1.10.83 - the app's "known problem: how to fix it" links (KNOWN_PROBLEMS in
+// src/utils/errorReport.js) point at Troubleshooting sections; a renamed
+// section would leave a dead fix link in front of a user with a problem.
+{
+  const { KNOWN_PROBLEMS } = await import('../src/utils/errorReport.js');
+  const ts = bySlug.get('troubleshooting');
+  for (const k of KNOWN_PROBLEMS) {
+    if (!sectionsOf(ts).some((s) => s.id === k.id)) throw new Error(`src/utils/errorReport.js: known problem links to missing section troubleshooting#${k.id}`);
   }
 }
 
@@ -194,7 +207,7 @@ const sidebar = (current) => NAV.map((g) => `
       </div>`).join('');
 
 function page(p) {
-  const sections = sectionsOf(p);
+  const sections = sectionsOf(p).filter((s) => s.level === 2); // TOC: groups only
   const i = order.indexOf(p.slug);
   const prev = i > 0 ? bySlug.get(order[i - 1]) : null;
   const next = i < order.length - 1 ? bySlug.get(order[i + 1]) : null;
@@ -204,8 +217,8 @@ function page(p) {
   const description = seo.description || clip(text(p.lead));
   const url = pageUrl(p.slug);
   const group = NAV.find((g) => g.pages.includes(p.slug));
-  const body = withImages(p.body).replace(/<section id="([a-z0-9-]+)"([^>]*)>\s*<h2>/g,
-    (_, id, rest) => `<section id="${id}"${rest}>\n<h2><a class="anchor" href="#${id}" aria-label="Link to this section">#</a>`);
+  const body = withImages(p.body).replace(/<section id="([a-z0-9-]+)"([^>]*)>\s*<(h[23])>/g,
+    (_, id, rest, h) => `<section id="${id}"${rest}>\n<${h}><a class="anchor" href="#${id}" aria-label="Link to this section">#</a>`);
   return `<!doctype html>
 <html lang="en-IN">
 <head>
@@ -360,8 +373,8 @@ for (const p of PAGES) {
   const parts = p.body.split(/<section id="/).slice(1);
   for (const part of parts) {
     const id = part.slice(0, part.indexOf('"'));
-    const h = /<h2>([\s\S]*?)<\/h2>/.exec(part);
-    index.push({ u: `${p.slug}.html#${id}`, p: p.nav || p.title, s: h ? text(h[1]) : id, t: text(part.replace(/<h2>[\s\S]*?<\/h2>/, '')).slice(0, 600) });
+    const h = /<h[23]>([\s\S]*?)<\/h[23]>/.exec(part);
+    index.push({ u: `${p.slug}.html#${id}`, p: p.nav || p.title, s: h ? text(h[1]) : id, t: text(part.replace(/<h[23]>[\s\S]*?<\/h[23]>/, '')).slice(0, 600) });
   }
 }
 writeFileSync(join(OUT, 'assets', 'search-index.js'), `window.DOCS_INDEX=${JSON.stringify(index)};\n`);

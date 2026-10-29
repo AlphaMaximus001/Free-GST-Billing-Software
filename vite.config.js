@@ -25,6 +25,11 @@ const readActivePort = () => {
 const activeExpressPort = readActivePort();
 
 export default defineConfig({
+  // v1.10.83 - the Problem log stamps each entry with the version of the
+  // bundle that failed; it must not depend on reaching the server.
+  define: {
+    __APP_VERSION__: JSON.stringify(JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8')).version),
+  },
   // Vite source root lives in src/ rather than the project root. Reason:
   // the project root holds the user-facing Launcher (renamed to index.html
   // so users see ONE html file). Keeping Vite's own index.html inside

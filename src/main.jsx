@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App.jsx'
 import AppLockGate from './components/AppLock.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
+import { toast } from './components/Toast.jsx'
+import { logProblem } from './utils/problemLog'
+import { isChunkLoadError } from './utils/errorReport'
 import { restorePrefs, startMirroring } from './utils/prefsMirror'
 import './index.css'
 
@@ -131,15 +135,45 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// v1.10.83 - every other uncaught error goes to the Problem log, with a
+// toast that offers Report (Toast adds it for a just-logged problem). The
+// chunk-load case above still reloads instead. Two browser messages are
+// noise, not problems: ResizeObserver's loop notice, and "Script error."
+// from another origin, which carries no details at all.
+const NOISE = /ResizeObserver loop|^Script error\.?$/i;
+let lastProblemToast = 0;
+const recordUncaught = (message, stack, alreadyLogged = false) => {
+  const msg = String(message || '');
+  if (!msg || NOISE.test(msg) || isChunkLoadError(msg)) return;
+  // apiFetch logs its own failures (with method, path and status) first.
+  if (!alreadyLogged) logProblem({ kind: 'uncaught', message: msg, stack });
+  if (Date.now() - lastProblemToast > 10_000) {
+    lastProblemToast = Date.now();
+    toast('Something went wrong. Your data is safe.', 'error');
+  }
+};
+window.addEventListener('error', (e) => {
+  try { recordUncaught(e?.error?.message || e?.message, e?.error?.stack); } catch { /* never throw from here */ }
+});
+window.addEventListener('unhandledrejection', (e) => {
+  try { recordUncaught(e?.reason?.message || e?.reason, e?.reason?.stack, e?.reason?.problemLogged); } catch { /* never throw from here */ }
+});
+
 // v1.10.77 (#84) - settings the browser has lost come back from the data
 // folder before the first render (the wizard and Region read them on start).
 restorePrefs().then((restored) => {
   startMirroring(restored)
   createRoot(document.getElementById('root')).render(
     <StrictMode>
-      <AppLockGate>
-        <App />
-      </AppLockGate>
+      {/* v1.10.83 - two last lines against a white screen: around the
+          PIN gate, and around the app inside it. */}
+      <ErrorBoundary>
+        <AppLockGate>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+        </AppLockGate>
+      </ErrorBoundary>
     </StrictMode>,
   )
 })

@@ -12,6 +12,7 @@ import { upiNote } from '../utils/supporters';
 import useSupporters from './useSupporters';
 import WhatsNew from './WhatsNew';
 import SupportersList from './SupportersList';
+import ProblemLog from './ProblemLog';
 
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
 
@@ -179,6 +180,8 @@ export default function SupportView() {
       )}
 
       <WhatsNew />
+
+      <ProblemLog />
 
       <div className="glass-panel" style={card}>
         <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Work with DiceCodes</h3>

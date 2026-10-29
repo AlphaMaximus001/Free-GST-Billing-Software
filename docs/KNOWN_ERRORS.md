@@ -720,6 +720,32 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-063 - Any screen that threw while rendering left a blank white page
+
+**Version:** since v1.0 · fixed in v1.10.83
+**Reported by:** the maintainer ("make sure it never gives any error in any case")
+
+**Symptom** - a white page with no message. ERR-043 was one case (a refresh
+while editing); any saved record with an unexpected field could do the same,
+and there was no way to report it except a screenshot of nothing.
+
+**Cause** - there was no React error boundary, so one throw while rendering
+unmounted the whole app. Failed API calls and uncaught errors were not
+recorded anywhere a user could find or send.
+
+**Rule** - every screen renders inside an `ErrorBoundary` (App.jsx, keyed by
+screen) and the app inside two more (main.jsx). A problem is logged, redacted
+(`redact()` in `src/utils/errorReport.js`: GSTIN, PAN, phone, email, UPI id,
+IFSC, account numbers, user names in paths) and offered as a pre-filled GitHub
+issue. A damaged data file is skipped AND named in errors.log. Every known
+problem links to a Troubleshooting section.
+
+**Guard** - `scripts/errors-test.mjs` (redaction, issue URL length, known
+patterns, ring buffer) in `npm run test:unit`; `node docs-site/build.mjs` fails
+if a known problem links to a missing Troubleshooting section.
+
+---
+
 ## ERR-062 - Mac: "could not be executed because you do not have appropriate access privileges"
 
 **Version:** since v1.10.66 (ZIP built with Windows tar) · fixed in v1.10.82
