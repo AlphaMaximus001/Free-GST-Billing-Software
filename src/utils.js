@@ -392,8 +392,15 @@ export function computeInvoiceTotals(opts) {
   const tdsRate = Number(invoiceOptions.tdsRate) || 0;
   const tcsAmount = invoiceOptions.showTCS && tcsRate > 0
     ? r2(marginalTcsBase * tcsRate / 100) : 0;
+  // v1.10.83 - TDS the client actually deducted, recorded with a payment
+  // (Dashboard → Record Payment → Client deducted TDS), stays as recorded while
+  // its section and rate are unchanged: reopening and saving the invoice used
+  // to work it out again, and the ₹50L threshold of 194Q could make it 0.
+  const rec = invoiceOptions.tdsRecorded;
+  const recordedTds = rec && rec.section === invoiceOptions.tdsSection && Number(rec.rate) === tdsRate
+    && isFinite(Number(rec.amount)) ? r2(Math.max(0, Number(rec.amount))) : null;
   const tdsAmount = invoiceOptions.showTDS && tdsRate > 0
-    ? r2(marginalTdsBase * tdsRate / 100) : 0;
+    ? (recordedTds ?? r2(marginalTdsBase * tdsRate / 100)) : 0;
 
   // v1.10.22 — invoice-level (whole-bill) discount. Treated as a cash
   // discount / trade allowance: subtracted from the post-tax total.
@@ -1678,9 +1685,14 @@ export const getDefaultUnitForMode = (mode) => {
 // Filter units by invoice mode for the dropdown. Service mode hides
 // kg/ltr/box etc. (the user can still pick them via "Add custom…" if
 // they truly need a goods unit on a service invoice — rare).
+// v1.10.83 - in Services mode the units a freelancer reaches for come first.
+const SERVICE_UNITS_FIRST = ['Hrs', 'Day', 'Month', 'Project', 'Nos'];
 export const filterUnitsByMode = (units, mode) => {
   if (mode === 'mixed' || !mode) return units;
-  return units.filter(u => u.kind === mode || u.kind === 'both' || u.custom);
+  const list = units.filter(u => u.kind === mode || u.kind === 'both' || u.custom);
+  if (mode !== 'services') return list;
+  const rank = (u) => { const i = SERVICE_UNITS_FIRST.indexOf(u.label); return i === -1 ? SERVICE_UNITS_FIRST.length : i; };
+  return list.map((u, i) => [u, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([u]) => u);
 };
 
 const CUSTOM_UNITS_KEY = 'gst_customUnits';
@@ -1746,9 +1758,13 @@ export const detectCountryFromBrowser = () => {
 // ========== Currency exchange rate snapshot ==========
 // Stored on the invoice itself so historical reports stay accurate even if rates change.
 // User enters rate manually; we don't fetch from the network (offline-first).
-export const formatExchangeRateLine = (currency, rate, baseCurrency = 'INR') => {
+// v1.10.83 - `total` (in the invoice currency) adds the invoice value in the
+// base currency, e.g. "1 USD = 84.1000 INR · Total ₹84,100.00".
+export const formatExchangeRateLine = (currency, rate, baseCurrency = 'INR', total = null) => {
   if (!rate || !currency || currency === baseCurrency) return '';
-  return `1 ${currency} = ${Number(rate).toFixed(4)} ${baseCurrency}`;
+  const line = `1 ${currency} = ${Number(rate).toFixed(4)} ${baseCurrency}`;
+  if (total === null || !(Number(rate) > 0)) return line;
+  return `${line} · Total ${formatCurrency(Math.round(Number(total) * Number(rate) * 100) / 100, baseCurrency)}`;
 };
 
 // ========== Payment accounts ==========
@@ -1811,6 +1827,10 @@ export const createEmptyAccount = (label = 'New account') => ({
   accountType: '',
   ifsc: '',
   swift: '',
+  // v1.10.83 - getting paid from abroad: IBAN (for clients in Europe / the
+  // Gulf) and a PayPal / Wise / Payoneer link, printed on foreign-currency invoices.
+  iban: '',
+  paymentLink: '',
   upiId: '',
   isDefault: false,
   isActive: true,

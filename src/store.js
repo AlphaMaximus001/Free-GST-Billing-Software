@@ -152,6 +152,20 @@ export const saveInvoiceDisplayOptions = async (options) => {
   });
 };
 
+// v1.10.83 - change some invoice defaults (the options a NEW invoice starts
+// with): the browser copy and the server copy, which wins on the invoice screen.
+export const patchInvoiceDefaults = async (patch) => {
+  if (!patch || !Object.keys(patch).length) return;
+  try {
+    const local = JSON.parse(localStorage.getItem('freegstbill_invoiceOptions') || '{}');
+    localStorage.setItem('freegstbill_invoiceOptions', JSON.stringify({ ...local, ...patch }));
+  } catch { /* private window: the server copy below still applies */ }
+  try {
+    const server = (await getInvoiceDisplayOptions()) || {};
+    await saveInvoiceDisplayOptions({ ...server, ...patch });
+  } catch { /* offline: the browser copy above still applies */ }
+};
+
 // ---- Region preference: 'india' | 'international' | 'both' (default 'both') ----
 // Drives which countries appear in pickers and whether GST-only flows show up in the UI.
 // Stored in localStorage for instant boot — server copy is async-best-effort.

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { ArrowLeft, Plus, Trash2, Download, UserPlus, Pencil, Settings, ChevronUp, ChevronDown, MessageCircle, Check, Loader, Truck, Printer, Eye, EyeOff, QrCode } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { saveBill, deleteBill, applyStockChanges, getNextInvoiceNumber, getTermsTemplates, getAllClients, saveClient, getProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllRecurring, getAllBills, getEnabledModules } from '../store';
+import { saveBill, deleteBill, applyStockChanges, getNextInvoiceNumber, getTermsTemplates, getAllClients, saveClient, getProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllRecurring, getAllBills, getEnabledModules, getBusinessType } from '../store';
 import { INVOICE_TYPES, isModuleEnabled, businessKeyOf, GST_DOC_NUMBER, COUNTRIES, printedSubtotal, deliveryChargeLine, stockEffect, appliedStock, stockDelta, generateEWayBillJSON, formatCurrency, getCountryConfig, getStatesForCountry, getAllUnits, addCustomUnit, removeCustomUnit, getCountriesForRegion, TDS_SECTIONS, TCS_SECTIONS, REMOVED_TCS_SECTIONS, TERMS_PRESETS, getActiveAccounts, getDefaultAccount, getAccountById, getDefaultUnitForMode, filterUnitsByMode, PAPER_SIZES, getPaperSize, computeInvoiceTotals, clientYearToDate, htmlHasText, ORDER_DETAIL_FIELDS, invoiceOptionOn, DEFAULT_DECLARATION, decodeGstin, safePageBoundaries, localToday, toLocalIsoDate, parseLocalDate, paymentStatusFor } from '../utils';
 import { getPrintSettings, savePrintSettings } from '../utils/printSettings';
 import { openWhatsAppShare } from '../utils/share';
@@ -11,6 +11,8 @@ import { useCostCentres } from './useCostCentres';
 import { CostCentreSelect } from './CostCentrePicker';
 import { centreFields } from '../utils/costCentres';
 import { isExportOrSez, lutCoversDate, normaliseLutArn, fyOf } from '../utils/lut';
+import { baseCurrencyOf, currencyForClient, isForeignClient } from '../utils/fx';
+import InvoiceCurrency from './InvoiceCurrency';
 import PrintPreviewModal from './PrintPreviewModal';
 import { ensureToken, findOrCreateFolder, uploadPDF } from '../services/googleDrive';
 import DOMPurify from 'dompurify';
@@ -176,7 +178,8 @@ const DEFAULT_OPTIONS = {
 // invoice only. invoiceOptions doubles as the user's defaults (localStorage and
 // the server), so these are taken out whenever options are saved as, or read
 // from, the defaults - as paymentAccountSnapshot already is.
-const LUT_OPTION_KEYS = ['isLUT', 'lutArn', 'lutFy', 'lutManual'];
+// v1.10.83 - tdsRecorded (TDS recorded with a payment) is per-invoice too.
+const LUT_OPTION_KEYS = ['isLUT', 'lutArn', 'lutFy', 'lutManual', 'tdsRecorded'];
 const stripLutOptions = (o) => { LUT_OPTION_KEYS.forEach((k) => { delete o[k]; }); return o; };
 const lutOptionsOf = (o) => Object.fromEntries(LUT_OPTION_KEYS.filter((k) => k in (o || {})).map((k) => [k, o[k]]));
 
@@ -344,7 +347,7 @@ const LineItem = memo(function LineItem({
       </div>
       {invoiceOptions.showHSN && (
         <div className="line-item-field" style={{ flex: 1, position: 'relative' }}>
-          <label className="form-label">HSN/SAC</label>
+          <label className="form-label">{invoiceMode === 'services' ? 'SAC' : 'HSN/SAC'}</label>
           <input type="text" className="form-input" value={item.hsn}
             onChange={(e) => {
               const val = e.target.value;
@@ -409,7 +412,7 @@ const LineItem = memo(function LineItem({
         </select>
       </div>
       <div className="line-item-field" style={{ flex: 1.2 }}>
-        <label className="form-label">Rate</label>
+        <label className="form-label">Rate{currency && currency !== 'INR' ? ` (${currencySymbolFor(currency)})` : ''}</label>
         <input type="number" min="0" step="any" className="form-input" value={item.rate}
           onFocus={(e) => e.target.select()}
           onChange={(e) => onFieldChange(item.id, 'rate', clampNonNeg(e.target.value))} />
@@ -628,7 +631,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     // Local date: toISOString() is UTC, so between midnight and 05:30 in
     // India a new invoice was dated yesterday.
     invoiceDate: localToday(),
-    dueDate: '',
+    // v1.10.83 - a freelancer's invoice is due in 15 days unless changed.
+    dueDate: getBusinessType() === 'freelancer' ? toLocalIsoDate(new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 15)) : '',
     placeOfSupply: '',
     originalInvoiceRef: '',
     // v1.10.11 — Ship To fields. Default: same as billing (no extra
@@ -1353,8 +1357,22 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   };
 
   const toggleOption = (key) => {
-    setInvoiceOptions(prev => ({ ...prev, [key]: !invoiceOptionOn(prev, key) }));
+    // v1.10.83 - once the unit is switched by hand, Goods / Services no longer flip it.
+    setInvoiceOptions(prev => ({ ...prev, [key]: !invoiceOptionOn(prev, key), ...(key === 'showItemUnit' ? { showItemUnitManual: true } : {}) }));
   };
+
+  // v1.10.83 - invoice currency. The rate belongs to one currency, so a new
+  // currency starts with no rate (the last one used is offered as a hint).
+  const baseCurrency = baseCurrencyOf(profile);
+  const currencyPatch = (prev, cur) => (cur === (prev.currency || baseCurrency) ? {} : {
+    currency: cur, exchangeRate: '',
+    ...(cur !== baseCurrency ? { lastForeignCurrency: cur } : {}),
+  });
+  const setCurrency = (cur) => setInvoiceOptions(prev => ({ ...prev, ...currencyPatch(prev, cur) }));
+  const setExchangeRate = (v) => setInvoiceOptions(prev => ({
+    ...prev, exchangeRate: v,
+    ...(Number(v) > 0 ? { fxRates: { ...(prev.fxRates || {}), [prev.currency]: v } } : {}),
+  }));
 
   // v1.10.4 — useMemo replaces the prior useEffect+setTotals pair. Same
   // math (extracted to pure `computeInvoiceTotals` in v1.10.1), but
@@ -1373,8 +1391,9 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   );
   const totals = useMemo(() => computeInvoiceTotals({
     items, profile, client, details, showGST, taxInclusive,
-    invoiceOptions: { ...invoiceOptions, tcsCumulativeThisYear: clientYtd, tdsCumulativeThisYear: clientYtd },
-  }), [clientYtd, invoiceOptions.tcsSection, invoiceOptions.tdsSection, items, client.state, client?.country, client?.gstin, client?.isSEZ, profile?.state, profile?.country, profile?.gstin, showGST, taxInclusive, invoiceOptions.showRoundOff, invoiceOptions.showTDS, invoiceOptions.tdsRate, invoiceOptions.tdsCumulativeThisYear, invoiceOptions.showTCS, invoiceOptions.tcsRate, invoiceOptions.tcsCumulativeThisYear, invoiceOptions.reverseCharge, invoiceOptions.invoiceDiscountValue, invoiceOptions.invoiceDiscountType, invoiceOptions.isLUT, details?.placeOfSupply]);
+    // v1.10.83 - TDS recorded with a payment belongs to that issued invoice only.
+    invoiceOptions: { ...invoiceOptions, tcsCumulativeThisYear: clientYtd, tdsCumulativeThisYear: clientYtd, tdsRecorded: isIssuedInvoice ? invoiceOptions.tdsRecorded : undefined },
+  }), [isIssuedInvoice, invoiceOptions.tdsRecorded, clientYtd, invoiceOptions.tcsSection, invoiceOptions.tdsSection, items, client.state, client?.country, client?.gstin, client?.isSEZ, profile?.state, profile?.country, profile?.gstin, showGST, taxInclusive, invoiceOptions.showRoundOff, invoiceOptions.showTDS, invoiceOptions.tdsRate, invoiceOptions.tdsCumulativeThisYear, invoiceOptions.showTCS, invoiceOptions.tcsRate, invoiceOptions.tcsCumulativeThisYear, invoiceOptions.reverseCharge, invoiceOptions.invoiceDiscountValue, invoiceOptions.invoiceDiscountType, invoiceOptions.isLUT, details?.placeOfSupply]);
 
   // v1.10.83 - exports and SEZ supplies under a LUT (Settings › Company).
   // A new invoice ticks "under LUT" by itself when the business's saved LUT
@@ -1610,7 +1629,10 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         // rather than to getPaperSize's thermal default.
         customPaperWidth: cli.preferredCustomPaperWidth || prev.customPaperWidth || 80,
         customPaperHeight: cli.preferredCustomPaperHeight || prev.customPaperHeight || 297,
-        currency: cli.preferredCurrency || prev.currency || 'INR',
+        // v1.10.83 - the client's saved currency, else theirs if abroad,
+        // else the business's own. It used to keep the previous invoice's
+        // currency, so after a USD invoice an Indian client was billed in USD.
+        ...currencyPatch(prev, currencyForClient(cli, profile, { preferred: cli.preferredCurrency, lastForeign: prev.lastForeignCurrency })),
         // v1.10.5 — client-level auto-print override (see original comment).
         clientAutoPrint: !!cli.autoPrint,
       }));
@@ -1656,6 +1678,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       phone: data.phone || '',
       isSEZ: !!data.isSEZ,
     });
+    // v1.10.83 - a new client abroad gets their currency on a new invoice.
+    if (!editingSaved) setCurrency(currencyForClient(data, profile, { preferred: data.preferredCurrency, lastForeign: invoiceOptions.lastForeignCurrency }));
     if (isEditingClient && modalClient?.id) {
       setSelectedClientId(modalClient.id);
       toast(`Client "${data.name}" updated!`, 'success');
@@ -1753,7 +1777,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     const snapAccount = priorMatchesSelection
       ? priorSnapshot
       : getAccountById(profile, invoiceOptions.selectedAccountId);
-    const invoiceOptionsWithSnapshot = { ...invoiceOptions, paymentAccountSnapshot: snapAccount || null };
+    const { tdsRecorded, ...optionsOwn } = invoiceOptions;
+    const invoiceOptionsWithSnapshot = { ...optionsOwn, ...(isIssuedInvoice && tdsRecorded ? { tdsRecorded } : {}), paymentAccountSnapshot: snapAccount || null };
 
     // v1.10.24 — Plan client-credit application. If the user chose to
     // apply any credit on this invoice (via the banner in the Billed To
@@ -3599,7 +3624,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
               ].map(opt => (
                 <button key={opt.id} type="button"
                   className={`type-chip ${(invoiceOptions.invoiceMode || 'goods') === opt.id ? 'type-chip-active' : ''}`}
-                  onClick={() => setInvoiceOptions(prev => ({ ...prev, invoiceMode: opt.id }))}
+                  // v1.10.83 - a service has no unit to print, unless the unit was set by hand.
+                  onClick={() => setInvoiceOptions(prev => ({ ...prev, invoiceMode: opt.id, ...(prev.showItemUnitManual ? {} : { showItemUnit: opt.id !== 'services' }) }))}
                   title={opt.desc}
                   style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}>
                   {opt.label}
@@ -3621,26 +3647,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                     onChange={(e) => setInvoiceOptions(prev => ({ ...prev, customTitle: e.target.value }))}
                     placeholder={typeConfig?.title || 'TAX INVOICE'} />
                 </div>
-                <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                  <label className="form-label">Currency</label>
-                  <select className="form-input" value={invoiceOptions.currency}
-                    onChange={(e) => setInvoiceOptions(prev => ({ ...prev, currency: e.target.value }))}>
-                    {/* Deduped currencies pulled from the region-filtered country list. */}
-                    {Array.from(new Map(getCountriesForRegion(getRegionMode()).map(c => [c.currency, c])).values()).map(c => (
-                      <option key={c.currency} value={c.currency}>{c.currency} ({c.currencySymbol === c.currency ? c.name : c.currencySymbol})</option>
-                    ))}
-                  </select>
-                </div>
-                {invoiceOptions.currency !== 'INR' && (
-                  <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                    <label className="form-label">Exchange Rate (optional, snapshot)</label>
-                    <input type="number" step="any" min="0" className="form-input"
-                      value={invoiceOptions.exchangeRate}
-                      onChange={(e) => setInvoiceOptions(prev => ({ ...prev, exchangeRate: e.target.value }))}
-                      placeholder={`1 ${invoiceOptions.currency} = ? INR`} />
-                    <small style={{ color: '#94a3b8', fontSize: '0.7rem' }}>Stored on this invoice — historical reports stay accurate even if rates change.</small>
-                  </div>
-                )}
+                <InvoiceCurrency options={invoiceOptions} baseCurrency={baseCurrency} regionMode={getRegionMode()} compact
+                  invoiceDate={details.invoiceDate} total={totals.total} onCurrency={setCurrency} onRate={setExchangeRate} disabled={readOnlyDoc} />
 
                 {/* Inline recurring — turn any invoice into a recurring template
                     without leaving the form. On save, this writes both the
@@ -3918,7 +3926,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                     // label misled users into unticking Qty and expecting
                     // Unit to survive as its own column — it just vanished
                     // instead. Label now describes what actually happens.
-                    ['showItemUnit', 'Unit suffix (next to Qty)'],
+                    // v1.10.83 - off by itself in Services mode (see the mode chips).
+                    ['showItemUnit', 'Unit (Hrs, Nos...) next to Qty'],
                     ['showRateColumn', 'Rate column'],
                     ['showDiscount', 'Discount column'],
                     ['showGST', 'Tax % column (GST/VAT/etc.)'],
@@ -4265,7 +4274,11 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
               <div className="form-group">
                 <label className="form-label">Country</label>
                 <select className="form-input" value={client.country || profile?.country || 'India'}
-                  onChange={(e) => setClient({ ...client, country: e.target.value, state: '' })}>
+                  onChange={(e) => {
+                    setClient({ ...client, country: e.target.value, state: '' });
+                    // v1.10.83 - a client abroad: their currency, on a new invoice.
+                    if (!editingSaved) setCurrency(currencyForClient({ country: e.target.value }, profile, { lastForeign: invoiceOptions.lastForeignCurrency }));
+                  }}>
                   {(() => {
                     const visible = getCountriesForRegion(getRegionMode());
                     const cur = client.country || profile?.country;
@@ -4344,7 +4357,27 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 <label className="form-label">Due Date</label>
                 <input type="date" className="form-input" value={details.dueDate}
                   onChange={(e) => setDetails({ ...details, dueDate: e.target.value })} />
+                {/* v1.10.83 - payment terms in one click: due N days after the invoice date. */}
+                <div style={{ display: 'flex', gap: '0.3rem', marginTop: '0.3rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Due in</span>
+                  {[7, 15, 30].map(n => (
+                    <button key={n} type="button" className="btn btn-secondary" style={{ fontSize: '0.7rem', padding: '0.1rem 0.45rem' }}
+                      onClick={() => {
+                        const d = parseLocalDate(details.invoiceDate || localToday());
+                        setDetails({ ...details, dueDate: toLocalIsoDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)) });
+                      }}>{n} days</button>
+                  ))}
+                </div>
               </div>
+              {/* v1.10.83 - the currency where the amounts are typed: shown when
+                  the business bills abroad (Region: International or Both), the
+                  client is abroad, or the invoice is already in another currency.
+                  An India-only business billing an Indian client in rupees keeps
+                  it in Customize only. */}
+              {(getRegionMode() !== 'india' || isForeignClient(client, profile) || (invoiceOptions.currency || baseCurrency) !== baseCurrency) && (
+                <InvoiceCurrency options={invoiceOptions} baseCurrency={baseCurrency} regionMode={getRegionMode()}
+                  invoiceDate={details.invoiceDate} total={totals.total} onCurrency={setCurrency} onRate={setExchangeRate} disabled={readOnlyDoc} />
+              )}
               {ccOn && (
                 <div className="form-group">
                   <label className="form-label" htmlFor="cost-centre">Cost centre</label>

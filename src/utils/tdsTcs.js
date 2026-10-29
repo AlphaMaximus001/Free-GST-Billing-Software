@@ -9,6 +9,7 @@
 //     what you deposit and report in your own TDS return (Form 26Q).
 
 import { countsAsSales } from '../utils.js';
+import { billInInr } from './fx.js';
 
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
@@ -51,7 +52,10 @@ const taxableOf = (bill) => {
 // Cancelled invoices, quotations, challans and credit notes are left out.
 export const salesTaxRows = (bills, kind = 'tds', range = {}) => (bills || [])
   .filter((b) => b?.data && countsAsSales(b) && inRange(b.invoiceDate, range))
-  .map((b) => {
+  .map((orig) => {
+    // v1.10.83 - in rupees, at the invoice's own exchange rate (TDS is in
+    // rupees); an invoice with no rate is shown as billed, marked fxMissing.
+    const b = billInInr(orig) || orig;
     const opt = b.data.invoiceOptions || {};
     const t = b.data.totals || {};
     const client = b.data.client || {};
@@ -69,6 +73,7 @@ export const salesTaxRows = (bills, kind = 'tds', range = {}) => (bills || [])
       taxable: taxableOf(b),
       amount,
       certificate: kind === 'tds' ? !!b.tdsCertificate : undefined,
+      ...(b === orig && (orig.currency || opt.currency || 'INR') !== 'INR' ? { fxMissing: true } : {}),
     };
   })
   .filter((r) => r.amount > 0)
@@ -125,7 +130,9 @@ export const withClientTds = (bill, { section = '194J', rate = 0 } = {}) => {
     ...bill,
     data: {
       ...data,
-      invoiceOptions: { ...(data.invoiceOptions || {}), showTDS: tdsAmount > 0, tdsSection: section, tdsRate: Number(rate) || 0 },
+      // tdsRecorded keeps this amount when the invoice is saved again (computeInvoiceTotals).
+      invoiceOptions: { ...(data.invoiceOptions || {}), showTDS: tdsAmount > 0, tdsSection: section, tdsRate: Number(rate) || 0,
+        tdsRecorded: { section, rate: Number(rate) || 0, amount: tdsAmount } },
       totals: { ...totals, tdsAmount, netReceivable: r2((Number(totals.total) || 0) - tdsAmount) },
     },
   };

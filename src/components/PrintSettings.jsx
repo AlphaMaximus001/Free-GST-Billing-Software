@@ -965,7 +965,7 @@ export default function PrintSettings() {
           <SettingGroup title="Dual currency display" doc="print-settings#dual-currency">
             <ToggleRow label="Show foreign-currency equivalent" value={settings.dualCurrencyEnabled} onChange={v => set({ dualCurrencyEnabled: v })}
               tag={isRecommendedForActive(['freelancer', 'service']) ? 'Recommended for your business' : null}
-              hint="For INR invoices to foreign clients, shows the total in a second currency next to the ₹ amount. Uses YOUR manually set rate — no live conversion." />
+              hint="For INR invoices to foreign clients, shows the total in a second currency next to the ₹ amount, at the rate set here. For invoices billed in USD, EUR... it adds the ₹ total to the exchange rate line, at that invoice's own rate. No live conversion." />
             {settings.dualCurrencyEnabled && (
               <>
                 <SelectRow label="Secondary currency" value={settings.dualCurrencyCode} onChange={v => set({ dualCurrencyCode: v })}

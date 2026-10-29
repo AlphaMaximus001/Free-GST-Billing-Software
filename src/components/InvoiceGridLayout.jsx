@@ -142,6 +142,7 @@ function BankLines({ ctx, tally }) {
     ['A/c No.', account?.accountNumber || profile.accountNumber],
     [tally ? `Branch & ${sellerCC.bankLabel || 'IFS Code'}` : (sellerCC.bankLabel || 'IFSC'), [account?.branch, account?.ifsc || profile.ifsc].filter(Boolean).join(' & ')],
     ['SWIFT', account?.swift || profile.swift],
+    ['IBAN', account?.iban],
   ].filter(([, v]) => v);
   return (
     <div {...blockProps}>
@@ -156,6 +157,9 @@ function BankLines({ ctx, tally }) {
 }
 
 function UpiQr({ ctx }) {
+  // v1.10.83 - an invoice in a foreign currency has no UPI QR; its online
+  // payment link (PayPal, Wise...) takes the place.
+  if (ctx.paymentLink) return <div {...blockProps} style={{ marginTop: 6 }}><div style={label}>Pay online</div><div style={{ wordBreak: 'break-all' }}>{ctx.paymentLink}</div></div>;
   if (!ctx.qrDataUrl) return null;
   return (
     <div {...blockProps} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
@@ -193,7 +197,8 @@ function PartyBlock({ ctx, heading, party, withContact }) {
       <div style={{ fontWeight: 800 }}>{party.name || 'Client Name'}</div>
       {t.clientAddress && party.address && <div style={{ whiteSpace: 'pre-line' }}>{party.address}</div>}
       {t.clientAddress && (party.city || party.pin) && <div>{[party.city, party.pin].filter(Boolean).join(' - ')}</div>}
-      {t.gstin && party.gstin && <div>{sellerCC.taxIdLabel || 'GSTIN'}/UIN : <strong>{party.gstin}</strong></div>}
+      {withContact && t.clientAddress && ctx.clientAbroad && <div>{ctx.clientCountry}</div>}
+      {t.gstin && party.gstin && <div>{withContact && ctx.clientAbroad ? ctx.clientTaxIdLabel : `${sellerCC.taxIdLabel || 'GSTIN'}/UIN`} : <strong>{party.gstin}</strong></div>}
       {t.state && party.state && <div>State Name : {stateWithCode(party.state)}</div>}
       {withContact && t.clientPhone && party.phone && <div>Ph: {party.phone}</div>}
       {withContact && t.clientEmail && party.email && <div>E-Mail : {party.email}</div>}
@@ -235,7 +240,9 @@ function TallyLayout({ ctx }) {
   const totalQty = roundQty(items.reduce((s, i) => s + (Number(i.quantity) || 0), 0)); // #96: 0.1 + 0.2 printed as 0.30000000000000004
   const showQtyTotal = units.length === 1 && t.itemQty;
   // Sl No + Description + Amount, plus the optional columns.
-  const colCount = 3 + (t.hsn ? 1 : 0) + (t.itemQty ? 1 : 0) + (t.rate ? 2 : 0) + (ctx.hasAnyDiscount ? 1 : 0);
+  // v1.10.83 - the "per" (unit) column goes with the unit option.
+  const perCol = t.rate && t.itemUnit;
+  const colCount = 3 + (t.hsn ? 1 : 0) + (t.itemQty ? 1 : 0) + (t.rate ? 1 : 0) + (perCol ? 1 : 0) + (ctx.hasAnyDiscount ? 1 : 0);
   const spacer = Math.max(0, 260 - items.length * 26 - rows.length * 20);
 
   return (
@@ -285,7 +292,7 @@ function TallyLayout({ ctx }) {
             {t.hsn && <th style={th}>HSN/SAC</th>}
             {t.itemQty && <th style={th}>Quantity</th>}
             {t.rate && <th style={th}>Rate</th>}
-            {t.rate && <th style={th}>per</th>}
+            {perCol && <th style={th}>per</th>}
             {ctx.hasAnyDiscount && <th style={th}>Disc.</th>}
             <th style={th}>Amount</th>
           </tr>
@@ -303,7 +310,7 @@ function TallyLayout({ ctx }) {
                 {t.hsn && <td style={{ ...vc, ...center }}>{item.hsn || ''}</td>}
                 {t.itemQty && <td style={{ ...vc, ...right }}><strong>{item.quantity}{t.itemUnit && item.unit ? ` ${item.unit}` : ''}</strong></td>}
                 {t.rate && <td style={{ ...vc, ...right }}>{num(item.rate)}</td>}
-                {t.rate && <td style={{ ...vc, ...center }}>{item.unit || ''}</td>}
+                {perCol && <td style={{ ...vc, ...center }}>{item.unit || ''}</td>}
                 {ctx.hasAnyDiscount && <td style={{ ...vc, ...right }}>{l.discount > 0 ? num(l.discount) : ''}</td>}
                 <td style={{ ...vc, ...right }}><strong>{num(l.taxable)}</strong></td>
               </tr>
@@ -333,7 +340,7 @@ function TallyLayout({ ctx }) {
             {t.hsn && <td style={cell} />}
             {t.itemQty && <td style={{ ...cell, ...right }}>{showQtyTotal ? `${totalQty}${t.itemUnit && units[0] ? ` ${units[0]}` : ''}` : ''}</td>}
             {t.rate && <td style={cell} />}
-            {t.rate && <td style={cell} />}
+            {perCol && <td style={cell} />}
             {ctx.hasAnyDiscount && <td style={cell} />}
             <td style={{ ...cell, ...right, fontSize: '1.08em' }}>{fmt(totals.total)}</td>
           </tr>
@@ -405,7 +412,9 @@ function BoxedLayout({ ctx }) {
   ].filter(Boolean);
   const rows = taxRows(ctx);
   const filler = Math.max(0, BOXED_MIN_ROWS - items.length);
-  const colCount = 3 + (t.hsn ? 1 : 0) + (t.itemQty ? 2 : 0) + (t.rate ? 1 : 0) + (ctx.hasAnyDiscount ? 1 : 0);
+  // v1.10.83 - the UNIT column goes with the unit option.
+  const unitCol = t.itemQty && t.itemUnit;
+  const colCount = 3 + (t.hsn ? 1 : 0) + (t.itemQty ? 1 : 0) + (unitCol ? 1 : 0) + (t.rate ? 1 : 0) + (ctx.hasAnyDiscount ? 1 : 0);
   const shipTo = ctx.shipTo;
 
   return (
@@ -453,7 +462,7 @@ function BoxedLayout({ ctx }) {
               <th style={{ ...th, borderLeft: 'none', width: 30 }}>SI</th>
               <th style={th}>Description</th>
               {t.hsn && <th style={th}>{ctx.isServices ? 'SAC' : 'HSN/SAC'}</th>}
-              {t.itemQty && <th style={th}>UNIT</th>}
+              {unitCol && <th style={th}>UNIT</th>}
               {t.itemQty && <th style={th}>QTY</th>}
               {t.rate && <th style={th}>Rate</th>}
               {ctx.hasAnyDiscount && <th style={th}>Disc.</th>}
@@ -471,7 +480,7 @@ function BoxedLayout({ ctx }) {
                     {item.description && <div style={{ ...small, whiteSpace: 'pre-wrap' }}>{item.description}</div>}
                   </td>
                   {t.hsn && <td style={{ ...cell, ...center }}>{item.hsn || ''}</td>}
-                  {t.itemQty && <td style={{ ...cell, ...center }}>{item.unit || ''}</td>}
+                  {unitCol && <td style={{ ...cell, ...center }}>{item.unit || ''}</td>}
                   {t.itemQty && <td style={{ ...cell, ...center }}>{item.quantity}</td>}
                   {t.rate && <td style={{ ...cell, ...right }}>{num(item.rate)}</td>}
                   {ctx.hasAnyDiscount && <td style={{ ...cell, ...right }}>{l.discount > 0 ? num(l.discount) : ''}</td>}

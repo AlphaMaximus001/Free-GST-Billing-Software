@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { getCountryConfig, getStatesForCountry, validateTaxId, detectCountryFromBrowser, getCountriesForRegion, PAPER_SIZES, decodeGstin } from '../utils';
+import { getCountryConfig, getStatesForCountry, validateTaxId, detectCountryFromBrowser, getCountriesForRegion, PAPER_SIZES, decodeGstin, COUNTRIES } from '../utils';
 import { getRegionMode } from '../store';
 import HelpButton from './HelpButton';
 
@@ -42,6 +42,9 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
 
   const cc = getCountryConfig(form.country);
   const stateOptions = getStatesForCountry(form.country);
+  // v1.10.83 - a client in another country than the business.
+  const abroad = !!form.country && form.country !== (defaultCountry || 'India');
+  const currencyCodes = [...new Set(COUNTRIES.map(c => c.currency))];
 
   // v1.10.68 (#68, idea from @deppen12) — a GSTIN already says which state the
   // client is registered in and carries a checksum, so fill the state in and
@@ -108,7 +111,7 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
             <input type="text" className="form-input" value={form.pin} onChange={e => setForm(prev => ({ ...prev, pin: e.target.value }))} placeholder={cc.postalLabel} />
           </div>
           <div className="form-group">
-            <label className="form-label">{cc.stateLabel}</label>
+            <label className="form-label">{cc.stateLabel}{abroad ? ' (optional)' : ''}</label>
             {stateOptions.length > 0 ? (
               <select className="form-input" value={form.state} onChange={e => setForm(prev => ({ ...prev, state: e.target.value }))}>
                 <option value="">Select {cc.stateLabel}</option>
@@ -119,7 +122,7 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">{cc.taxIdLabel}</label>
+            <label className="form-label">{abroad ? `${cc.taxIdLabel} (Tax ID / VAT, optional)` : cc.taxIdLabel}</label>
             <input type="text" className="form-input"
               style={taxIdWarning ? { borderColor: '#f59e0b' } : undefined}
               value={form.gstin}
@@ -136,6 +139,12 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
             <label className="form-label">Phone</label>
             <input type="tel" className="form-input" value={form.phone} onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))} placeholder="+91 98765 43210" />
           </div>
+          {abroad && (defaultCountry || 'India') === 'India' && (
+            <div className="form-group notice notice-info" style={{ gridColumn: 'span 2', display: 'block', fontSize: '0.78rem', lineHeight: 1.5, padding: '0.5rem 0.75rem', borderRadius: 6 }}>
+              Client outside India: no GSTIN or state is needed. Their tax ID (if they have one) and country print on the invoice, and the place of supply prints as &quot;Outside India&quot;. Invoices to them are exports: with a LUT, no IGST is charged.
+              <HelpButton title="Billing clients abroad (exports)" doc="gst-basics#exports" size={14} />
+            </div>
+          )}
           {form.country === 'India' && (
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
@@ -174,14 +183,9 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
                 <select className="form-input" style={{ fontSize: '0.8rem', padding: '0.35rem' }}
                   value={form.preferredCurrency}
                   onChange={e => setForm(prev => ({ ...prev, preferredCurrency: e.target.value }))}>
-                  <option value="">Use invoice default</option>
-                  <option value="INR">INR (₹)</option>
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="GBP">GBP (£)</option>
-                  <option value="AED">AED (د.إ)</option>
-                  <option value="SGD">SGD (S$)</option>
-                  <option value="AUD">AUD (A$)</option>
+                  <option value="">{abroad ? "Their country's currency" : 'Use invoice default'}</option>
+                  {/* v1.10.83 - every currency the app knows (was seven). */}
+                  {currencyCodes.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <label style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', marginTop: '0.2rem' }}>

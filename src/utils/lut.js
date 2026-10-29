@@ -50,3 +50,37 @@ export const exportDeclaration = ({ profile, client, details, totals, options, s
   const arn = normaliseLutArn(options?.lutArn);
   return arn ? `${LUT_DECLARATION} - LUT ARN ${arn}${options?.lutFy ? ` (FY ${options.lutFy})` : ''}` : LUT_DECLARATION;
 };
+
+// v1.10.83 - GSTR-3B Table 3.1(b) "Outward taxable supplies (zero rated)":
+// exports AND supplies to an SEZ unit / developer (Section 16, IGST Act), with
+// or without IGST. Supplies to an SEZ went into 3.1(a) with the B2B sales;
+// CBIC Circular 147/03/2021-GST (para 3) treats entering them in 3.1(a)
+// instead of 3.1(b) as an error (it blocks the IGST refund).
+//   bills: the period's sales invoices and credit notes, in rupees.
+//   isExport(bill): the GST screen's own export test.
+// Returns the zero-rated value and tax (`zero`, credit notes taken off) and
+// the part of it already inside the domestic totals (`inDomestic`): SEZ sales
+// sit in B2B, and every credit note is taken off the domestic total.
+const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+export const zeroRatedTotals = (bills, isExport) => {
+  const zero = { taxable: 0, igst: 0, cess: 0 };
+  const inDomestic = { taxable: 0, igst: 0, cess: 0 };
+  for (const b of bills || []) {
+    const isCn = (b?.invoiceType || 'tax-invoice') === 'credit-note';
+    const exp = isExport(b);
+    if (!exp && !b?.data?.client?.isSEZ) continue;
+    const t = b.data?.totals || {};
+    const sign = isCn ? -1 : 1;
+    const v = { taxable: t.taxableAmount ?? ((t.subtotal || 0) - (t.totalDiscount || 0)), igst: t.igst || 0, cess: t.cess || 0 };
+    for (const k of Object.keys(zero)) zero[k] = r2(zero[k] + sign * v[k]);
+    if (isCn || !exp) for (const k of Object.keys(zero)) inDomestic[k] = r2(inDomestic[k] + sign * v[k]);
+  }
+  return { zero, inDomestic };
+};
+// 3.1(a) once the zero-rated part is taken out of the domestic totals.
+export const withoutZeroRated = (domestic, inDomestic) => ({
+  ...domestic,
+  taxable: Math.max(0, r2(domestic.taxable - inDomestic.taxable)),
+  igst: Math.max(0, r2(domestic.igst - inDomestic.igst)),
+  cess: Math.max(0, r2(domestic.cess - inDomestic.cess)),
+});

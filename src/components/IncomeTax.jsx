@@ -40,13 +40,18 @@ import {
   CURRENT_FY as ENGINE_FY,
 } from '../utils/itr.js';
 import { getFinancialYearLabel, belongsToProfile, isCancelledBill, salesSign, localToday, parseLocalDate } from '../utils';
+import { billInInr } from '../utils/fx';
 
 // Business income is counted without GST (GST collected is not income, and GST
 // paid comes back as credit), in rupees only, from real sales: a quote or a
 // challan is not a sale and a credit note reduces sales.
 // TCS on the invoice is collected for the government too, so it is not income.
-const billTurnover = (b) => ((b.currency || 'INR') === 'INR'
-  ? salesSign(b) * ((Number(b.totalAmount) || 0) - (Number(b.totalTaxAmount) || 0) - (Number(b.data?.totals?.tcsAmount) || 0)) : 0);
+// v1.10.83 - an invoice in USD, EUR... counts at the exchange rate saved on it
+// (export income is income); one with no rate cannot be counted.
+const billTurnover = (orig) => {
+  const b = billInInr(orig);
+  return b ? salesSign(b) * ((Number(b.totalAmount) || 0) - (Number(b.totalTaxAmount) || 0) - (Number(b.data?.totals?.tcsAmount) || 0)) : 0;
+};
 const purchaseCost = (p) => (p.taxableAmount != null ? Number(p.taxableAmount) || 0
   : (Number(p.totalAmount) || 0) - (Number(p.totalTax) || 0));
 const expenseCost = (e) => (Number(e.amount) || 0) - (Number(e.gstAmount) || 0);

@@ -3,24 +3,10 @@ import { X, ChevronRight, Check } from 'lucide-react';
 import { getPrintSettings, savePrintSettings, applyBusinessPreset } from '../utils/printSettings';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
-import { getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getEnabledModules, setEnabledModules, setBusinessType } from '../store';
-import { BUSINESS_TYPES, businessTypeById, applyBusinessType } from '../utils/businessTypes';
+import { patchInvoiceDefaults, getEnabledModules, setEnabledModules, setBusinessType } from '../store';
+import { BUSINESS_TYPES, businessTypeById, applyBusinessType, invoiceDefaultsForType } from '../utils/businessTypes';
 
 const PAPER_LABELS = { a4: 'A4', a5: 'A5', thermal80: '80mm thermal', thermal58: '58mm thermal' };
-
-// The invoice screen takes its paper size from the invoice defaults (browser
-// copy + server copy, server wins), not from print settings. Writing it only
-// to print settings, as before, meant the choice made here did nothing.
-const setDefaultPaperSize = async (paperSize) => {
-  try {
-    const local = JSON.parse(localStorage.getItem('freegstbill_invoiceOptions') || '{}');
-    localStorage.setItem('freegstbill_invoiceOptions', JSON.stringify({ ...local, paperSize }));
-  } catch { /* private window: server copy below still applies */ }
-  try {
-    const server = (await getInvoiceDisplayOptions()) || {};
-    await saveInvoiceDisplayOptions({ ...server, paperSize });
-  } catch { /* offline: the browser copy above still applies */ }
-};
 
 // ============================================================================
 // v1.9.3 — First-run Setup Wizard
@@ -61,7 +47,11 @@ export default function SetupWizard({ onClose }) {
     next.labelLanguage = language;
     if (paperSize) next.paperSize = paperSize;
     savePrintSettings(next);
-    if (paperSize) setDefaultPaperSize(paperSize);
+    // The invoice screen takes its paper size from the invoice defaults, not
+    // from print settings. v1.10.83 - with the business type's invoice
+    // defaults (a freelancer's invoices start in Services mode).
+    const invoiceDefaults = { ...(selectedBiz ? invoiceDefaultsForType(selectedBiz) : {}), ...(paperSize ? { paperSize } : {}) };
+    patchInvoiceDefaults(invoiceDefaults);
     toast('Setup complete! Your defaults are configured.', 'success');
     onClose();
   };

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { FEATURE_GROUPS, isModuleEnabled } from '../utils';
-import { BUSINESS_TYPES, businessTypeById, applyBusinessType, featureChanges, moduleLabel, orderedMenu, moveMenuItem } from '../utils/businessTypes';
-import { getEnabledModules, setEnabledModules, getBusinessType, setBusinessType, getMenuOrder, setMenuOrder, getAllRecurring } from '../store';
+import { BUSINESS_TYPES, businessTypeById, applyBusinessType, featureChanges, moduleLabel, orderedMenu, moveMenuItem, invoiceDefaultsForType } from '../utils/businessTypes';
+import { getEnabledModules, setEnabledModules, getBusinessType, setBusinessType, getMenuOrder, setMenuOrder, getAllRecurring, patchInvoiceDefaults } from '../store';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
 
@@ -29,7 +29,7 @@ export function useFeatureDraft() {
   const unsaved = [typeChanged && 'Business type', featuresChanged && 'Features'].filter(Boolean);
   const save = () => {
     if (featuresChanged) { setEnabledModules(draft.modules); setMenuOrder(draft.order); }
-    if (typeChanged && draft.type) setBusinessType(draft.type);
+    if (typeChanged && draft.type) { setBusinessType(draft.type); patchInvoiceDefaults(invoiceDefaultsForType(draft.type)); }
     setSaved(draft);
     toast('Features saved. The menu now shows your choices.', 'success');
   };
