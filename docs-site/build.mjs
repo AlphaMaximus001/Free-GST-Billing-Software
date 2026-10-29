@@ -79,14 +79,21 @@ for (const p of PAGES) {
   const SRC = join(HERE, '..', 'src');
   const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (
     e.isDirectory() ? walk(join(dir, e.name)) : /\.jsx$/.test(e.name) ? [join(dir, e.name)] : []));
-  for (const file of walk(SRC)) {
-    for (const m of readFileSync(file, 'utf8').matchAll(/\bdoc="([a-z0-9-]+)(?:#([a-z0-9-]+))?"/g)) {
-      const target = bySlug.get(m[1]);
-      if (!target) throw new Error(`${file}: Help button links to missing docs page "${m[1]}"`);
-      if (m[2] && !sectionsOf(target).some((s) => s.id === m[2])) {
-        throw new Error(`${file}: Help button links to missing docs section "${m[1]}#${m[2]}"`);
-      }
+  const check = (file, page, id) => {
+    const target = bySlug.get(page);
+    if (!target) throw new Error(`${file}: Help button links to missing docs page "${page}"`);
+    if (id && !sectionsOf(target).some((s) => s.id === id)) {
+      throw new Error(`${file}: Help button links to missing docs section "${page}#${id}"`);
     }
+  };
+  for (const file of walk(SRC)) {
+    const src = readFileSync(file, 'utf8');
+    // doc="page#id", doc={'page#id'}, and SETTINGS_TAB_DOCS-style maps: any
+    // 'page#id' literal naming a docs page, so a ternary or a map is checked too.
+    for (const m of src.matchAll(/\bdoc=\{?\s*["']([a-z0-9-]+)(?:#([a-z0-9-]+))?["']/g)) check(file, m[1], m[2]);
+    for (const m of src.matchAll(/["']([a-z0-9-]+)#([a-z0-9-]+)["']/g)) if (bySlug.has(m[1])) check(file, m[1], m[2]);
+    const map = /SETTINGS_TAB_DOCS = \{([\s\S]*?)\};/.exec(src);
+    if (map) for (const m of map[1].matchAll(/:\s*'([a-z0-9-]+)(?:#([a-z0-9-]+))?'/g)) check(file, m[1], m[2]);
   }
 }
 

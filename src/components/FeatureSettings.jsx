@@ -4,6 +4,7 @@ import { FEATURE_GROUPS, isModuleEnabled } from '../utils';
 import { BUSINESS_TYPES, businessTypeById, applyBusinessType, featureChanges, moduleLabel, orderedMenu, moveMenuItem } from '../utils/businessTypes';
 import { getEnabledModules, setEnabledModules, getBusinessType, setBusinessType, getMenuOrder, setMenuOrder, getAllRecurring } from '../store';
 import { toast } from './Toast';
+import HelpButton from './HelpButton';
 
 // v1.10.83 - Settings → Business type and Settings → Features.
 // Both only change what is shown; nothing is ever deleted.
@@ -69,7 +70,7 @@ export function BusinessTypePanel({ features }) {
   const chosen = businessTypeById(saved.type);
   return (
     <div id="section-biztype" className="glass-panel p-6 mb-6" style={{ order: 0 }}>
-      <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>Business type</h3>
+      <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>Business type <HelpButton title="Business type" doc="settings#business-type" size={16} style={{ marginLeft: 6 }} /></h3>
       <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
         Pick what kind of business you run. The tick boxes in Features are filled in for that business; nothing changes until you save.
       </p>
@@ -164,7 +165,7 @@ export function FeaturesPanel({ features, regionMode }) {
     <div id="section-modules" className="glass-panel p-6 mb-6" style={{ order: 5 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
-          <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>Features</h3>
+          <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>Features <HelpButton title="Features" doc="settings#features" size={16} style={{ marginLeft: 6 }} /></h3>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
             Tick what you want to see, untick what you don't, then click <strong>Save all changes</strong>. Unticked things disappear from the menu and screens; your data stays untouched.
           </p>
@@ -176,7 +177,7 @@ export function FeaturesPanel({ features, regionMode }) {
       <PendingChanges features={features} />
 
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', margin: '1.1rem 0 0.5rem' }}>
-        <h4 style={{ margin: 0, fontSize: '0.92rem' }}>Menu</h4>
+        <h4 style={{ margin: 0, fontSize: '0.92rem' }}>Menu <HelpButton title="Menu: show, hide and order" doc="settings#features-menu" size={16} style={{ marginLeft: 6 }} /></h4>
         <span style={muted}>
           Use the arrows to change the order of the menu.{' '}
           {draft.order.length > 0 && <button type="button" onClick={() => setDraft({ ...draft, order: [] })} style={{ fontSize: '0.72rem', background: 'none', border: 0, color: 'var(--primary)', cursor: 'pointer', padding: 0 }}>Default order</button>}
@@ -187,7 +188,7 @@ export function FeaturesPanel({ features, regionMode }) {
         {renderSection('bottom', 'Bottom of the menu')}
       </div>
 
-      <h4 style={{ margin: '1.25rem 0 0.5rem', fontSize: '0.92rem' }}>Features inside screens</h4>
+      <h4 style={{ margin: '1.25rem 0 0.5rem', fontSize: '0.92rem' }}>Features inside screens <HelpButton title="Features inside screens" doc="settings#features-inside-screens" size={16} style={{ marginLeft: 6 }} /></h4>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
         {FEATURE_GROUPS.filter(g => g.id !== 'menu').map(group => {
           // India-only switches do nothing outside India, so they are not listed.
