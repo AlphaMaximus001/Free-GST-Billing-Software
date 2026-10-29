@@ -10,6 +10,7 @@ import { confirmAction, promptAction } from './ConfirmModal';
 import { useCostCentres } from './useCostCentres';
 import { CostCentreSelect } from './CostCentrePicker';
 import { centreFields } from '../utils/costCentres';
+import { isExportOrSez, lutCoversDate, normaliseLutArn, fyOf } from '../utils/lut';
 import PrintPreviewModal from './PrintPreviewModal';
 import { ensureToken, findOrCreateFolder, uploadPDF } from '../services/googleDrive';
 import DOMPurify from 'dompurify';
@@ -147,7 +148,7 @@ const DEFAULT_OPTIONS = {
   tdsCumulativeThisYear: 0,
   showTCS: false,
   tcsSection: '52',
-  tcsRate: 1,
+  tcsRate: 0.5, // CGST section 52: 0.5% since 10 July 2024
   tcsCumulativeThisYear: 0,
   customTitle: '',
   currency: 'INR',
@@ -170,6 +171,14 @@ const DEFAULT_OPTIONS = {
   // added to the next bill of customer if u enabled — auto or manual".
   autoApplyClientCredit: false,
 };
+
+// v1.10.83 - an invoice's LUT choice and the ARN copied onto it belong to that
+// invoice only. invoiceOptions doubles as the user's defaults (localStorage and
+// the server), so these are taken out whenever options are saved as, or read
+// from, the defaults - as paymentAccountSnapshot already is.
+const LUT_OPTION_KEYS = ['isLUT', 'lutArn', 'lutFy', 'lutManual'];
+const stripLutOptions = (o) => { LUT_OPTION_KEYS.forEach((k) => { delete o[k]; }); return o; };
+const lutOptionsOf = (o) => Object.fromEntries(LUT_OPTION_KEYS.filter((k) => k in (o || {})).map((k) => [k, o[k]]));
 
 const ACCENT_PRESETS = [
   { color: '#1e40af', label: 'Blue' },
@@ -678,7 +687,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       // details at time of save). It must NEVER be inherited via the
       // user-preference stores (localStorage / server). Strip on read so
       // opening Invoice B doesn't pick up Invoice A's snapshot.
-      delete persisted.paymentAccountSnapshot;
+      delete persisted.paymentAccountSnapshot; stripLutOptions(persisted);
       // Persisted options are the user's defaults, draft can override for in-progress work
       return { ...DEFAULT_OPTIONS, ...persisted, ...(draft?.invoiceOptions || {}) };
     } catch { return draft?.invoiceOptions || { ...DEFAULT_OPTIONS }; }
@@ -849,6 +858,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     // both stores, and opening Invoice B inherited Bank X — defeating the
     // v1.10.19 backfill entirely.
     const { paymentAccountSnapshot: _snap, ...persistable } = invoiceOptions;
+    stripLutOptions(persistable);
     localStorage.setItem('freegstbill_invoiceOptions', JSON.stringify(persistable));
     if (hasInitialized.current) {
       clearTimeout(optionsPersistTimer.current);
@@ -868,6 +878,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         // from any stale server-persisted options (pre-v1.10.20 clients would
         // have posted it). Preserves the current bill's snapshot in `prev`.
         delete serverOpts.paymentAccountSnapshot;
+        stripLutOptions(serverOpts);
         // v1.10.77 - a restored draft keeps its own choices (design, columns
         // ...); the saved defaults only fill what it does not set. They used
         // to replace the draft's options a moment after a page refresh.
@@ -877,8 +888,9 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           const changed = Object.keys(merged).some(k => merged[k] !== prev[k]);
           if (changed) {
             // Preserve the per-bill snapshot from prev when applying server defaults.
-            const nextOpts = { ...merged, paymentAccountSnapshot: prev.paymentAccountSnapshot };
+            const nextOpts = { ...merged, paymentAccountSnapshot: prev.paymentAccountSnapshot, ...lutOptionsOf(prev) };
             const { paymentAccountSnapshot: _skip, ...toPersist } = nextOpts;
+            stripLutOptions(toPersist);
             localStorage.setItem('freegstbill_invoiceOptions', JSON.stringify(toPersist));
             return nextOpts;
           }
@@ -1138,7 +1150,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         try {
           const saved = localStorage.getItem('freegstbill_invoiceOptions');
           const persisted = saved ? JSON.parse(saved) : {};
-          delete persisted.paymentAccountSnapshot;
+          delete persisted.paymentAccountSnapshot; stripLutOptions(persisted);
           // showRoundOff: a saved bill that never stored it was not rounded
           // (OPTIONS_OFF_BY_DEFAULT); the new ON default must not change its total.
           mergedOpts = { ...DEFAULT_OPTIONS, ...persisted, showRoundOff: false, ...d.invoiceOptions };
@@ -1361,7 +1373,34 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   const totals = useMemo(() => computeInvoiceTotals({
     items, profile, client, details, showGST, taxInclusive,
     invoiceOptions: { ...invoiceOptions, tcsCumulativeThisYear: clientYtd, tdsCumulativeThisYear: clientYtd },
-  }), [clientYtd, invoiceOptions.tcsSection, invoiceOptions.tdsSection, items, client.state, client?.country, client?.gstin, client?.isSEZ, profile?.state, profile?.country, profile?.gstin, showGST, taxInclusive, invoiceOptions.showRoundOff, invoiceOptions.showTDS, invoiceOptions.tdsRate, invoiceOptions.tdsCumulativeThisYear, invoiceOptions.showTCS, invoiceOptions.tcsRate, invoiceOptions.tcsCumulativeThisYear, invoiceOptions.reverseCharge, invoiceOptions.invoiceDiscountValue, invoiceOptions.invoiceDiscountType, details?.placeOfSupply]);
+  }), [clientYtd, invoiceOptions.tcsSection, invoiceOptions.tdsSection, items, client.state, client?.country, client?.gstin, client?.isSEZ, profile?.state, profile?.country, profile?.gstin, showGST, taxInclusive, invoiceOptions.showRoundOff, invoiceOptions.showTDS, invoiceOptions.tdsRate, invoiceOptions.tdsCumulativeThisYear, invoiceOptions.showTCS, invoiceOptions.tcsRate, invoiceOptions.tcsCumulativeThisYear, invoiceOptions.reverseCharge, invoiceOptions.invoiceDiscountValue, invoiceOptions.invoiceDiscountType, invoiceOptions.isLUT, details?.placeOfSupply]);
+
+  // v1.10.83 - exports and SEZ supplies under a LUT (Settings › Company).
+  // A new invoice ticks "under LUT" by itself when the business's saved LUT
+  // covers the invoice date's financial year, until the user changes the tick
+  // (lutManual). A saved invoice opened for editing keeps its own choice. The
+  // LUT's ARN and year are copied onto the invoice so a later LUT never
+  // changes what an old invoice prints.
+  const lutEligible = !!showGST && isExportOrSez({ profile, client, details });
+  const lutDefault = lutCoversDate(profile, details?.invoiceDate);
+  const lutLocked = !!editingBill && !editingBill._isDuplicate;
+  useEffect(() => {
+    if (!lutEligible || lutLocked) return;
+    setInvoiceOptions(prev => {
+      const isLUT = prev.lutManual ? !!prev.isLUT : lutDefault;
+      const lutArn = isLUT ? normaliseLutArn(profile?.lutArn) : '';
+      const lutFy = lutArn ? (profile?.lutFy || '') : '';
+      if (!!prev.isLUT === isLUT && (prev.lutArn || '') === lutArn && (prev.lutFy || '') === lutFy) return prev;
+      return { ...prev, isLUT, lutArn, lutFy };
+    });
+    // The invoice's own LUT fields are deps too: a draft restored after the
+    // first run (or made before the LUT was saved) is brought in line. The
+    // update returns prev once it agrees, so this settles in one pass.
+  }, [lutEligible, lutDefault, lutLocked, profile?.lutArn, profile?.lutFy, invoiceOptions.isLUT, invoiceOptions.lutArn, invoiceOptions.lutFy, invoiceOptions.lutManual]);
+  const toggleLut = (on) => setInvoiceOptions(prev => {
+    const lutArn = on ? normaliseLutArn(profile?.lutArn) : '';
+    return { ...prev, lutManual: true, isLUT: on, lutArn, lutFy: lutArn ? (profile?.lutFy || '') : '' };
+  });
 
   // v1.10.24 — Compute available client credit from prior overpayments.
   // Excludes the bill we're editing (that would double-count our own
@@ -1830,6 +1869,8 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       // IRN imported on the Dashboard while this editor was open is on the
       // server copy.
       ...((serverCopy?.einvoice || einvoice) ? { einvoice: serverCopy?.einvoice || einvoice } : {}),
+      // v1.10.83 - the "TDS certificate received" tick from Reports › TDS & TCS.
+      ...(ownBill && (serverCopy?.tdsCertificate || editingBill.tdsCertificate) ? { tdsCertificate: true } : {}),
       data: { profile, client, details: { ...details, invoiceNumber: finalInvoiceNumber }, items, totals, invoiceType, customTerms, customNotes, internalNote, extraSections, invoiceOptions: invoiceOptionsWithSnapshot, taxInclusive,
         // A converted quotation/proforma/challan's stock moved to its invoice:
         // its own record stays empty, or a save would take the stock twice.
@@ -3289,7 +3330,15 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     }
     // v1.10.1 — Pass taxInclusive so back-calc taxable value on line items.
     // Otherwise E-Way Bill portal rejects with `amount_mismatch` on MRP-inclusive invoices.
-    const ewb = generateEWayBillJSON(profile, client, details, items, totals, invoiceType, { taxInclusive });
+    // A missing PIN code (or a non-Indian business) throws with what to fill
+    // and where; uncaught, the click used to do nothing at all.
+    let ewb;
+    try {
+      ewb = generateEWayBillJSON(profile, client, details, items, totals, invoiceType, { taxInclusive });
+    } catch (err) {
+      toast(err.message || 'Could not make the E-Way Bill file', 'warning', 8000);
+      return;
+    }
     const blob = new Blob([JSON.stringify(ewb, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -4305,6 +4354,37 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                     })} />
                 </div>
               )}
+              {lutEligible && (() => {
+                const savedArn = normaliseLutArn(profile?.lutArn);
+                const invFy = fyOf(details.invoiceDate);
+                return (
+                  <div className={`form-group full-width notice ${invoiceOptions.isLUT ? 'notice-info' : 'notice-warn'}`} style={{ padding: '0.6rem 0.85rem', borderRadius: 6, display: 'block' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', cursor: 'pointer', fontSize: '0.88rem' }}>
+                      <input type="checkbox" checked={!!invoiceOptions.isLUT} disabled={readOnlyDoc}
+                        onChange={e => toggleLut(e.target.checked)}
+                        style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} />
+                      <strong>{client?.isSEZ ? 'SEZ supply' : 'Export'} under LUT (no IGST)</strong>
+                      <HelpButton title="Exports and SEZ supplies under a LUT" doc="invoices#lut" size={16} />
+                    </label>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', lineHeight: 1.5 }}>
+                      {invoiceOptions.isLUT
+                        ? <>No IGST is charged (zero-rated). The invoice prints the Rule 46 declaration{invoiceOptions.lutArn ? <> with LUT ARN <strong>{invoiceOptions.lutArn}</strong>{invoiceOptions.lutFy ? ` (FY ${invoiceOptions.lutFy})` : ''}</> : ''}.</>
+                        : <>IGST is charged on this {client?.isSEZ ? 'SEZ supply' : 'export'} (with payment of IGST, claimed back later as a refund).</>}
+                    </p>
+                    {!savedArn && (
+                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', lineHeight: 1.5 }}>
+                        <strong>Have a LUT?</strong> Exports and SEZ supplies under a LUT are billed without IGST, so you don't pay tax and wait for a refund. File it free on the GST portal each financial year (Form GST RFD-11), then add its ARN in Settings → Company.
+                        <HelpButton title="LUT for exports" doc="gst-basics#lut" size={14} />
+                      </p>
+                    )}
+                    {savedArn && invFy && profile?.lutFy !== invFy && (
+                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', lineHeight: 1.5, color: 'var(--warn-text)' }}>
+                        ⚠ Your saved LUT is for FY {profile?.lutFy || '(year not set)'}, but this invoice is dated in FY {invFy}. A LUT covers one financial year: file one for FY {invFy} on the GST portal and update it in Settings → Company.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
               {invoiceOptions.showPlaceOfSupply && (() => {
                 const posOpts = getStatesForCountry(profile?.country);
                 return (

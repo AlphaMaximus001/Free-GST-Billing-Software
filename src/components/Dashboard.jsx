@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban, Undo2, Eye, QrCode, Upload } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts, markSavedPdfCancelled, getEnabledModules } from '../store';
-import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES, localToday, amountDue, paymentStatusFor, isModuleEnabled } from '../utils';
+import { formatCurrency, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES, localToday, amountDue, paymentStatusFor, isModuleEnabled, TDS_SECTIONS } from '../utils';
+import { withClientTds } from '../utils/tdsTcs';
 import { prepareEInvoices, parseIrpResponse, matchIrnEntries, downloadJson, einvoiceFileName } from '../utils/einvoice';
 import { EInvoiceReport } from './EInvoiceModal';
 import { openWhatsAppShare } from '../utils/share';
@@ -524,7 +525,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     if (isCancelledBill(bill)) return;
     const ok = await confirmAction({
       title: 'Cancel this invoice?',
-      message: `Invoice ${bill.invoiceNumber} for ${bill.clientName} keeps its number but stops counting in totals, reports and GST returns. Stock is restored for any products on it. You can undo this from the status dropdown.`,
+      message: `Invoice ${bill.invoiceNumber} for ${bill.clientName} keeps its number but stops counting in totals, reports and GST returns. Stock is restored for any products on it. To undo it, click the Undo cancel arrow among the row's actions.`,
       confirmLabel: 'Cancel invoice',
       tone: 'danger',
     });
@@ -594,8 +595,12 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
 
   const openPaymentModal = (bill) => {
     setPaymentModal(bill);
-    setPaymentInput({ amount: '', date: localToday(), mode: 'bank-transfer', note: '' });
+    setPaymentInput({ amount: '', date: localToday(), mode: 'bank-transfer', note: '', tdsOn: false, tdsSection: '194J', tdsRate: 10 });
   };
+  // TDS can be added while recording a payment on an Indian sales invoice that
+  // does not already show TDS (one that does is owed its Net Receivable).
+  const tdsEntryAllowed = (bill) => !!bill && SALES_INVOICE_TYPES.includes(bill.invoiceType || 'tax-invoice')
+    && (bill.data?.profile?.country || 'India') === 'India' && !(Number(bill.data?.totals?.tdsAmount) > 0);
 
   const recordPayment = async () => {
     // v1.10.74 - a payment used to flip a cancelled invoice to paid/partial
@@ -605,11 +610,26 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       toast('This invoice is cancelled. Change its status back before recording a payment.', 'warning'); return;
     }
     const amount = parseFloat(paymentInput.amount);
-    if (!isFinite(amount) || amount <= 0) {
+    const hasAmount = isFinite(amount) && amount > 0;
+    // v1.10.83 - the client paid less because they deducted TDS the invoice
+    // did not show: the TDS goes on the invoice, so it is owed only the Net
+    // Receivable. A TDS-only entry (no amount) is allowed.
+    const tdsNow = tdsEntryAllowed(paymentModal) && !!paymentInput.tdsOn;
+    if (!hasAmount && !(tdsNow && !String(paymentInput.amount || '').trim())) {
       toast('Enter a positive payment amount', 'warning'); return;
     }
-    const bill = paymentModal;
+    const bill = tdsNow ? withClientTds(paymentModal, { section: paymentInput.tdsSection, rate: paymentInput.tdsRate }) : paymentModal;
+    if (tdsNow && !(bill.data.totals.tdsAmount > 0)) {
+      toast('Enter the TDS rate the client deducted', 'warning'); return;
+    }
     const alreadyPaid = Number(bill.paidAmount) || 0;
+    if (!hasAmount) {
+      await saveBill({ ...bill, status: paymentStatusFor(bill, alreadyPaid) }, { overwrite: true });
+      toast(`TDS of ${formatCurrency(bill.data.totals.tdsAmount, bill.currency)} recorded on ${bill.invoiceNumber}`, 'success');
+      setPaymentModal(null);
+      loadBills();
+      return;
+    }
     // What is left to receive: the total less TDS the client deducts.
     const outstanding = Math.max(0, amountDue(bill) - alreadyPaid);
     if (amount > outstanding + 0.01) {
@@ -860,7 +880,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     if (sel.length === 0) return;
     if (!await confirmAction({
       title: `Cancel ${sel.length} invoice${sel.length !== 1 ? 's' : ''}?`,
-      message: 'They keep their numbers but stop counting in totals, reports and GST returns. Stock is restored for any products on them. You can undo each one from its status dropdown.',
+      message: 'They keep their numbers but stop counting in totals, reports and GST returns. Stock is restored for any products on them. To undo one, click the Undo cancel arrow among the actions on its row.',
       confirmLabel: `Cancel ${sel.length}`,
       tone: 'danger',
     })) return;
@@ -1246,6 +1266,12 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     [search, typeFilter, statusFilter, fyFilter, dateFrom, dateTo, centreFilter]);
 
   const sendReminder = (bill) => {
+    // Only sales are owed money: a quotation, proforma, challan or credit note
+    // never gets a payment reminder.
+    if (!SALES_INVOICE_TYPES.includes(bill.invoiceType || 'tax-invoice')) {
+      toast('Only invoices that are owed money get a payment reminder.', 'info');
+      return;
+    }
     const clientPhone = bill.clientPhone || bill.data?.client?.phone || '';
     const clientName = bill.clientName || 'Sir/Madam';
     const dueDate = bill.data?.details?.dueDate ? new Date(bill.data.details.dueDate).toLocaleDateString('en-IN') : 'N/A';
@@ -1282,7 +1308,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
 
   // v1.10.4 — audit M14. Both were rebuilt every render even though
   // they only change when `bills` changes.
-  const overdueBills = useMemo(() => bills.filter(b => b.status === 'overdue'), [bills]);
+  const overdueBills = useMemo(() => bills.filter(b => b.status === 'overdue' && SALES_INVOICE_TYPES.includes(b.invoiceType || 'tax-invoice')), [bills]);
   const overdueByCurrency = useMemo(() => {
     const acc = {};
     for (const b of overdueBills) {
@@ -1790,10 +1816,10 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                               title: 'Share via WhatsApp — PDF attaches on mobile Chrome/Safari. On desktop it sends the invoice as text only (browser can\'t attach files to WhatsApp Web — security limitation, not our app).' },
                             // v1.10.12 — reminder for unpaid, partial and overdue bills.
                             { label: status === 'partial' ? 'Reminder (partial pending)' : 'Send reminder', icon: Send, onClick: () => sendReminder({ ...bill, clientPhone: getClientPhone(bill) }),
-                              hidden: readOnly || isCancelledBill(bill) || !(isOverdue || status === 'overdue' || status === 'unpaid' || status === 'partial') || !(amountDue(bill) - (bill.paidAmount || 0) > 0.01) },
+                              hidden: readOnly || !tracksPayment || isCancelledBill(bill) || !(isOverdue || status === 'overdue' || status === 'unpaid' || status === 'partial') || !(amountDue(bill) - (bill.paidAmount || 0) > 0.01) },
                             { label: 'Email', icon: Mail, onClick: () => shareEmail(bill), hidden: readOnly },
                             { label: 'Cancel invoice', icon: Ban, tone: 'danger', onClick: () => handleCancelInvoice(bill), hidden: readOnly,
-                              title: 'Cancel invoice — keeps the number; Undo from the Status column' },
+                              title: 'Cancel invoice — keeps the number; undo it with the Undo cancel arrow on the row' },
                           ]} />
                         </div>
                       </td>}
@@ -1872,6 +1898,41 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
                   placeholder="Transaction ID, ref..." />
               </div>
             </div>
+            {tdsEntryAllowed(paymentModal) && (() => {
+              const preview = withClientTds(paymentModal, { section: paymentInput.tdsSection, rate: paymentInput.tdsRate }).data.totals;
+              return (
+                <div className={paymentInput.tdsOn ? 'notice notice-info' : ''} style={{ display: 'block', marginTop: '0.5rem', padding: '0.6rem', borderRadius: 6, border: paymentInput.tdsOn ? undefined : '1px dashed var(--border)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.85rem', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!paymentInput.tdsOn}
+                      onChange={e => setPaymentInput(prev => ({ ...prev, tdsOn: e.target.checked }))}
+                      style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} />
+                    <strong>Client deducted TDS</strong>
+                    <span className="text-muted" style={{ fontSize: '0.75rem' }}>paid you less and deposited the rest as TDS against your PAN</span>
+                    <HelpButton title="TDS when recording a payment" doc="dashboard#payment-tds" size={14} />
+                  </label>
+                  {paymentInput.tdsOn && (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <select className="form-input" aria-label="TDS section" value={paymentInput.tdsSection}
+                          onChange={e => {
+                            const code = e.target.value;
+                            const sec = TDS_SECTIONS.find(x => x.code === code);
+                            setPaymentInput(prev => ({ ...prev, tdsSection: code, tdsRate: code === 'custom' ? prev.tdsRate : (sec?.rate ?? prev.tdsRate) }));
+                          }}>
+                          {TDS_SECTIONS.map(x => <option key={x.code} value={x.code}>{x.label}</option>)}
+                        </select>
+                        <input type="number" step="any" min="0" max="100" className="form-input" aria-label="TDS rate %" placeholder="Rate %"
+                          value={paymentInput.tdsRate} onChange={e => setPaymentInput(prev => ({ ...prev, tdsRate: e.target.value }))} />
+                      </div>
+                      <p style={{ margin: '0.4rem 0 0', fontSize: '0.78rem' }}>
+                        TDS {formatCurrency(preview.tdsAmount, paymentModal.currency)} on the value before GST · the client now owes <strong>{formatCurrency(preview.netReceivable, paymentModal.currency)}</strong> in all.
+                        {' '}Leave Amount Received empty to record only the TDS.
+                      </p>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
             {paymentModal.payments?.length > 0 && (
               <div style={{ marginTop: '1rem' }}>
                 <label className="form-label">Payment History <HelpButton title="Payment History" doc="dashboard#payment-history" size={14} /></label>

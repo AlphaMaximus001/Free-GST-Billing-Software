@@ -6,6 +6,7 @@ import { numberToWords, printedSubtotal, formatCurrency, INVOICE_TYPES, getCount
 import { getEnabledModules } from '../store';
 import { getPrintSettings, getLabel, formatCurrencyEx, formatDate } from '../utils/printSettings';
 import InvoiceGridLayout, { HsnSummaryTable } from './InvoiceGridLayout';
+import { exportDeclaration } from '../utils/lut';
 
 // v1.10.36 — Optional `previewOnly` prop suppresses the internal
 // `id="invoice-preview"`. The parent's on-screen preview keeps the id
@@ -104,6 +105,9 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   // notes carry the same flag, which GSTR-1 reports for them.
   const showReverseChargeLine = isIndia && showGST && (invoiceType === 'tax-invoice' || invoiceType === 'credit-note');
   const reverseChargeText = options.reverseCharge ? 'Yes' : 'No';
+  // v1.10.83 - Rule 46 endorsement on an export / SEZ invoice: under LUT
+  // (no IGST, with the LUT's ARN) or on payment of IGST. '' otherwise.
+  const exportDecl = exportDeclaration({ profile, client, details, totals, options, showGST });
   const currencySymbol = options.currency || 'INR';
 
   // v1.10.4 — Single read of print settings per render. Prior code
@@ -232,6 +236,8 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
     const grossAfterDiscount = Math.max(0, (Number(item.quantity) || 0) * (Number(item.rate) || 0) - discount);
     const rate = Number(item.taxPercent) || 0;
     const taxable = inclusive ? grossAfterDiscount / (1 + rate / 100) : grossAfterDiscount;
+    // Zero-rated under a LUT: no tax, so the line prints 0% and no tax.
+    if (totals.lutZeroRated) return { discount, taxable: grossAfterDiscount, tax: 0, rate: 0 };
     const tax = !showGST ? 0 : (inclusive ? grossAfterDiscount - taxable : taxable * rate / 100);
     return { discount, taxable, tax, rate };
   };
@@ -631,6 +637,7 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
         <div style={{ padding: secPad, fontSize: '0.95em', fontWeight: baseWeight, ...dashLine }}>
           <div><strong style={{ fontWeight: strongWeight }}>{cap('Invoice #')}: </strong>{cap(invoiceNum)}</div>
           {showReverseChargeLine && <div><strong style={{ fontWeight: strongWeight }}>{cap('Reverse charge')}: </strong>{cap(reverseChargeText)}</div>}
+          {exportDecl && <div style={{ fontSize: '0.85em', marginTop: 2 }}>{cap(exportDecl)}</div>}
           <div><strong style={{ fontWeight: strongWeight }}>{cap('Date')}: </strong>{cap(invoiceDate)}</div>
           {client?.name && (
             <div style={{ marginTop: 3 }}>
@@ -1006,6 +1013,9 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
     : null;
   const gridNotices = (
     <>
+      {exportDecl && (
+        <div data-pdf-page-boundary="" style={{ margin: '2px 0 6px', fontSize: '0.92em', fontWeight: 600 }}>{exportDecl}</div>
+      )}
       {options.reverseCharge && isIndia && showGST && (
         <div data-pdf-page-boundary="" style={{ margin: '2px 0 6px', fontSize: '0.92em' }}>
           <strong>Reverse Charge applicable.</strong> GST is payable by the recipient under Section 9(3)/9(4) of the CGST Act.
@@ -1382,6 +1392,13 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
           )}
         </div>
       ) : null}
+
+      {/* v1.10.83 - export / SEZ endorsement (Rule 46), worded exactly. */}
+      {exportDecl && (
+        <div style={{ margin: '0 2rem 0.5rem', padding: '0.5rem 0.75rem', background: 'var(--info-bg)', border: '1px solid var(--info-border)', borderRadius: 4, fontSize: '0.78rem', color: 'var(--info-text)', fontWeight: 600 }}>
+          {exportDecl}
+        </div>
+      )}
 
       {/* Reverse-charge declaration (India) — printed prominently between the
           tax block and the footer when the seller has flagged this invoice as

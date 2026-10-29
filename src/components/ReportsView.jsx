@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package, Boxes, Building2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package, Boxes, Building2, Percent } from 'lucide-react';
 import { getAllBills, getAllExpenses, getProfile } from '../store';
 import { formatCurrency, getFYOptions, belongsToProfile, isCancelledBill, salesSign, countsAsSales, calculateLineItemTax, roundQty, parseLocalDate, amountDue } from '../utils';
 import { toast } from './Toast';
@@ -10,6 +10,7 @@ import TableExport from './TableExport';
 import { billCurrency } from '../utils/partyOutstanding';
 import CostCentreReport from './CostCentreReport';
 import { costCentresOn } from './useCostCentres';
+import TdsTcsReport from './TdsTcsReport';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -29,6 +30,7 @@ const TAB_HELP = {
   products: ['Product Performance', 'reports#products'],
   stock: ['Stock', 'reports#stock'],
   costcentres: ['By cost centre', 'reports#cost-centres'],
+  tds: ['TDS & TCS', 'reports#tds-tcs'],
 };
 
 export default function ReportsView() {
@@ -248,6 +250,10 @@ export default function ReportsView() {
           onClick={() => setActiveTab('stock')}>
           <Boxes size={16} /> Stock
         </button>
+        <button className={`btn ${activeTab === 'tds' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('tds')}>
+          <Percent size={16} /> TDS &amp; TCS
+        </button>
         {ccOn && (
           <button className={`btn ${activeTab === 'costcentres' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setActiveTab('costcentres')}>
@@ -259,7 +265,7 @@ export default function ReportsView() {
 
       {/* v1.10.74 - Period + Currency Selector, shared by P&L, Client Analytics
           and Product Performance (they all read the same period/currency). */}
-      {activeTab !== 'aging' && activeTab !== 'party' && activeTab !== 'stock' && (
+      {activeTab !== 'aging' && activeTab !== 'party' && activeTab !== 'stock' && activeTab !== 'tds' && (
           <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div className="form-group" style={{ margin: 0 }}>
@@ -442,6 +448,8 @@ export default function ReportsView() {
       )}
 
       {activeTab === 'stock' && <StockReport businessName={businessName} />}
+
+      {activeTab === 'tds' && <TdsTcsReport bills={bills} businessName={businessName} onBillsChanged={loadData} />}
 
       {activeTab === 'aging' && (
         <>

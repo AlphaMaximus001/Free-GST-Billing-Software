@@ -146,8 +146,13 @@ console.log('\n[#111] Reverse charge, SEZ and export');
   eq(P(doc.ValDtls.TotInvVal), P(doc.ValDtls.AssVal) + P(doc.ValDtls.CgstVal) + P(doc.ValDtls.SgstVal), 'reverse charge: total value includes that tax');
 
   const sezClient = { ...MH_BUYER, isSEZ: true };
+  // v1.10.83 - the LUT tick zero-rates the invoice itself, so its lines carry no tax.
   const sez = buildEInvoice(makeBill({ items, client: sezClient, opts: { isLUT: true } }));
-  eq(sez.errors, ['It is marked as under LUT (without payment of tax) but charges GST.'], 'SEZ under LUT that charges GST is refused');
+  eq([sez.errors, sez.doc.TranDtls.SupTyp, sez.doc.ValDtls.IgstVal, sez.doc.ItemList[0].GstRt], [[], 'SEZWOP', 0, 18], 'SEZ under LUT: SEZWOP, no IGST, the rate kept');
+  // An older invoice that only says LUT in its terms but charged GST is still refused.
+  const sezTerms = makeBill({ items, client: sezClient });
+  const sezTermsDoc = buildEInvoice({ ...sezTerms, data: { ...sezTerms.data, customTerms: 'Supplied under LUT' } });
+  eq(sezTermsDoc.errors, ['It is marked as under LUT (without payment of tax) but charges GST.'], 'SEZ "under LUT" in the terms but charging GST is refused');
   const sezPaid = buildEInvoice(makeBill({ items, client: sezClient }));
   eq([sezPaid.doc.TranDtls.SupTyp, sezPaid.doc.ValDtls.IgstVal], ['SEZWP', 4500.1], 'SEZ with payment: SEZWP, IGST');
 

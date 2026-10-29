@@ -231,6 +231,14 @@ export function computeInvoiceTotals(opts) {
   const warnings = [];
   const isIndia = (profile.country || 'India') === 'India';
 
+  // v1.10.83 - an export or a supply to an SEZ under a LUT is zero-rated: no
+  // IGST and no cess on the invoice. The items keep their GST rate (GSTR-1 and
+  // the e-invoice report the rate with a zero amount). Same export test as the
+  // place-of-supply logic below; never with reverse charge.
+  const lutClientCountry = (client.country || '').trim();
+  const lutZeroRated = isIndia && showGST && !!invoiceOptions.isLUT && !invoiceOptions.reverseCharge
+    && (!!client.isSEZ || (!!lutClientCountry && lutClientCountry !== 'India' && !getStateCode((details.placeOfSupply || '').trim())));
+
   // Per-line rounded values feed BOTH the invoice PDF and the GSTR-1
   // export so their totals agree. Prior code summed raw floats for one
   // and rounded per-line for the other → GSTN "amount_mismatch".
@@ -255,7 +263,7 @@ export function computeInvoiceTotals(opts) {
     // AND treats the invoice as always tax-exclusive (taxable = full
     // afterDisc value), which is what a Bill of Supply / Delivery
     // Challan actually is.
-    const applyTax = !!showGST;
+    const applyTax = !!showGST && !lutZeroRated;
     const taxable = (applyTax && taxInclusive && taxPct > 0) ? afterDisc / (1 + taxPct / 100) : afterDisc;
     const tax = applyTax ? r2(taxable * taxPct / 100) : 0;
     const cess = applyTax ? r2(taxable * cessPct / 100) : 0;
@@ -446,7 +454,8 @@ export function computeInvoiceTotals(opts) {
     totalTaxAmount,
     // Meta flags for the UI
     isInterstate, isIntraUT, isUnionTerritory: isIntraUT,
-    taxInclusive: !!(taxInclusive && showGST),
+    taxInclusive: !!(taxInclusive && showGST && !lutZeroRated),
+    lutZeroRated,
     warnings, needsProfileFix,
     // Per-line rounded values (for GSTR-1 / E-Way Bill agreement)
     lines,
@@ -1061,7 +1070,10 @@ export const generateEWayBillJSON = (profile, client, details, items, totals, in
   if (profile?.country && profile.country !== 'India') {
     throw new Error('E-Way Bill is an Indian GST portal feature. Set business country to "India" in Settings to enable it.');
   }
-  const taxInclusive = !!opts.taxInclusive;
+  // Under a LUT (totals.lutZeroRated) no tax is charged: rates 0, and the
+  // prices had no tax in them to back out.
+  const zeroRated = !!totals?.lutZeroRated;
+  const taxInclusive = !!opts.taxInclusive && !zeroRated;
   const fromStateCode = getStateCode(profile.state || profile.gstin);
   const toStateCode = getStateCode(client.state || client.gstin);
   // The invoice's own split (computeInvoiceTotals, which follows place of
@@ -1083,16 +1095,16 @@ export const generateEWayBillJSON = (profile, client, details, items, totals, in
   };
   const fromPincode = extractPin(profile);
   const toPincode = extractPin(client);
-  if (!fromPincode) throw new Error('Your business PIN code is required for the E-Way Bill. Set it in Settings → Company Details.');
-  if (!toPincode) throw new Error("Client PIN code is required for the E-Way Bill. Add it in the client's address.");
+  if (!fromPincode) throw new Error('Your business PIN code is missing. Add it in Settings → Company → Company Details (PIN Code), then click E-Way Bill again.');
+  if (!toPincode) throw new Error("The client's PIN code is missing. Fill PIN Code under Billed To on this invoice (or on the client in Clients), then click E-Way Bill again.");
 
   const itemList = items.map((item, idx) => {
     // v1.10.1 — back-calculate taxable when the invoice is MRP-inclusive.
     // v1.10.22 — honour discountType (percent | fixed).
     // v1.10.31 — GST-C5: cess rate now populated per item (was 0).
     const gross = (Number(item.quantity) || 0) * (Number(item.rate) || 0) - resolveLineDiscount(item, taxInclusive);
-    const taxRate = Number(item.taxPercent) || 0;
-    const cessRate = Number(item.cessPercent) || 0;
+    const taxRate = zeroRated ? 0 : Number(item.taxPercent) || 0;
+    const cessRate = zeroRated ? 0 : Number(item.cessPercent) || 0;
     const taxable = taxInclusive && taxRate > 0
       ? gross / (1 + taxRate / 100)
       : gross;
@@ -2146,7 +2158,7 @@ export const TERMS_PRESETS = [
     id: 'export',
     label: 'Export / International (LUT)',
     region: 'IN',
-    body: `<p><strong>Tax Status:</strong> Supplied as a zero-rated export under <strong>LUT (Letter of Undertaking)</strong> — IGST not charged. Bond / LUT reference: <em>[insert LUT number]</em>.</p>
+    body: `<p><strong>Tax Status:</strong> SUPPLY MEANT FOR EXPORT/SUPPLY TO SEZ UNIT OR SEZ DEVELOPER FOR AUTHORISED OPERATIONS UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX. LUT ARN: <em>[insert LUT ARN]</em>.</p>
 <p><strong>Payment</strong></p>
 <ul>
   <li>Payable in <em>[USD/EUR/etc.]</em> by SWIFT wire transfer to the bank account printed above.</li>
@@ -2194,7 +2206,9 @@ export const TDS_SECTIONS = [
 // with it keep it and reprint unchanged (see REMOVED_TCS_SECTIONS).
 export const REMOVED_TCS_SECTIONS = { '206C(1H)': '206C(1H) — removed from 1 April 2025 (older invoices only)' };
 export const TCS_SECTIONS = [
-  { code: '52',       label: 'CGST 52 — E-commerce operator', rate: 1 },
+  // 0.5% since 10 July 2024 (Notification 15/2024-Central Tax; 1% before).
+  // Saved invoices keep the rate they were made with.
+  { code: '52',       label: 'CGST 52 — E-commerce operator', rate: 0.5 },
   { code: '206C(1)',  label: '206C(1) — Tendu leaves / scrap / minerals (varies)', rate: 1 },
   { code: 'custom',   label: 'Custom rate', rate: 0 },
 ];
