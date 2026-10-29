@@ -144,8 +144,9 @@ You need: Windows 10/11 PC, ~50 MB free disk, your business name + bank details 
 4. Click **Install Node & App**. It installs Node.js for you if you do not have it, then sets everything up. Takes 1–2 minutes the first time
 5. Click **Open App** — the app opens in your browser at `http://localhost:47371`, and a Desktop shortcut is waiting for you next time
 
-> **In a hurry?** One PowerShell command does steps 1–4 for you:
-> `irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex`
+> **Easier: one line, no ZIP, no warnings.** Press **Windows + R**, paste this, press **Enter**:
+> `powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"`
+> It installs the app, adds Desktop and Start-menu icons and opens it in its own window. Run it again any time to update or repair.
 
 > 💡 **Tip:** Click the small **Install App** icon in your browser's address bar to make the app open in its own window like Tally or Word — no browser chrome, looks and feels native.
 
@@ -428,11 +429,27 @@ If we priced every 🆕 feature at the going rate on the paid alternatives:
 
 ### Prerequisites
 
-- **Windows 10/11** for the one-click installer, **OR** **Node.js 18+** for macOS / Linux
-- ~50 MB free disk space
+- **Windows 10/11**, **macOS 11+** or **Linux** (Node.js 18+ is used if present, otherwise the installer fetches it into the app folder)
+- ~600 MB free disk space for the install
 - No internet after install (except for optional Google Drive backup / update check)
 
-### Option 1: Windows — extract, then double-click the launcher (recommended — no terminal)
+### Option 0: one line (recommended — no ZIP, no SmartScreen / Gatekeeper warning, no npm)
+
+**Windows:** press **Windows + R**, paste, press **Enter**:
+
+```
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"
+```
+
+**Mac / Linux:** open Terminal, paste, press **Return**:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.sh | bash
+```
+
+It checks the computer, downloads the release (packages included), installs to `%LOCALAPPDATA%\Programs\Free GST Billing` / `~/Applications/Free GST Billing` / `~/.local/share/free-gst-billing`, adds an icon (Desktop + Start menu, a Mac app, a Linux menu entry) and opens the app in its own window. **The same line updates or repairs** an existing install in place: `_system/data` is backed up first and never touched. Remove with `-Uninstall` (Windows: `& ([scriptblock]::Create((irm <url>/install.ps1))) -Uninstall`) or `| bash -s -- --uninstall`; data is only deleted if you type `DELETE`.
+
+### Option 1: Windows — extract, then double-click the launcher (no terminal)
 
 1. **Download the ZIP** → [click here](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip) or grab the latest from [Releases](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases)
 2. **Extract** it anywhere (e.g. `Documents\FreeGSTBill`) — right-click the ZIP → *Extract All*
@@ -448,24 +465,16 @@ That's it. The launcher installs Node.js if you don't have it. From then on, cli
 > copied into. Extract the ZIP, then open the launcher from the extracted
 > folder.
 
-### Option 1b: Windows — one PowerShell command
+### Option 1b: install into another folder
 
-For anyone comfortable with a terminal. No admin rights, nothing written outside your own user profile:
-
-```powershell
-irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex
-```
-
-It finds the latest release, downloads and extracts it to `%LOCALAPPDATA%\Programs\Free GST Billing`, installs Node.js if missing, runs `npm install`, and creates the Desktop and Start-Menu shortcuts.
-
-To install somewhere else, set the folder first:
+The one-line install (Option 0) takes the folder from `FREEGSTBILL_DIR`. In PowerShell:
 
 ```powershell
 $env:FREEGSTBILL_DIR = 'D:\Apps\Free GST Billing'
 irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex
 ```
 
-If the app is already installed in that folder with data in it, the command stops and points you at **Control Panel → Update Now** rather than writing over your books.
+On Mac / Linux: `curl -fsSL .../install.sh | FREEGSTBILL_DIR=/srv/free-gst-billing bash`. If the app is already in that folder it is updated in place; the data folder is never touched.
 
 > **Why port 47371?** IANA-unassigned range, well above the 3000-range that every dev server fights over. If it's ever busy, the server auto-scans upward and writes the chosen port to `data/port.txt` — the Start launcher always opens the right URL. Always use the Desktop shortcut.
 

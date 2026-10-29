@@ -8,6 +8,15 @@ const ui = (s) => `<span class="ui">${s}</span>`;
 const img = (f) => `assets/img/${f}`;
 const key = (...k) => k.map((x) => `<kbd>${x}</kbd>`).join(' + ');
 
+// v1.10.83 - the one-line install. A file fetched by PowerShell or curl gets
+// no "downloaded from the internet" mark, so Windows and macOS show no
+// warning; the same line installs, updates and repairs.
+const RAW = 'https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main';
+const WIN_LINE = `powershell -ExecutionPolicy Bypass -c "irm ${RAW}/install.ps1 | iex"`;
+const WIN_REMOVE = `powershell -ExecutionPolicy Bypass -c "&amp; ([scriptblock]::Create((irm ${RAW}/install.ps1))) -Uninstall"`;
+const UNIX_LINE = `curl -fsSL ${RAW}/install.sh | bash`;
+const UNIX_REMOVE = `curl -fsSL ${RAW}/install.sh | bash -s -- --uninstall`;
+
 const which = `
 <div class="note tip"><strong>Which guide is mine?</strong>
 <p><b>Windows</b> (most PCs and laptops): <a href="install.html">Install on Windows</a>.
@@ -21,7 +30,7 @@ export default [
   slug: 'install',
   title: 'Install on Windows, step by step',
   nav: 'Install on Windows',
-  lead: 'Download one file, unzip it, click Install. About 5 minutes, no technical knowledge needed, and no administrator password. Every step below says what to click and what you should see.',
+  lead: 'Paste one line and press Enter. About 3 minutes, no technical knowledge needed, no administrator password, and no "Windows protected your PC" warning. Every step below says what to press and what you will see.',
   body: `
 ${which}
 
@@ -29,9 +38,37 @@ ${which}
 <h2>Before you start</h2>
 <ul>
   <li><strong>Windows 10 or Windows 11.</strong> To check: press ${key('Windows', 'R')}, type <code>winver</code>, press ${key('Enter')}.</li>
-  <li><strong>Internet</strong> for the first install only (it downloads about 60 MB). After that the app works offline.</li>
-  <li><strong>About 400 MB of free space.</strong></li>
+  <li><strong>Internet</strong> for the install only (it downloads about 60 MB). After that the app works offline.</li>
+  <li><strong>About 600 MB of free space.</strong></li>
 </ul>
+</section>
+
+<section id="one-line">
+<h2>Install with one line</h2>
+<ol class="steps">
+  <li><strong>Copy this line</strong>Select all of it with the mouse and press ${key('Ctrl', 'C')}.
+<pre><code>${WIN_LINE}</code></pre></li>
+  <li><strong>Press Windows + R</strong>Hold the ${key('Windows')} key (the one with the Windows logo) and press ${key('R')}. A small <b>Run</b> box opens at the bottom left.</li>
+  <li><strong>Paste and press Enter</strong>Click in the box, press ${key('Ctrl', 'V')}, then press ${key('Enter')}.</li>
+  <li><strong>Watch it work</strong>A blue or black window shows four steps, each ending in <b>OK</b>:
+<pre><code>[1/4] Checking this computer ... OK
+[2/4] Downloading (60 MB) ...
+[3/4] Installing ... OK
+[4/4] Adding icons ... OK</code></pre>
+  It may also fetch Node.js, the engine the app runs on (about 30 MB, kept inside the app folder).</li>
+  <li><strong>Answer one question</strong>It asks <i>Open Free GST Billing by itself when this computer starts?</i> Type <code>Y</code> and press ${key('Enter')} for yes, or just press ${key('Enter')} for no.</li>
+  <li><strong>The app opens in its own window</strong>The window says <i>Done! Opening Free GST Billing...</i> and the app appears, with no browser tabs or address bar. A short welcome asks for your business details; see <a href="first-run.html">The first-run setup</a>. The install window closes by itself.</li>
+</ol>
+<p><b>Every day after that:</b> click the <b>Free GST Billing</b> icon on your Desktop or in the Start menu.</p>
+<p><b>To update or repair it:</b> do the same three steps again. It finds your install, backs up your data to <code>Documents\\FreeGSTBill Backups</code>, and replaces only the app's own files. Your invoices, clients and settings stay exactly as they are.</p>
+<div class="note tip"><strong>If the window shows PROBLEM in red</strong>
+<p>The line under it says what to do (no internet, the disk is full, the folder cannot be written to). Do that, then paste the same line again; it carries on where it stopped. Nothing in your data is changed by a failed install.</p></div>
+<p>The app is installed to <code>%LOCALAPPDATA%\\Programs\\Free GST Billing</code>. If you installed it from the ZIP before, the line finds that copy (through its Desktop shortcut) and updates it where it is. Your data is in the <code>_system\\data</code> folder inside it.</p>
+</section>
+
+<section id="zip">
+<h2>Other way: download the ZIP</h2>
+<p>For offices that copy the app from a USB stick, or where the line above is blocked. It takes a few more clicks and Windows shows a warning the first time.</p>
 </section>
 
 <section id="download">
@@ -63,7 +100,7 @@ ${which}
   <li><strong>Double-click "Free GST Billing - WINDOWS"</strong>In the Free-GST-Billing folder.</li>
   <li><strong>If Windows warns you</strong>See <a href="#windows-protected">"Windows protected your PC"</a> just below: click ${ui('More info')}, then ${ui('Run anyway')}. If it asks <i>Do you want to run this file?</i>, click ${ui('Run')} or ${ui('Open')}.</li>
   <li><strong>Click Install</strong>A small window opens with one big button. Click ${ui('Install')}. There is nothing to fill in.</li>
-  <li><strong>Leave the black window alone</strong>A black window appears and does the work: it may get Node.js (the engine the app runs on, about 30 MB, kept inside the app folder) and then the app's parts. This takes 1 to 3 minutes. Don't close it; it closes by itself.</li>
+  <li><strong>Leave the black window alone</strong>A black window appears and does the work: it may get Node.js (the engine the app runs on, about 30 MB, kept inside the app folder). This takes 1 to 3 minutes. Don't close it; it closes by itself.</li>
   <li><strong>The app opens in your browser</strong>at <code>http://localhost:47371</code>. A short welcome asks for your business details. See <a href="first-run.html">The first-run setup</a>.</li>
 </ol>
 <figure class="pair">
@@ -101,27 +138,24 @@ ${which}
 <ul>
   <li><strong>Checks your PC</strong>: Windows 10 or 11, enough free space, a folder it can write to, and the internet.</li>
   <li><strong>Sets up Node.js inside the app folder</strong> if the PC does not have a recent one. It is downloaded once from nodejs.org into <code>_system\\node</code>. Nothing is installed into Windows and no administrator password is needed. If that download fails, it asks before using Windows' own installer (winget), and otherwise opens the download page.</li>
-  <li><strong>Downloads the app's parts</strong> from the internet.</li>
   <li><strong>Adds a Free GST Billing shortcut</strong> to your Desktop and Start menu.</li>
   <li><strong>Opens the app</strong> in your browser.</li>
 </ul>
+<p>The app's parts come inside the ZIP, so nothing else is downloaded.</p>
 </section>
 
 <section id="one-command">
-<h2>Install with one command (for IT people)</h2>
-<p>Open PowerShell and paste:</p>
-<pre><code>irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex</code></pre>
-<p>It installs to <code>%LOCALAPPDATA%\\Programs\\Free GST Billing</code>; set <code>$env:FREEGSTBILL_DIR = 'D:\\Apps\\Free GST Billing'</code> first to choose another folder. It stops if the app is already installed there with data in it.</p>
+<h2>For IT people</h2>
+<p>The one line can also be pasted into an open PowerShell window. To install into another folder, set it first: <code>$env:FREEGSTBILL_DIR = 'D:\\Apps\\Free GST Billing'</code>. If that folder already has the app, it is updated in place.</p>
 </section>
 
 <section id="uninstall">
 <h2>Removing the app</h2>
-<p>Nothing is installed into Windows, so removing it is deleting it:</p>
-<ol>
-  <li><strong>Back up your data first</strong> if you may want it again. See <a href="backup.html#export-import">Export everything to one file</a>.</li>
-  <li>In the launcher, ${ui('More options')} → ${ui('Stop the app')}.</li>
-  <li>Delete the Free-GST-Billing folder and the <b>Free GST Billing</b> shortcuts on the Desktop and in the Start menu.</li>
-</ol>
+<p><strong>Back up your data first</strong> if you may want it again. See <a href="backup.html#export-import">Export everything to one file</a>.</p>
+<p>Then press ${key('Windows', 'R')}, paste this line and press ${key('Enter')}:</p>
+<pre><code>${WIN_REMOVE}</code></pre>
+<p>It stops the app and removes it and its icons. Your invoices, clients and settings are kept unless you type <code>DELETE</code> when it asks (and even then a last copy goes to <code>Documents\\FreeGSTBill Backups</code>).</p>
+<p>By hand: in the launcher, ${ui('More options')} → ${ui('Stop the app')}, then delete the app folder and the <b>Free GST Billing</b> shortcuts on the Desktop and in the Start menu. Nothing is installed into Windows itself.</p>
 </section>
 `,
 },
@@ -131,7 +165,7 @@ ${which}
   slug: 'install-mac',
   title: 'Install on a Mac, step by step',
   nav: 'Install on a Mac',
-  lead: 'Three parts: install Node.js (a normal Mac installer), download the app, open it. About 10 minutes. You type only your Mac password and press Return once; every step says what you will see.',
+  lead: 'Paste one line into Terminal and press Return. About 3 minutes, no password, and no "Apple cannot check it" message. Every step says what you will see.',
   body: `
 ${which}
 
@@ -139,9 +173,38 @@ ${which}
 <h2>Before you start</h2>
 <ul>
   <li><strong>macOS 11 Big Sur or newer.</strong> To check: click the Apple menu (the apple logo at the top left), then ${ui('About This Mac')}.</li>
-  <li>Your <strong>Mac password</strong> (the one you use to log in), for the Node.js installer.</li>
-  <li><strong>Internet</strong> for the first install. After that the app works offline.</li>
+  <li><strong>Internet</strong> for the install. After that the app works offline.</li>
+  <li><strong>About 600 MB of free space.</strong></li>
 </ul>
+</section>
+
+<section id="one-line">
+<h2>Install with one line</h2>
+<ol class="steps">
+  <li><strong>Copy this line</strong>Select all of it and press ${key('Cmd', 'C')}.
+<pre><code>${UNIX_LINE}</code></pre></li>
+  <li><strong>Open Terminal</strong>Press ${key('Cmd', 'Space')}, type <code>Terminal</code> and press ${key('Return')}. A plain text window opens. (More help: <a href="terminal.html#mac">Opening Terminal on a Mac</a>.)</li>
+  <li><strong>Paste and press Return</strong>Press ${key('Cmd', 'V')}, then ${key('Return')}.</li>
+  <li><strong>Watch it work</strong>It shows four steps, each ending in <b>OK</b>: <i>[1/4] Checking this computer</i>, <i>[2/4] Downloading</i> (also Node.js, the engine the app runs on, if this Mac does not have it), <i>[3/4] Installing</i>, <i>[4/4] Adding icons</i>.</li>
+  <li><strong>Answer two questions</strong><i>Add Free GST Billing to the Dock? [y/N]</i> and <i>Open Free GST Billing by itself when this computer starts? [y/N]</i>. Type <code>y</code> and press ${key('Return')} for yes, or just ${key('Return')} for no.</li>
+  <li><strong>The app opens</strong>It says <i>Done! Opening Free GST Billing...</i> and the app appears in its own window if you have Chrome or Edge, or in Safari otherwise. A short welcome asks for your business details; see <a href="first-run.html">The first-run setup</a>. You can close Terminal.</li>
+</ol>
+<p><b>Every day after that:</b> click <b>Free GST Billing</b> in the Dock or in Launchpad. (It lives in the <b>Applications</b> folder inside your home folder: Finder → ${ui('Go')} → ${ui('Home')} → <b>Applications</b>.)</p>
+<p><b>To update or repair it:</b> paste the same line again. It backs up your data to <code>Documents/FreeGSTBill Backups</code> and replaces only the app's own files; your invoices, clients and settings stay as they are.</p>
+<p>If something goes wrong, Terminal shows <b>PROBLEM</b> and, under it, what to do. Do that, then paste the line again.</p>
+<p>The app's files are in <code>Applications/Free GST Billing</code> in your home folder; your data is in <code>_system/data</code> inside it.</p>
+</section>
+
+<section id="uninstall-mac">
+<h2>Removing the app</h2>
+<p>Paste this into Terminal and press ${key('Return')}:</p>
+<pre><code>${UNIX_REMOVE}</code></pre>
+<p>It removes the app and its icon. Your invoices are kept unless you type <code>DELETE</code> when it asks. If the app is in the Dock, drag it out.</p>
+</section>
+
+<section id="zip">
+<h2>Other way: download the ZIP</h2>
+<p>Three parts: install Node.js, download the app, open it. About 10 minutes.</p>
 </section>
 
 <section id="node">
@@ -171,8 +234,8 @@ ${which}
   <li><strong>Control-click the launcher</strong>In the Free-GST-Billing folder, hold the ${key('Control')} key and click <b>Free GST Billing - MAC</b> (or right-click it, or click with two fingers on a trackpad). Choose ${ui('Open')}.</li>
   <li><strong>Confirm</strong>A box says macOS cannot check the developer. Click ${ui('Open')}.</li>
   <li><strong>On macOS 15 Sequoia or newer, if there is no Open button</strong>Click ${ui('Done')}. Open the Apple menu (the apple logo) → ${ui('System Settings')} → ${ui('Privacy &amp; Security')}, scroll down to the message about <b>Free GST Billing - MAC</b>, click ${ui('Open Anyway')}, type your password, then ${ui('Open Anyway')} again.</li>
-  <li><strong>A Terminal window opens</strong>It is a plain text window; you do not need to type anything in it except one key. It says <i>App dependencies not installed yet ... Install now? [Y/n]</i>. Press ${key('Return')}.</li>
-  <li><strong>Wait 2 to 3 minutes</strong>Text scrolls past while it sets up. When it says <i>Server running. This window can be closed</i>, the app opens in your browser at <code>http://localhost:47371</code>.</li>
+  <li><strong>A Terminal window opens</strong>It is a plain text window; you do not need to type anything in it. (A download from before version 1.10.83 asks <i>Install now? [Y/n]</i>: press ${key('Return')}.)</li>
+  <li><strong>Wait up to a minute</strong>When it says <i>Server running. This window can be closed</i>, the app opens in your browser at <code>http://localhost:47371</code>.</li>
   <li><strong>Close the Terminal window</strong>The app keeps running. A short welcome asks for your business details; see <a href="first-run.html">The first-run setup</a>.</li>
 </ol>
 </section>
@@ -205,7 +268,7 @@ ${which}
   slug: 'install-linux',
   title: 'Install on Linux or a NAS, step by step',
   nav: 'Install on Linux / NAS',
-  lead: 'For Ubuntu, Linux Mint, Debian and similar: install Node.js with two commands you copy and paste, then start the app. Each command is explained.',
+  lead: 'For Ubuntu, Linux Mint, Debian, Fedora and similar: paste one line into the Terminal and press Enter. No password needed. Each step is explained.',
   body: `
 ${which}
 
@@ -213,6 +276,27 @@ ${which}
 <h2>Open the Terminal</h2>
 <p>Press ${key('Ctrl', 'Alt', 'T')}. A window opens where you type commands. New to this? Read <a href="terminal.html">Using the Terminal</a> first; it takes two minutes.</p>
 <p>To paste a command into the Terminal, use ${key('Ctrl', 'Shift', 'V')} (not ${key('Ctrl', 'V')}), then press ${key('Enter')}.</p>
+</section>
+
+<section id="one-line">
+<h2>Install with one line</h2>
+<ol class="steps">
+  <li><strong>Copy this line, paste it into the Terminal, press Enter</strong>
+<pre><code>${UNIX_LINE}</code></pre></li>
+  <li><strong>Watch it work</strong>It shows four steps, each ending in <b>OK</b>: <i>[1/4] Checking this computer</i>, <i>[2/4] Downloading</i> (also Node.js, the engine the app runs on, if the computer does not have version 18 or newer; it is kept inside the app folder), <i>[3/4] Installing</i>, <i>[4/4] Adding icons</i>.</li>
+  <li><strong>Answer one question</strong><i>Open Free GST Billing by itself when this computer starts? [y/N]</i>: type <code>y</code> and press ${key('Enter')}, or just ${key('Enter')} for no.</li>
+  <li><strong>The app opens</strong>In its own window if you have Chrome, Chromium or Edge, or in your browser otherwise.</li>
+</ol>
+<p><b>Every day after that:</b> open <b>Free GST Billing</b> from your applications menu. <b>To update or repair it:</b> run the same line again; your data is backed up to <code>~/Documents/FreeGSTBill Backups</code> first and never touched.</p>
+<p>If it says <i>curl: command not found</i>, run <code>sudo apt install -y curl</code> first. The app goes to <code>~/.local/share/free-gst-billing</code>; your data is in <code>_system/data</code> inside it.</p>
+<p><b>NAS or Alpine:</b> there may be no <code>bash</code>; end the line with <code>| sh</code> instead. Alpine needs Node.js from its own store first: <code>sudo apk add nodejs</code>. To choose the folder, put <code>FREEGSTBILL_DIR=/volume1/apps/free-gst-billing</code> just before <code>sh</code>.</p>
+<p><b>To remove it</b> (your invoices are kept unless you type <code>DELETE</code> when asked):</p>
+<pre><code>${UNIX_REMOVE}</code></pre>
+</section>
+
+<section id="zip">
+<h2>Other way: download the ZIP</h2>
+<p>Install Node.js yourself, then unzip and start the app.</p>
 </section>
 
 <section id="node">
@@ -241,8 +325,7 @@ ${which}
 <h2>Step 3: Start the app</h2>
 <pre><code>cd ~/Free-GST-Billing && bash "Free GST Billing - LINUX.sh"</code></pre>
 <ol class="steps">
-  <li><strong>Press Enter to install</strong>It asks <i>Install now? [Y/n]</i>. Press ${key('Enter')}.</li>
-  <li><strong>Wait 2 to 3 minutes</strong>When it says <i>Server running</i>, the app opens in your browser at <code>http://localhost:47371</code>. You can close the Terminal; the app keeps running.</li>
+  <li><strong>Wait up to a minute</strong>When it says <i>Server running</i>, the app opens in your browser at <code>http://localhost:47371</code>. You can close the Terminal; the app keeps running. (A download from before version 1.10.83 first asks <i>Install now? [Y/n]</i>: press ${key('Enter')}.)</li>
 </ol>
 <p><b>Every day after that</b>, open the Terminal and run the same command. Or bookmark <code>http://localhost:47371</code>; it works while the app is running. To stop the app: <b>Control Panel</b> in the app → ${ui('Stop Server')}, or restart the computer.</p>
 </section>
@@ -251,8 +334,8 @@ ${which}
 <h2>On a NAS or server (for IT people)</h2>
 <pre><code>unzip Free-GST-Billing.zip
 cd Free-GST-Billing
-bash "_system/install-unix.sh"
 bash "_system/start-unix.sh"</code></pre>
+<p>The ZIP carries the app's packages, so there is no <code>npm install</code>; any Node.js 18 or newer runs it.</p>
 <p>The app listens on <code>127.0.0.1:47371</code> only (it has no login, so it is never opened to the network). Updating from inside the app needs <code>unzip</code> or python3.</p>
 </section>
 `,
@@ -274,6 +357,15 @@ bash "_system/start-unix.sh"</code></pre>
   <li><strong>Reload the page</strong>Press ${key('F5')} (on a Mac ${key('Cmd', 'R')}). The version at the bottom of the Dashboard shows the new number.</li>
 </ol>
 <p>Changes still look the same? Press ${key('Ctrl', 'F5')} (Mac: ${key('Cmd', 'Shift', 'R')}) to make the browser load the new version.</p>
+</section>
+
+<section id="one-line">
+<h2>Also easy: the install line again</h2>
+<p>The line that installs the app also updates it, and repairs it if it will not start. It finds your install, backs up your data first, replaces only the app's own files and opens the new version.</p>
+<p><b>Windows:</b> press ${key('Windows', 'R')}, paste this, press ${key('Enter')}:</p>
+<pre><code>${WIN_LINE}</code></pre>
+<p><b>Mac and Linux:</b> open Terminal, paste this, press ${key('Return')}:</p>
+<pre><code>${UNIX_LINE}</code></pre>
 </section>
 
 <section id="windows">

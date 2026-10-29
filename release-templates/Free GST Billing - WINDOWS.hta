@@ -313,10 +313,18 @@
   // node_modules can only exist because npm ran, which means Node was
   // there - so it is checked first and a stale PATH cannot make a working
   // install look broken.
+  // v1.10.83 - the ZIP now ships node_modules, so a folder only counts as
+  // installed once the app has also run in it (the server writes
+  // data\port.txt on every start). Otherwise a freshly extracted ZIP would
+  // show Open App: no shortcuts made, and next to an existing install a
+  // second, empty copy (ERR-038).
+  function isInstalled() {
+    return folderExists('_system\\node_modules') && fileExists('_system\\data\\port.txt');
+  }
   function installState() {
     if (!fso.FolderExists(SYSTEM)) return 'no-system';
     if (!fileExists('_system\\package.json')) return 'no-system';
-    if (folderExists('_system\\node_modules')) return 'ready';
+    if (isInstalled()) return 'ready';
     if (!nodePresent()) return 'no-node';
     return 'no-app';
   }
@@ -341,9 +349,16 @@
       var lnk = places[i] + '\\Free GST Billing.lnk';
       if (!fso.FileExists(lnk)) continue;
       try {
-        var target = String(shell.CreateShortcut(lnk).Arguments).replace(/^\s*"|"\s*$/g, '');
+        // v1.10.83 - the one-line install's shortcut runs
+        // "...\_system\start-windows.ps1" -AppWindow, the launcher's runs
+        // "...\Free GST Billing - WINDOWS.hta": the first quoted path either way.
+        var args = String(shell.CreateShortcut(lnk).Arguments);
+        var q = /"([^"]+)"/.exec(args);
+        var target = q ? q[1] : args.replace(/^\s+|\s+$/g, '');
         var cut = target.lastIndexOf('\\');
-        if (cut > 0) roots.push(target.substring(0, cut));
+        var root = cut > 0 ? target.substring(0, cut) : '';
+        if (/\\_system$/i.test(root)) root = root.substring(0, root.length - 8);
+        if (root) roots.push(root);
       } catch (e) { }
     }
     roots.push(shell.ExpandEnvironmentStrings('%LOCALAPPDATA%\\Programs\\Free GST Billing'));
@@ -464,7 +479,7 @@
     watchTicks = 0;
     watchTimer = window.setInterval(function () {
       watchTicks++;
-      if (folderExists('_system\\node_modules')) {
+      if (isInstalled()) {
         stopWatching();
         render();
         return;

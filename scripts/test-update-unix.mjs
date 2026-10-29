@@ -93,6 +93,7 @@ const ALPINE = [...PRELUDE,
   'if grep -q "All [0-9]* entries extracted completely" /work/alpine-1.log; then pass "1 every file was checked against the ZIP"; else fail "1 every file was checked against the ZIP"; fi',
   'if [ ! -e "$S/.update-previous" ]; then pass "1 rollback copy removed afterwards"; else fail "1 rollback copy removed afterwards"; fi',
   'if [ -d "$S/node_modules/express" ]; then pass "1 dependencies installed"; else fail "1 dependencies installed"; fi',
+  'if grep -q "Reinstalling dependencies" /work/alpine-1.log; then fail "1 shipped packages used, npm not run"; else pass "1 shipped packages used, npm not run"; fi',
   '(cd "$S" && node server.js > /tmp/server.log 2>&1 &)',
   'up=""; i=0',
   'while [ $i -lt 30 ]; do',
@@ -197,6 +198,10 @@ try {
   pkg.dependencies = { ...pkg.dependencies, 'fgsb-this-package-does-not-exist': '0.0.1' };
   writeFileSync(join(brokenSystem, 'package.json'), JSON.stringify(pkg, null, 2));
   writeFileSync(join(brokenSystem, 'dist', 'index.html'), '<!-- BROKEN PACKAGE -->');
+  // v1.10.83 - release ZIPs ship node_modules, so the updater runs npm only for
+  // a package without them. This one has none, so npm runs, fails, and the
+  // rollback is exercised as before.
+  rmSync(join(brokenSystem, 'node_modules'), { recursive: true, force: true });
   makeZip(join(work, 'broken-src'), join(work, 'broken.zip'));
 
   // A download cut off part way.

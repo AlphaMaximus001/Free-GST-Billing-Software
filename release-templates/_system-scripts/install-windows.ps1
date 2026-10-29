@@ -33,7 +33,15 @@ function Find-OtherInstall {
     # One unreadable or empty shortcut must not stop the others being checked.
     try {
       $lnk = Join-Path $dir 'Free GST Billing.lnk'
-      if (Test-Path -LiteralPath $lnk) { $roots += Split-Path -Parent ([string](New-Object -ComObject WScript.Shell).CreateShortcut($lnk).Arguments).Trim().Trim('"') }
+      if (-not (Test-Path -LiteralPath $lnk)) { continue }
+      # v1.10.83 - the one-line install's shortcut runs "...\_system\start-windows.ps1"
+      # -AppWindow; the launcher's runs "...\Free GST Billing - WINDOWS.hta". The
+      # first quoted path is the script either way.
+      $a = [string](New-Object -ComObject WScript.Shell).CreateShortcut($lnk).Arguments
+      $p = if ($a -match '"([^"]+)"') { $Matches[1] } else { $a.Trim() }
+      $r = Split-Path -Parent $p
+      if ((Split-Path -Leaf $r) -eq '_system') { $r = Split-Path -Parent $r }
+      $roots += $r
     } catch { }
   }
   $roots += Join-Path $env:LOCALAPPDATA 'Programs\Free GST Billing'
@@ -81,10 +89,17 @@ if (-not (Use-GoodNode)) {
   Read-Host '  Press Enter to close'
   exit 1
 }
-if ($script:NodeWasFetched -or (Test-PackagesBroken)) { Reset-Packages }
+# v1.10.83 - the release ZIP carries its packages, so there is nothing to
+# download here. npm runs only for a folder whose packages are missing or were
+# left half-done by an old npm (ERR-060).
+$needNpm = -not (Test-PackagesReady)
+if ($needNpm -and ($script:NodeWasFetched -or (Test-PackagesBroken))) { Reset-Packages }
 
 # --- Step 2: npm install inside _system/ ---
 Write-Host ''
+if (-not $needNpm) {
+  Write-Host '  The app packages are already in place - nothing to download.'
+} else {
 Write-Host '  Installing app dependencies (npm install)...'
 if (-not (Test-InstallReady)) {
   Read-Host '  Press Enter to close'
@@ -103,6 +118,7 @@ try {
   exit 1
 }
 Pop-Location
+}
 
 # --- Step 3: Desktop shortcut ---
 Write-Host ''

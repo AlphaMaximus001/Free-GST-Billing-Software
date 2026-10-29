@@ -8,6 +8,23 @@
 
 
 -----------------------------------------------------------
+  EASIEST: INSTALL WITH ONE LINE (no ZIP, no warnings)
+-----------------------------------------------------------
+
+  Windows: press Windows + R, paste this line, press Enter:
+
+    powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"
+
+  Mac / Linux: open Terminal, paste this line, press Return:
+
+    curl -fsSL https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.sh | bash
+
+  It installs the app, adds an icon and opens it. The same
+  line later updates it (your data is kept and backed up)
+  or repairs it. Or use this ZIP: follow the steps below.
+
+
+-----------------------------------------------------------
   STEP 1 - EXTRACT THIS FOLDER FIRST
 -----------------------------------------------------------
 
@@ -53,9 +70,10 @@
 
   Click "Install". There is nothing to fill in.
 
-  It downloads what the app needs (about 30 MB the first
-  time), sets everything up, and then opens the app in your
-  web browser by itself. Takes 1 to 3 minutes.
+  It sets everything up (if this PC has no Node.js, the
+  engine the app runs on, it downloads it: about 30 MB, one
+  time) and then opens the app in your web browser by
+  itself. Takes 1 to 3 minutes.
 
   A black window appears while it works. Leave it alone -
   it closes on its own.
@@ -169,10 +187,11 @@
 
   "could not install the app's dependencies" /
   "cannot reach the internet"
-      The first install needs the internet. Check the
-      connection (open any website). At an office, a proxy
-      or firewall may block registry.npmjs.org. Then click
-      Install again - it carries on where it stopped.
+      Check the connection (open any website). At an
+      office, a proxy or firewall may block nodejs.org or
+      github.com. Then click Install again - it carries on
+      where it stopped. Or paste the one-line install from
+      the top of this file: it also repairs.
 
   "Still starting..." / "The server has not answered in
   90 seconds"

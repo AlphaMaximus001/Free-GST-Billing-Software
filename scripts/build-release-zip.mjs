@@ -166,6 +166,29 @@ for (const s of runtimeScripts) {
 // --- Create empty data folder so first-run doesn't need to mkdir ---
 mkdirSync(join(SYSTEM, 'data'), { recursive: true });
 
+// v1.10.83 - ship the production packages INSIDE the ZIP, so no user's PC
+// runs npm. Every install failure reported so far happened during
+// `npm install` on the user's machine: an old npm (ERR-060), no internet,
+// an office proxy blocking registry.npmjs.org, antivirus stopping npm half
+// way. All production packages are plain JavaScript, so one copy works on
+// every OS with Node.js 18+. `npm ci` follows package-lock.json exactly;
+// --no-bin-links leaves out node_modules/.bin (nothing runs those);
+// --ignore-scripts because the only install script is our own postinstall,
+// which does nothing in an installed copy anyway.
+console.log('  → Installing the production packages into _system/node_modules…');
+try {
+  execFileSync('npm', ['ci', '--omit=dev', '--no-audit', '--no-fund', '--no-bin-links', '--ignore-scripts', '--loglevel=error'],
+    { cwd: SYSTEM, stdio: 'inherit', shell: process.platform === 'win32' });
+} catch (e) {
+  console.error(`  x npm ci failed in the staging folder: ${e.message}`);
+  process.exit(1);
+}
+// The updaters and launchers treat this file as "the packages are complete".
+if (!existsSync(join(SYSTEM, 'node_modules', 'express', 'package.json')) || !existsSync(join(SYSTEM, 'node_modules', '.package-lock.json'))) {
+  console.error('  x _system/node_modules is incomplete after npm ci.');
+  process.exit(1);
+}
+
 // v1.10.63 (#54) — Refuse to ship a server that cannot start.
 //
 // The bug above was not that someone wrote bad code; it was that NOTHING

@@ -247,3 +247,12 @@ function Test-PackagesBroken {
   $nm = Join-Path $PSScriptRoot 'node_modules'
   return (Test-Path -LiteralPath $nm) -and -not (Test-Path -LiteralPath (Join-Path $nm 'express\package.json'))
 }
+
+# v1.10.83 - True when node_modules is complete and was written by npm 7 or
+# newer, so no npm install is needed: the release ZIP ships it like that. npm
+# 7+ always leaves node_modules\.package-lock.json; the npm 3 that broke
+# installs in ERR-060 never does, so its half-done folders still get redone.
+function Test-PackagesReady([string]$systemDir = $PSScriptRoot) {
+  $nm = Join-Path $systemDir 'node_modules'
+  return (Test-Path -LiteralPath (Join-Path $nm 'express\package.json')) -and (Test-Path -LiteralPath (Join-Path $nm '.package-lock.json'))
+}

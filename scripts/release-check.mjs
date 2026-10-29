@@ -72,7 +72,10 @@ else {
       `Not executable: ${scripts.filter((x) => !(x.mode & 0o111)).map((x) => x.name).join(', ')}. macOS: "you do not have appropriate access privileges".`);
     const ps1 = e.filter((x) => x.name.endsWith('.ps1')).map((x) => x.name.split('/').pop());
     check('ensure-node.ps1 ships with the scripts that use it (#109)', ps1.includes('ensure-node.ps1') && e.some((x) => x.name.endsWith('/check-node.sh')), 'ensure-node.ps1 / check-node.sh missing: install, update and start would fail.');
-    check('ZIP size looks right (5-60 MB)', statSync(appZip).size > 5e6 && statSync(appZip).size < 6e7, `It is ${(statSync(appZip).size / 1e6).toFixed(1)} MB.`);
+    // v1.10.83 - the packages ship inside the ZIP: no user's PC runs npm.
+    check('node_modules ships inside the ZIP (no npm install on users\' PCs)', e.some((x) => x.name === 'Free-GST-Billing/_system/node_modules/express/package.json'),
+      '_system/node_modules/express is missing. Build with npm run release:zip (it runs npm ci in the staging folder).');
+    check('ZIP size looks right (30-120 MB)', statSync(appZip).size > 3e7 && statSync(appZip).size < 1.2e8, `It is ${(statSync(appZip).size / 1e6).toFixed(1)} MB.`);
   }
 }
 
@@ -89,7 +92,7 @@ console.log('\nScripts that users run');
 const tdir = join(ROOT, 'release-templates', '_system-scripts');
 const nonAscii = readdirSync(tdir).filter((f) => f.endsWith('.ps1') && /[^\x00-\x7F]/.test(readFileSync(join(tdir, f), 'latin1')));
 check('every .ps1 is plain ASCII (ERR-001: Windows PowerShell misreads it)', !nonAscii.length, `Non-ASCII in ${nonAscii.join(', ')}.`);
-const unixScripts = [...readdirSync(tdir).filter((f) => f.endsWith('.sh')).map((f) => join(tdir, f)), join(ROOT, 'release-templates', 'Free GST Billing - MAC.command'), join(ROOT, 'release-templates', 'Free GST Billing - LINUX.sh')];
+const unixScripts = [...readdirSync(tdir).filter((f) => f.endsWith('.sh')).map((f) => join(tdir, f)), join(ROOT, 'release-templates', 'Free GST Billing - MAC.command'), join(ROOT, 'release-templates', 'Free GST Billing - LINUX.sh'), join(ROOT, 'install.sh')];
 const crlf = unixScripts.filter((f) => readFileSync(f, 'latin1').includes('\r'));
 check('every .sh / .command uses LF line endings (ERR-014)', !crlf.length, `CRLF in ${crlf.join(', ')}.`);
 check('READ ME FIRST.txt is plain ASCII', !/[^\x00-\x7F]/.test(read('release-templates/READ ME FIRST.txt')), 'Notepad on some PCs garbles other characters.');
