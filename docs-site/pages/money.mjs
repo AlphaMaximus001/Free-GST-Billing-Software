@@ -223,6 +223,9 @@ export default [
 <h3>Exports and SEZ</h3>
 <ul>
   <li><strong>Exports</strong>: an invoice to a client whose country is not India. It is kept out of B2B and B2C and out of the JSON file, because the portal's export table (6A) can need the shipping bill number, date and port code, which the app does not record. The <b>Exports — Table 6A</b> table on the GSTR-1 tab lists them, ready to type into Table 6A on the portal: type <b>WPAY</b> (IGST paid) or <b>WOPAY</b> (under a LUT, no IGST), invoice number and date, rate, taxable value, IGST and invoice value. ${ui('Exports')} saves the same rows as <code>GSTR1_Exports_6A.csv</code>. For services no shipping bill is needed; for goods add it on the portal.</li>
+</ul>
+<figure><img src="assets/img/gstr1-exports.png" alt="The Exports — Table 6A table on the GSTR-1 tab: one invoice to a US client, type WOPAY, billed in USD at a rate of 84.2, with taxable value, IGST of zero and invoice value in rupees." loading="lazy"><figcaption>An export under a LUT (WOPAY), in rupees at the rate saved on the invoice.</figcaption></figure>
+<ul>
   <li><strong>SEZ units</strong>: a client with <b>SEZ</b> ticked is a B2B sale, always inter-state. In the JSON it is an SEZ supply with payment of tax, or without payment if the invoice is under LUT.</li>
   <li><strong>GSTR-3B</strong>: both exports and SEZ supplies are zero-rated, so their value (and IGST, if paid) goes in Table 3.1(b), not 3.1(a). See <a href="#gstr-3b">GSTR-3B</a>.</li>
 </ul>
