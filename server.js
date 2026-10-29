@@ -90,7 +90,7 @@ app.use((req, res, next) => {
 });
 
 // Ensure data directory and sub-directories exist
-const DIRS = ['bills', 'clients', 'templates', 'products', 'expenses', 'recurring', 'receipts', 'profiles', 'purchases', 'productions'];
+const DIRS = ['bills', 'clients', 'templates', 'products', 'expenses', 'recurring', 'receipts', 'profiles', 'purchases', 'productions', 'purchase-orders'];
 for (const dir of DIRS) {
   const dirPath = path.join(DATA_DIR, dir);
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
@@ -592,6 +592,27 @@ app.delete('/api/purchases/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// v1.10.83 (#112) - purchase orders, a folder of their own: GST returns and
+// reports read data/purchases, and an order is not a bill. Never deleted:
+// a PO is cancelled instead, so its number stays accounted for.
+app.get('/api/purchase-orders', (req, res) => {
+  const orders = readAllFromDir('purchase-orders');
+  orders.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || String(b.poNumber || '').localeCompare(String(a.poNumber || '')));
+  res.json(orders);
+});
+
+app.post('/api/purchase-orders', (req, res) => {
+  const order = req.body;
+  if (!order || typeof order !== 'object' || Array.isArray(order)) return errRes(res, 400, 'bad-request');
+  if (order.id !== undefined && (typeof order.id !== 'string' || !order.id.trim())) return errRes(res, 400, 'bad-request');
+  if (!order.id) order.id = 'po_' + Date.now();
+  const dir = path.join(DATA_DIR, 'purchase-orders');
+  const filePath = path.join(dir, safeFileName(order.id) + '.json');
+  if (!isPathInside(filePath, dir)) return errRes(res, 400, 'invalid-path');
+  writeJSON(filePath, order);
+  res.json({ success: true, id: order.id });
+});
+
 // ========================
 // BUSINESS PROFILES (multi-business)
 // ========================
@@ -767,6 +788,7 @@ app.get('/api/export', (req, res) => {
     profiles: readAllFromDir('profiles'),
     purchases: readAllFromDir('purchases'),
     productions: readAllFromDir('productions'), // v1.10.83 (#115)
+    purchaseOrders: readAllFromDir('purchase-orders'),
     // v1.10.77 - never the PIN hash: a backup file can travel (email, Drive).
     meta: withoutLock(readJSON(META_PATH, {})),
     exportedAt: new Date().toISOString(),
@@ -799,6 +821,7 @@ app.post('/api/import', (req, res) => {
     profileCount: 0, profileSkipped: 0,
     purchaseCount: 0, purchaseSkipped: 0,
     productionCount: 0, productionSkipped: 0,
+    purchaseOrderCount: 0, purchaseOrderSkipped: 0,
   };
 
   // Helper: upsert one entity to a directory, honouring the overwrite flag.
@@ -828,6 +851,7 @@ app.post('/api/import', (req, res) => {
   // v1.10.83 (#115) - saved as they are: the products in the same backup
   // already hold the stock these entries moved, so nothing is applied again.
   (data.productions || []).forEach(p => upsertOne('productions', p, 'productionCount', 'productionSkipped'));
+  (data.purchaseOrders || []).forEach(p => upsertOne('purchase-orders', p, 'purchaseOrderCount', 'purchaseOrderSkipped'));
 
   // meta.json — same gating. Previously always overwrote → counters could
   // regress below existing bill numbers → collision loop on next save.

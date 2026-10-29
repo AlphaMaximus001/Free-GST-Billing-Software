@@ -343,7 +343,7 @@ Website Maintenance,998314,5000,18,Month,0</code></pre>
 {
   slug: 'purchases',
   title: 'Purchase bills',
-  lead: 'Record every supplier bill, so the GST you paid comes back as input tax credit and your stock stays right. Includes reading a bill from a photo.',
+  lead: 'Record every supplier bill, so the GST you paid comes back as input tax credit and your stock stays right. Includes reading a bill from a photo, and purchase orders to send suppliers.',
   body: `
 <section id="purchase-list">
 <h2>The purchase list</h2>
@@ -429,6 +429,26 @@ Website Maintenance,998314,5000,18,Month,0</code></pre>
 </ol>
 <p>One row per item. Rows with the same supplier and invoice number make one bill. Columns: Invoice Number, Invoice Date, Supplier Name, Supplier GSTIN, Supplier Address, Item Name, HSN/SAC, Quantity, Rate, GST %, Cess %, Inter-state, Payment Status (Unpaid, Partial or Paid) and Note.</p>
 <p>A bill already entered (same supplier and number, matched by GSTIN or by name) is skipped. If <b>Inter-state</b> is blank, it is worked out from the supplier's GSTIN. Quantities are added to product stock, as when you type a bill in.</p>
+</section>
+
+<section id="purchase-orders">
+<h2>Purchase orders</h2>
+<p>A purchase order (PO) is what you send a supplier before the goods come: what you want, how many, at what rate. It is not a bill, so it changes neither your stock nor your GST returns.</p>
+<p>Turn it on in <a href="settings.html#modules">Settings, Features</a>: tick <b>Purchase orders</b> under Purchases &amp; Expenses. Purchases then has two buttons at the top, ${ui('Purchase bills')} and ${ui('Purchase orders')}.</p>
+<ol class="steps">
+  <li><strong>Make one</strong>On ${ui('Purchase orders')}, click ${ui('New purchase order')}. Fill in the supplier (suppliers from your bills are suggested), <b>PO date</b>, <b>Expected delivery</b>, and the items: <b>Name</b>, <b>HSN</b>, <b>Qty</b>, <b>Unit</b>, <b>Rate</b>, <b>Tax %</b> and <b>Cess %</b>. Typing a name suggests your products and fills in their HSN, purchase price, GST and unit. Add delivery or payment terms under <b>Notes / terms</b>, then ${ui('Save')}.</li>
+  <li><strong>Send it</strong>Click the eye to view it, then ${ui('Print')}, ${ui('Download PDF')}, ${ui('WhatsApp')} or ${ui('Email')}. The PDF has your business at the top, the supplier, the items, CGST and SGST (or IGST for a supplier in another state), the total, your notes and a signature box.</li>
+  <li><strong>When the goods come</strong>Click ${ui('Convert to purchase bill')} (the green button on the row, or in the view). The purchase bill form opens with the supplier, items and rates filled in. Type the supplier's bill number, change any quantity to what actually came, and ${ui('Save')}.</li>
+</ol>
+<p>The <b>PO number</b> is filled in as PO/26-27/0001, counting up for each business. You can type your own; a number is never handed out twice, and one already used by another PO is refused.</p>
+<div class="table-wrap"><table>
+  <tr><th>Status</th><th>Means</th></tr>
+  <tr><td>Open</td><td>No bill saved from it yet. You can edit it.</td></tr>
+  <tr><td>Partly received</td><td>Bills saved from it have less than was ordered. ${ui('Convert to purchase bill')} again fills in only what is still to come.</td></tr>
+  <tr><td>Received</td><td>Bills saved from it cover every item.</td></tr>
+  <tr><td>Cancelled</td><td>You cancelled it with ${ui('Cancel order')} in the row's ⋯ menu. It keeps its number.</td></tr>
+</table></div>
+<p>Received and cancelled orders can only be viewed and duplicated (${ui('Duplicate')} in the ⋯ menu starts a new PO with the same supplier and items). Stock goes up only when the purchase bill is saved, as with any bill; deleting that bill takes the stock back out and puts the PO back to Open or Partly received. Search by PO number, supplier or GSTIN, and filter by status.</p>
 </section>
 
 <section id="unassigned">
