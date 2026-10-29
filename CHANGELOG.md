@@ -102,6 +102,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   app moved to.
 - **The Windows install line failed on some older Windows 10 PCs** that do
   not use the newer secure connection by default. The line now turns it on.
+- **The GST rate suggested for an HSN code was the old, pre-September-2025
+  rate**, and the invoice filled it in for you: chocolates, biscuits and
+  mineral water came up at 18% instead of 5%, soft drinks at 28% instead of
+  40%, TVs and cement at 28% instead of 18%, medicines at 12% instead of 5%.
+  Suggestions now follow the rates in force since 22 September 2025. Where the
+  rate depends on the price, size or packing (clothes and shoes up to or above
+  ₹2,500, cars and bikes by engine size, loose or packed food), the hint shows
+  every possible rate and leaves your GST % alone. The hint is still a guide:
+  check the rate for your item.
 
 ---
 

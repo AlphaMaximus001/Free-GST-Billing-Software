@@ -173,7 +173,7 @@ The Welcome Wizard appears automatically on first launch.
    - **Qty** — how much
    - **Unit** — pick from the dropdown (Nos/Kg/Ltr for goods; Hrs/Day/Session for services). Click **＋ Add custom…** for things like *Carat* / *Bundle*
    - **Rate** — price per unit
-   - **Tax %** — picks from your country's standard rates (5/12/18/28% for India; 5% for UAE; etc.)
+   - **Tax %** — picks from your country's standard rates (0/5/18/40% for India since 22 Sep 2025, plus 12/28% for older bills; 5% for UAE; etc.)
 6. Click **Download PDF** in the top-right
 
 That's it. The PDF saves to `Saved Invoices/<Client Name>/<Month>/` and the invoice is logged in your bills list with a unique number.
