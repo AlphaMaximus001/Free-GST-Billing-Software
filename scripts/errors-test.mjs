@@ -122,5 +122,22 @@ pushEntry(before, { message: 'b' });
 eq(before.length, 1, 'does not change the list it was given');
 eq(pushEntry('damaged', { message: 'c' }).length, 1, 'a damaged stored value starts a fresh list');
 
+// v1.10.83 - a server restart: a screen's ten requests all get "no answer".
+// That is one problem in the log, not ten. Real errors stay separate.
+{
+  const store = {};
+  const mem = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
+  Object.assign(globalThis, { localStorage: mem, sessionStorage: mem, window: { dispatchEvent() {}, addEventListener() {}, removeEventListener() {} }, CustomEvent: class { constructor(t) { this.type = t; } }, fetch: () => Promise.resolve() });
+  if (!globalThis.navigator) Object.defineProperty(globalThis, 'navigator', { value: { userAgent: 'test' }, configurable: true });
+  const { logProblem, getProblems, clearProblems } = await import('../src/utils/problemLog.js');
+  clearProblems();
+  for (const path of ['/api/profile', '/api/profiles', '/api/trash', '/api/lock']) {
+    logProblem({ kind: 'api', message: 'Failed to fetch', api: { method: 'GET', path, status: 0 } });
+  }
+  eq(getProblems().length, 1, 'a burst of "no answer" requests is one entry');
+  logProblem({ kind: 'api', message: 'Server error', api: { method: 'GET', path: '/api/profile', status: 500 } });
+  eq(getProblems().length, 2, 'a real server error is still its own entry');
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

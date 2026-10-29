@@ -720,6 +720,58 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-066 - A server restart filled the Problem log with one entry per request
+
+**Version:** since v1.10.83 (Problem log) · fixed before release
+**Reported by:** the maintainer (pasted 10 Problem log entries from 29 Oct 2026)
+
+**Symptom** - while the server was stopped for a few seconds (a restart to
+load a new build), Settings logged nine "GET /api/... -> no answer, Failed to
+fetch" entries in the same second, plus one "Failed to fetch dynamically
+imported module SettingsView-...js".
+
+**Cause** - a screen loads about ten things at once; every failed request was
+its own problem because the repeat check compared the request path. The
+module error was the same restart: the screen's code file was asked for while
+the server was down, the one automatic reload landed on a server still down,
+and the 30-second loop guard then showed the error panel.
+
+**Rule** - "no answer" (status 0) is ONE problem whichever request hit it
+(`sig()` in src/utils/problemLog.js); real server errors stay separate.
+Restarting the demo or an install while a page is open is expected to log
+"cannot reach the app" once, not to be a bug.
+
+**Guard** - `scripts/errors-test.mjs`: four "no answer" requests make one
+entry; a 500 error is still its own entry.
+
+---
+
+## ERR-065 - After an update the app opened blank (or as the old version) until a second refresh
+
+**Version:** every version with the offline copy (service worker) · fixed in v1.10.83
+**Reported by:** seen on the maintainer's demo after an update (29 Oct 2026)
+
+**Symptom** - after the app files were replaced, the first open showed a blank
+page or the previous version; a second refresh fixed it.
+
+**Cause** - the browser's offline copy served the previous version's page. Its
+main code needs the PDF code file, which is left out of the offline copy to
+keep it small; the update had renamed that file, the server answered the
+missing file with the app's page (HTML), the module failed to load, and none of
+the app's own recovery code had run yet.
+
+**Rule** - (1) the new version's service worker reloads open windows when it
+takes over (public/sw-reload.js, importScripts in vite.config.js); (2)
+public/boot-guard.js, a plain script before the app, clears the offline copy
+once and reloads if the app's code cannot load; (3) the server answers 404 for
+a missing code/style file, never the app page. Data is never in that copy.
+
+**Guard** - tested by hand: an older build with different file names, updated in
+place and opened once, comes up on the new version (29 Oct 2026). The smoke
+suite boots the packaged release with the guard in place.
+
+---
+
 ## ERR-064 - HSN rate suggestions filled in pre-September-2025 GST rates
 
 **Version:** since v1.10.22 (stale from 22 Sep 2025) · fixed in v1.10.83

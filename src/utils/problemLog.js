@@ -2,7 +2,7 @@
 // v1.10.83 - the Problem log. Every storage access is wrapped: this code runs
 // while something else is already failing, and must never add a second error
 // (private windows and "block site data" make localStorage throw).
-import { makeEntry, pushEntry, buildIssueUrl } from './errorReport';
+import { makeEntry, pushEntry, buildIssueUrl } from './errorReport.js';
 
 const KEY = 'fgsb_problem_log';
 const EVENT = 'fgsb-problem-logged';
@@ -38,7 +38,12 @@ const currentView = () => {
   try { return sessionStorage.getItem('gst_currentView') || 'dashboard'; } catch { return ''; }
 };
 
-const sig = (e) => `${e.kind}|${e.message}|${e.api?.path || ''}|${e.api?.status || ''}`;
+// v1.10.83 - "no answer" (the server stopped, restarting or updating) is one
+// problem whichever request hit it: a screen loads ten things at once, and
+// the log filled with ten entries saying the same thing.
+const sig = (e) => (e.kind === 'api' && !e.api?.status
+  ? 'api|no-answer'
+  : `${e.kind}|${e.message}|${e.api?.path || ''}|${e.api?.status || ''}`);
 
 // Returns the stored entry (or null). A repeat of the last problem within 30s
 // is not stored or sent again: a screen retrying every second would otherwise
