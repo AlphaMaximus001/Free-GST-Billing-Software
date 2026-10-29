@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   above the signature, or the stamp on the signature, with a preview. Every
   invoice design follows it.
 
+- **E-invoicing (IRN), offline** (#111, thanks @Sumit200507). Turn on
+  *E-invoicing (IRN)* in Settings → Modules (off by default; only for
+  businesses above ₹5 crore turnover). Download the e-invoice JSON for one
+  invoice (**E-invoice** in the invoice toolbar) or many (tick them →
+  **E-invoice JSON**). It is checked first, and anything the portal would
+  reject is listed in plain English. Upload it on einvoice1.gst.gov.in, then
+  **Import IRN** on the Dashboard (or paste the values into the invoice).
+  Every invoice design then prints the IRN, Ack No, Ack Date and the signed
+  QR code.
 - **Manufacturing (bill of materials)** (#115, thanks @infoaimautomation-ui).
   Turn it on in Settings → Features. Tick *Made here* on a product and list
   its raw materials and the quantity per unit; the app shows the cost per
