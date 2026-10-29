@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { Heart } from 'lucide-react';
 import useSupporters from './useSupporters';
+import HelpButton from './HelpButton';
 import { shouldShowSupportNudge, localDay, SNOOZE_DAYS } from '../utils/supporters';
 
 const KEY = 'freegstbill_supportNudge';
@@ -38,7 +39,7 @@ export default function SupportNudge({ invoiceCount, onOpen }) {
       style={{ padding: '0.9rem 1.25rem', marginBottom: '1.25rem', display: 'flex', gap: '0.9rem', alignItems: 'center', flexWrap: 'wrap' }}>
       <Heart size={22} style={{ color: '#e11d48', flexShrink: 0 }} />
       <div style={{ flex: '1 1 300px', minWidth: 0 }}>
-        <div style={{ fontWeight: 700 }}>{invoiceCount} invoices made with Free GST Billing</div>
+        <div style={{ fontWeight: 700 }}>{invoiceCount} invoices made with Free GST Billing <HelpButton title="The support card" doc="dashboard#support-card" size={16} /></div>
         <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{line}</div>
         {tracker && tracker.totalReceived > 0 && (
           <div style={{ fontSize: '0.8rem', marginTop: '0.4rem' }}>

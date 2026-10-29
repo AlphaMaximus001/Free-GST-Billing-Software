@@ -120,7 +120,7 @@ export default function PrintPreviewModal({
               style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Printer size={18} style={{ color: 'var(--primary)' }} />
               Print preview
-              <HelpButton title="Viewing and printing an invoice" doc="dashboard#row-actions" size={16} />
+              <HelpButton title="Viewing and printing an invoice" doc="dashboard#print-preview" size={16} />
             </h3>
             <p style={{ margin: '0.2rem 0 0 1.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               {paperLabel} — click Print to send to your printer

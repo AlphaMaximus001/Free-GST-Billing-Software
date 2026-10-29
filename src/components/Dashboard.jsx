@@ -133,7 +133,7 @@ function ReceiptModal({ target, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
         <div className="fgsb-receipt-noprint" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <h3 className="section-title" style={{ margin: 0 }}>Payment Receipt</h3>
+          <h3 className="section-title" style={{ margin: 0 }}>Payment Receipt <HelpButton title="Payment Receipt" doc="dashboard#receipt" size={16} /></h3>
           <button className="icon-btn" onClick={onClose} title="Close"><X size={18} /></button>
         </div>
         <div className="fgsb-receipt-page" style={{
@@ -1352,7 +1352,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         <div className="glass-panel p-6 mb-6">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.9rem' }}>
             <span style={{ fontSize: '1.15rem' }}>👋</span>
-            <h3 className="section-title" style={{ margin: 0, flex: 1 }}>Getting started</h3>
+            <h3 className="section-title" style={{ margin: 0, flex: 1 }}>Getting started <HelpButton title="Getting started" doc="dashboard#getting-started" size={16} /></h3>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
               {startedSteps.filter(s => s.done).length} of {startedSteps.length} done
             </span>
@@ -1401,6 +1401,10 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             <span style={{ color: '#991b1b', marginLeft: 8, fontSize: '0.85rem' }}>
               — {overdueStr} outstanding
             </span>
+            {/* Its own click: the banner's click sets the Overdue filter. */}
+            <span onClick={(e) => e.stopPropagation()}>
+              <HelpButton title="Overdue invoices" doc="dashboard#overdue" size={16} />
+            </span>
           </div>
           <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.3rem 0.75rem', whiteSpace: 'nowrap' }}
             onClick={(e) => { e.stopPropagation(); setShowRemindAll(true); }}>
@@ -1414,7 +1418,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       {showRemindAll && (
         <div className="modal-overlay" onClick={() => setShowRemindAll(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px' }}>
-            <h3 className="section-title">Send Payment Reminders</h3>
+            <h3 className="section-title">Send Payment Reminders <HelpButton title="Send Payment Reminders" doc="dashboard#remind-all" size={16} /></h3>
             <p className="text-muted" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>
               Click on a client below to send a WhatsApp payment reminder.
             </p>
@@ -1466,7 +1470,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         <div className="stat-card">
           <div className="stat-icon stat-icon-blue"><IndianRupee size={22} /></div>
           <div style={{ flex: 1 }}>
-            <p className="stat-label">Total Invoiced</p>
+            <p className="stat-label">Total Invoiced <HelpButton title="Total Invoiced" doc="dashboard#total-invoiced" size={14} /></p>
             {Object.entries(stats.byCurrency).map(([cur, v]) => (
               <div key={cur} className="stat-value" style={{ fontSize: Object.keys(stats.byCurrency).length > 1 ? '1.1rem' : undefined }}>
                 {formatCurrency(v.total, cur)}
@@ -1478,7 +1482,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         <div className="stat-card">
           <div className="stat-icon stat-icon-green"><TrendingUp size={22} /></div>
           <div style={{ flex: 1 }}>
-            <p className="stat-label">Tax Collected</p>
+            <p className="stat-label">Tax Collected <HelpButton title="Tax Collected" doc="dashboard#tax-collected" size={14} /></p>
             {Object.entries(stats.byCurrency).map(([cur, v]) => (
               <div key={cur} className="stat-value stat-value-green" style={{ fontSize: Object.keys(stats.byCurrency).length > 1 ? '1.1rem' : undefined }}>
                 {formatCurrency(v.tax, cur)}
@@ -1490,7 +1494,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         <div className="stat-card">
           <div className="stat-icon stat-icon-amber"><Clock size={22} /></div>
           <div style={{ flex: 1 }}>
-            <p className="stat-label">Outstanding</p>
+            <p className="stat-label">Outstanding <HelpButton title="Outstanding" doc="dashboard#outstanding" size={14} /></p>
             {Object.entries(stats.byCurrency).map(([cur, v]) => (
               <div key={cur} className="stat-value stat-value-amber" style={{ fontSize: Object.keys(stats.byCurrency).length > 1 ? '1.1rem' : undefined }}>
                 {formatCurrency(v.unpaid, cur)}
@@ -1501,7 +1505,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         </div>
         <div className="stat-card">
           <div className="stat-icon stat-icon-purple"><Receipt size={22} /></div>
-          <div><p className="stat-label">Invoices</p><h2 className="stat-value stat-value-purple">{stats.count}</h2></div>
+          <div><p className="stat-label">Invoices <HelpButton title="Invoices count" doc="dashboard#invoice-count" size={14} /></p><h2 className="stat-value stat-value-purple">{stats.count}</h2></div>
         </div>
       </div>
 
@@ -1511,7 +1515,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       )}
 
       <div className="glass-panel">
-        <div className="table-header"><h3>Invoices</h3></div>
+        <div className="table-header"><h3>Invoices <HelpButton title="Finding an invoice" doc="dashboard#invoice-list" size={16} /></h3></div>
         <div className="filters-bar">
           <div className="search-box">
             <Search size={16} className="search-icon" />
@@ -1553,7 +1557,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8,
           }}>
             <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>
-              Pick columns to show
+              Pick columns to show <HelpButton title="Choosing the columns" doc="dashboard#columns" size={14} />
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               {[
@@ -1581,7 +1585,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
           alignItems: 'center', borderBottom: '1px solid var(--border)',
         }}>
           <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Quick print:
+            Quick print: <HelpButton title="Quick print" doc="dashboard#quick-print" size={14} />
           </span>
           <button type="button" className="btn btn-secondary" disabled={bulkBusy}
             style={{ fontSize: '0.72rem', padding: '0.25rem 0.6rem' }}
@@ -1616,7 +1620,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             background: 'var(--info-bg)', border: '1px solid var(--info-border)',
             borderRadius: '8px', color: 'var(--info-text)',
           }}>
-            <strong style={{ fontSize: '0.88rem' }}>{selectedIds.size} selected</strong>
+            <strong style={{ fontSize: '0.88rem' }}>{selectedIds.size} selected <HelpButton title="Ticking several invoices" doc="dashboard#bulk" size={14} /></strong>
             <button type="button" className="btn btn-secondary" disabled={bulkBusy} onClick={() => bulkMarkStatus('paid')}
               style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}><CheckCircle size={13} /> Mark paid</button>
             <button type="button" className="btn btn-secondary" disabled={bulkBusy} onClick={() => bulkMarkStatus('unpaid')}
@@ -1870,7 +1874,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             </div>
             {paymentModal.payments?.length > 0 && (
               <div style={{ marginTop: '1rem' }}>
-                <label className="form-label">Payment History</label>
+                <label className="form-label">Payment History <HelpButton title="Payment History" doc="dashboard#payment-history" size={14} /></label>
                 <div className="payment-history">
                   {/* v1.10.9 — each row now has View Receipt / Edit Note /
                       Delete actions. Prior code showed values only with no
@@ -1912,7 +1916,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         <div className="modal-overlay" onClick={() => setEditPaymentModal(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h3 className="section-title" style={{ margin: 0 }}>Edit Payment</h3>
+              <h3 className="section-title" style={{ margin: 0 }}>Edit Payment <HelpButton title="Edit Payment" doc="dashboard#edit-payment" size={16} /></h3>
               <button className="icon-btn" onClick={() => setEditPaymentModal(null)} title="Close"><X size={18} /></button>
             </div>
             <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '0.75rem' }}>
@@ -1992,7 +1996,7 @@ function LowStockTicker({ products, onOpenProducts }) {
   return (
     <div className="glass-panel low-stock-ticker" style={{ marginBottom: '1rem', padding: '0.55rem 1rem' }}>
       <span className="low-stock-ticker-label">
-        <Package size={16} /> Low stock ({products.length})
+        <Package size={16} /> Low stock ({products.length}) <HelpButton title="Low stock" doc="dashboard#low-stock" size={14} />
       </span>
       <div ref={windowRef} className={`low-stock-ticker-window${scrolls ? ' is-scrolling' : ''}`}>
         <div ref={trackRef} data-copies={copies.length} className="low-stock-ticker-track"
