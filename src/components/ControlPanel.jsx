@@ -125,7 +125,7 @@ export default function ControlPanel() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
         <ActionCard
           icon={<RefreshCw size={22} />}
-          title="Update Software"
+          title="Update Software" doc="control-panel#update"
           body="Pull the latest release from GitHub. Your data folder is snapshotted first and never touched."
           buttonLabel={label('update', 'Update Now', 'Updating…')}
           disabled={!!busy || !can('update')}
@@ -134,7 +134,7 @@ export default function ControlPanel() {
         />
         <ActionCard
           icon={<Download size={22} />}
-          title="Backup Data"
+          title="Backup Data" doc="control-panel#backup"
           body="Zips your data folder into ~/Documents/FreeGSTBill Backups/ with a timestamp."
           buttonLabel={label('backup', 'Create Backup', 'Backing up…')}
           disabled={!!busy || !can('backup')}
@@ -142,7 +142,7 @@ export default function ControlPanel() {
         />
         <ActionCard
           icon={<Upload size={22} />}
-          title="Restore Backup"
+          title="Restore Backup" doc="control-panel#restore"
           body="Pick a previous backup ZIP. Current data is snapshotted first as a safety net before restore."
           buttonLabel={label('restore', 'Choose Backup ZIP', 'Restoring…')}
           disabled={!!busy || !can('restore')}
@@ -150,7 +150,7 @@ export default function ControlPanel() {
         />
         <ActionCard
           icon={<Package size={22} />}
-          title="Move to Another PC"
+          title="Move to Another PC" doc="control-panel#move"
           body="Exports data + settings as one ZIP on your Desktop. Copy it to the new PC, install the app, then Restore."
           buttonLabel={label('move', 'Export for Move', 'Exporting…')}
           disabled={!!busy || !can('move')}
@@ -174,7 +174,7 @@ export default function ControlPanel() {
         />
         <ActionCard
           icon={<StopCircle size={22} />}
-          title="Stop Server"
+          title="Stop Server" doc="control-panel#stop"
           body="Shuts down the local Node server. The app will stop responding until you re-open it from the launcher / shortcut."
           buttonLabel={label('stop', 'Stop Server', 'Stopping…')}
           disabled={!!busy || !can('stop')}
@@ -191,7 +191,7 @@ export default function ControlPanel() {
               ? <CheckCircle size={18} color="#22c55e" />
               : <AlertCircle size={18} color="#ef4444" />}
             {prettyAction(lastResult.action)} — {lastResult.ok ? 'OK' : 'Failed'}
-            <HelpButton title="Control Panel actions" doc="control-panel#actions" size={16} />
+            <HelpButton title="The result panel" doc="control-panel#result" size={16} />
           </h3>
           {lastResult.stdout && (
             <details open>
@@ -229,14 +229,14 @@ function StatCell({ label, value }) {
   );
 }
 
-function ActionCard({ icon, title, body, buttonLabel, disabled, onClick, variant }) {
+function ActionCard({ icon, title, body, buttonLabel, disabled, onClick, variant, doc = 'control-panel#actions' }) {
   const bg = variant === 'primary' ? 'var(--primary)' : variant === 'danger' ? '#dc2626' : 'var(--bg-secondary)';
   const color = (variant === 'primary' || variant === 'danger') ? '#fff' : 'var(--text)';
   return (
     <div className="glass-panel p-6" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--primary)' }}>
         {icon}
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{title} <HelpButton title={title} doc="control-panel#actions" size={16} /></h3>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>{title} <HelpButton title={title} doc={doc} size={16} /></h3>
       </div>
       <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)', flex: 1 }}>{body}</p>
       <button
