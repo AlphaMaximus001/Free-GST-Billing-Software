@@ -102,7 +102,8 @@ export default [
 
 <section id="install-as-app">
 <h2>Opening it like a desktop app</h2>
-<p>In Chrome and Edge, the app may offer ${ui('Install App')}. It then opens in its own window with its own icon, like any other program, and right-clicking the icon jumps straight to New Invoice or GST Returns. It is the same app and the same data.</p>
+<p>It already is one. The <b>Free GST Billing</b> icon (the blue <b>B</b>) on your Desktop and in the Start menu starts the app and opens it in its own window, with no tabs or address bar.</p>
+<p>Don't use the browser's own ${ui('Install app')} button (in Chrome or Edge's address bar). That makes a second icon which opens a window but cannot start the app, so after a restart it only shows "Needs a Quick Start". If you have one, right-click it and choose ${ui('Uninstall')}.</p>
 </section>
 
 <section id="app-not-running">
