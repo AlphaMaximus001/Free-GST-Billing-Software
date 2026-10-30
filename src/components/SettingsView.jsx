@@ -17,6 +17,7 @@ import { confirmAction } from './ConfirmModal';
 import PrintSettings from './PrintSettings';
 import HelpButton from './HelpButton';
 import AppLockSettings from './AppLockSettings';
+import PrivacyInternet from './PrivacyInternet';
 import CostCentreSettings from './CostCentreSettings';
 import { BusinessTypePanel, FeaturesPanel, useFeatureDraft } from './FeatureSettings';
 import { rekeyCentres } from '../utils/costCentres';
@@ -39,6 +40,7 @@ const JUMP_NAV_SECTIONS = [
   ['section-stock',    'Stock'],
   ['section-region',   'Region'],
   ['section-lock',     'App lock'],
+  ['section-privacy',  'Privacy & internet'],
   ['section-backups',  'Backups'],
   ['section-cloud',    'Google Drive'],
   ['section-data',     'Import/Export'],
@@ -51,7 +53,7 @@ const SETTINGS_TAB_DOCS = {
   'section-biztype': 'settings#business-type',
   'section-company': 'settings#company-details', 'section-profiles': 'settings#business-profiles',
   'section-terms': 'settings#terms', 'section-print': 'print-settings', 'section-modules': 'settings#features',
-  'section-stock': 'settings#stock', 'section-region': 'settings#region', 'section-lock': 'settings#lock',
+  'section-stock': 'settings#stock', 'section-region': 'settings#region', 'section-lock': 'settings#lock', 'section-privacy': 'security#offline-mode',
   'section-backups': 'backup#automatic-backups', 'section-cloud': 'settings#google-drive', 'section-data': 'backup#export-import',
   'section-updates': 'settings#updates',
 };
@@ -1043,6 +1045,9 @@ export default function SettingsView({ onSaved }) {
       <div id="section-lock" className="glass-panel p-6 mb-6" style={{ order: 7 }}>
         <AppLockSettings />
       </div>
+      <div id="section-privacy" className="glass-panel p-6 mb-6" style={{ order: 7 }}>
+        <PrivacyInternet />
+      </div>
 
       {/* ---- Business Profile ---- */}
       <form id="section-company" onSubmit={handleSave} className="glass-panel p-6 mb-6" ref={companyFormRef} style={{ order: 1 }}>
@@ -1751,7 +1756,7 @@ export default function SettingsView({ onSaved }) {
           <button type="button" className="btn btn-secondary" disabled={checkingUpdate} onClick={async () => {
             setCheckingUpdate(true);
             try {
-              const res = await fetch('/api/check-update');
+              const res = await fetch('/api/check-update?now=1');
               const data = await res.json();
               setUpdateInfo(data);
               if (data.updateAvailable) {
@@ -1794,9 +1799,10 @@ export default function SettingsView({ onSaved }) {
           <div>
             <strong>Your data is on this computer only.</strong> Nothing is uploaded to
             us, our servers, or any third party — not invoices, not clients, not
-            settings. The only time anything leaves your machine is if you explicitly
-            click <em>Save to Drive</em> below (uploads to <strong>your own</strong>
-            Google Drive account).
+            settings. Your data leaves this computer only if you send it to{' '}
+            <strong>your own</strong> Google Drive (<em>Save to Drive</em> below, or
+            with each PDF once Drive is set up). See Privacy &amp; internet for
+            everything the app uses the internet for.
             Files live under <code>data/</code> and <code>Saved Invoices/</code> next to the app.
           </div>
         </div>

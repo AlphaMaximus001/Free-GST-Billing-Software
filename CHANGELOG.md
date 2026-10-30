@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.10.83] - unreleased
 
 ### Added
+- **Offline mode, and proof the app keeps your data private.** Settings has
+  a new *Privacy & internet* tab: one table of everything the app uses the
+  internet for, and when, and an *Offline mode* switch. With it on, the app
+  never goes online by itself: no update check, no supporters list, no
+  automatic copy of each PDF to Google Drive. Check for Updates and other
+  things you click still work. The tab, the *Is it safe?* guide page and the
+  GitHub page also explain how to check it yourself in two minutes (switch the
+  internet off: everything works) and why the app is free.
 - **Purpose code for payments from abroad.** Each payment account can hold
   an RBI purpose code (for example P0802 software consultancy, P1006
   business consultancy, P1099 other services), picked from a list or typed.

@@ -37,7 +37,25 @@ Your data never leaves your computer. No cloud. No signup. No tracking. No limit
 - **No admin rights needed.** It installs into your own user folder, and your data is backed up automatically every day.
 - **Works offline, and says what it connects to.** On its own it contacts only GitHub (the update check and the public supporters list) — plus your own Google Drive, only if you connect it. Even its font is built in.
 
-**[Read the full answer: every address the app connects to, and how to check it yourself →](https://dicecodes.com/free-gst-software-documentation/security.html)**
+### Don't trust us. Check it in 2 minutes.
+
+1. **Switch your internet off** (Wi-Fi off, or unplug the cable) and open the app. Make an invoice, download the PDF, print it, open Reports. **Everything works.** Nothing the app does with your books needs the internet.
+2. **Turn on Offline mode** in **Settings → Privacy & internet**. From then on the app **never goes online by itself**: no update check, no supporters list, no automatic copy to Google Drive. You can still update whenever you choose.
+3. **Watch it, or block it.** Windows Resource Monitor (`resmon` → Network) shows the app's `node.exe` making no outside connections with Offline mode on. You can even block it in the firewall: the app keeps working, only the update check stops.
+
+### When does it use the internet?
+
+| What | When | Offline mode |
+|---|---|---|
+| Check for a new version (asks GitHub for the version number; nothing about you is sent) | By itself, a few seconds after opening, then every 6 hours | **Stopped** |
+| The public supporters list (read from GitHub; nothing is sent) | By itself, when Support & About shows | **Stopped** |
+| Your own Google Drive | Only if you set it up | Automatic copies **stopped** |
+| Installing and updating | When you click Install / Update | Only when you click |
+| Help pages, Report a problem, WhatsApp, GST portal links | When you click them | Only when you click |
+
+**That is the complete list.** No analytics, no ads, no error-tracking service, and no server of ours that receives your data.
+
+**[Read the full answer: every address the app connects to, and more ways to check →](https://dicecodes.com/free-gst-software-documentation/security.html)**
 
 ---
 
@@ -733,6 +751,12 @@ Free GST Billing Software is built and maintained by [DiceCodes](mailto:Contact@
 
 We believe every business in India deserves professional billing software without paying monthly fees.
 
+**So what's the catch? There isn't one, and your data is not the product.**
+
+- **It costs very little to keep going.** The app runs on your computer: there are no servers or cloud bills for us to pay.
+- **How we earn:** paid work for businesses that want it (custom features, setup and moving data in, support plans) and people who choose to support the project.
+- **Tracking you would gain us nothing.** We sell no ads and no data, so there is nothing to collect. And the code is public, so you can check this instead of believing it.
+
 ### Support the project
 
 If the app saves you time, you can help keep it going:
@@ -753,7 +777,7 @@ If the app saves you time, you can help keep it going:
 | **Where is my data stored?** | In a `data/` folder on your computer as plain JSON files. No server, no cloud, no database. |
 | **Can anyone access my invoices?** | No. The app runs on `localhost` — not accessible from the internet or other computers. |
 | **What if I uninstall?** | **Control Panel → Remove…** removes the app and its icons in one click. Tick boxes choose whether your data, PDFs and backups go too; by default your `data/` folder stays, and reinstalling brings everything back. |
-| **Do I need internet?** | Only for the first install (`npm install`). After that, everything works offline. |
+| **Do I need internet?** | Only to download the app and its updates. Everything else works offline. Turn on **Offline mode** (Settings → Privacy & internet) and it never goes online by itself. |
 | **How do I backup?** | Settings → Export Data → save JSON file. Import on any machine. |
 
 ### Running on a shop LAN (POS tablets)

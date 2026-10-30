@@ -3,6 +3,7 @@
 // seen are kept per PC so they still show offline.
 import { useEffect, useState } from 'react';
 import { SUPPORTERS_URL, parseSupporters } from '../utils/supporters';
+import { isOfflineMode } from '../utils/offlineMode';
 
 const TRACKER_CACHE = 'freegstbill_supportersCache';
 const readCache = () => { try { return parseSupporters(JSON.parse(localStorage.getItem(TRACKER_CACHE) || 'null')); } catch { return null; } };
@@ -12,7 +13,7 @@ const readCache = () => { try { return parseSupporters(JSON.parse(localStorage.g
 export default function useSupporters(enabled = true) {
   const [tracker, setTracker] = useState(readCache);
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled || isOfflineMode()) return undefined; // Offline mode: the last figures seen
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 6000);
     fetch(SUPPORTERS_URL, { signal: ctrl.signal, cache: 'no-store' })

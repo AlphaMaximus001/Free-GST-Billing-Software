@@ -14,7 +14,8 @@ export default [
   lead: 'Plain answers for anyone who has heard "open source" and wonders whether it is safe to keep their business books in it: where your data is, what the app connects to, and how to check it yourself.',
   body: `
 <div class="note tip"><strong>The short answer</strong>
-<p>Your invoices, clients and settings are saved as files on your own computer. There is no account, no login and no cloud server of ours. The app has no ads and no tracking, and it sends none of your business data to us. Every line of its code is public, so anyone can check this.</p></div>
+<p>Your invoices, clients and settings are saved as files on your own computer. There is no account, no login and no cloud server of ours. The app has no ads and no tracking, and it sends none of your business data to us. Every line of its code is public, so anyone can check this.</p>
+<p><b>Don't take our word for it:</b> switch off your internet and use the app (it all works), or turn on <a href="#offline-mode">Offline mode</a> so it never goes online by itself. See <a href="#check-yourself">Check it yourself</a>.</p></div>
 
 <section id="your-data-stays">
 <h2>Your data stays on your computer</h2>
@@ -33,6 +34,17 @@ export default [
 <p>Internet is needed only to install the app, to update it, and for the optional things listed below. When you are offline the app simply skips them; your work is not affected. Everything the app needs to run, even its font, is inside the app folder.</p>
 </section>
 
+<section id="offline-mode">
+<h2>Offline mode: never go online by itself</h2>
+<p>In ${ui('Settings')} → <b>Privacy &amp; internet</b>, tick <b>Offline mode</b>. From then on the app makes no internet connection by itself:</p>
+<ul>
+  <li>no automatic check for a new version;</li>
+  <li>no reading of the supporters list;</li>
+  <li>no automatic copy of each invoice PDF to Google Drive.</li>
+</ul>
+<p>Things you click still work when you click them: ${ui('Check for Updates')} and ${ui('Update')}, the ${ui('?')} help pages, ${ui('Report')}, WhatsApp and other links, and ${ui('Save to Drive')}. The setting is kept in the app's data folder, so the app's own server obeys it too. The same card lists everything that uses the internet, and when.</p>
+</section>
+
 <section id="what-it-connects-to">
 <h2>Every address the app connects to</h2>
 <p>This is the complete list. Apart from these, the app talks only to itself on your own computer.</p>
@@ -42,13 +54,14 @@ export default [
   <tr><td><code>api.github.com</code>, <code>raw.githubusercontent.com</code> (GitHub)</td><td>About 5 seconds after the app opens, every 6 hours while it stays open, and when you click ${ui('Check for Updates')} in Settings</td><td>Asks GitHub which version is the newest, so the app can tell you an update is ready. Nothing about you or your business is sent.</td></tr>
   <tr><td><code>raw.githubusercontent.com</code> (GitHub)</td><td>When Support &amp; About opens, or the Dashboard shows its support card</td><td>Reads the public supporters list (who has supported the project, and the total). Nothing is sent.</td></tr>
 </table></div>
+<p><a href="#offline-mode">Offline mode</a> stops both of these.</p>
 <h3>Only when you do something</h3>
 <div class="table-wrap"><table>
   <tr><th>Address</th><th>When</th><th>Why</th></tr>
   <tr><td><code>github.com</code> and GitHub's download servers</td><td>When you install, or click ${ui('Update')}</td><td>Downloads the app itself (the release ZIP).</td></tr>
   <tr><td><code>nodejs.org</code></td><td>During install or update, only if your computer has no recent Node.js</td><td>Downloads Node.js, the engine the app runs on, into the app's own folder. On Windows, if that fails, the installer asks before using Windows' own installer (winget).</td></tr>
   <tr><td><code>registry.npmjs.org</code></td><td>Only if the app's packages are missing or damaged and the launcher repairs them</td><td>Downloads the app's packages again. The release ZIP already contains them, so this normally never happens.</td></tr>
-  <tr><td><code>accounts.google.com</code>, <code>www.googleapis.com</code> (Google)</td><td>Only after you set up Google Drive with your own Google key and sign in</td><td>Signs in to your Google account and saves invoice PDFs and backups to your Drive. The app can see only the files it put there itself.</td></tr>
+  <tr><td><code>accounts.google.com</code>, <code>www.googleapis.com</code> (Google)</td><td>Only after you set up Google Drive with your own Google key and sign in</td><td>Signs in to your Google account and saves invoice PDFs and backups to your Drive. The app can see only the files it put there itself. Offline mode stops the automatic copy of each PDF.</td></tr>
   <tr><td><code>dicecodes.com</code> (these help pages)</td><td>When you click a ${ui('?')} button or the User Guide</td><td>Opens this guide in your browser.</td></tr>
   <tr><td><code>github.com</code> (issues)</td><td>When you click ${ui('Report')} or Report a problem</td><td>Opens a problem form on GitHub. See <a href="#problem-reports">Problem reports</a>.</td></tr>
   <tr><td>WhatsApp, the GST portal, NSDL and other links</td><td>When you click them</td><td>Ordinary links that open in your browser, such as sharing an invoice on WhatsApp or opening the GST portal.</td></tr>
@@ -66,11 +79,33 @@ export default [
 </ul>
 </section>
 
+<section id="why-free">
+<h2>Why is it free? What is the catch?</h2>
+<p>There is no catch, and your data is not the product.</p>
+<ul>
+  <li><strong>It costs very little to keep going.</strong> The app runs on your computer, so there are no servers and no cloud bills for us to pay.</li>
+  <li><strong>How we earn.</strong> Free GST Billing is made by DiceCodes, a small software company in India. We earn from paid work for businesses that want it (custom features, setup and moving data in, support plans) and from people who choose to support the project. See <a href="support.html">Support &amp; About</a>.</li>
+  <li><strong>Tracking you would gain us nothing.</strong> We do not sell ads or data, so there is nothing to collect. Collecting your data would also break the one promise the app is built on.</li>
+  <li><strong>The code is public</strong>, so this can be checked, not just believed.</li>
+</ul>
+</section>
+
 <section id="network">
 <h2>Other computers cannot open it</h2>
 <p>The app has a small built-in server that your browser talks to. It listens only on this computer's own internal address, <code>127.0.0.1</code>, so other computers on your Wi-Fi or office network cannot open the app or read your data.</p>
 <p>It also refuses requests from other websites: a web page you visit cannot quietly read your books from the app in the background.</p>
 <p>This is also why several people cannot use it from different computers at the same time. See <a href="limitations.html#multi-user">Several people, or several computers</a>.</p>
+</section>
+
+<section id="check-yourself">
+<h2>Check it yourself</h2>
+<p>You don't have to trust what we write. Any of these takes a few minutes and needs no technical skill except the last two.</p>
+<ol>
+  <li><strong>Switch the internet off.</strong> Turn off Wi-Fi (or unplug the cable), close the app and open it again. Make an invoice, download its PDF, print it, record a payment and open Reports. Everything works. That is because nothing the app does with your books needs the internet.</li>
+  <li><strong>Turn on Offline mode</strong> (above) and leave it on. The app then goes online only when you click something that needs it.</li>
+  <li><strong>Watch its connections.</strong> On Windows, open <b>Resource Monitor</b> (press Windows key + R, type <code>resmon</code>, press Enter), open the <b>Network</b> tab and look at <b>node.exe</b>, the program the app runs on. With Offline mode on, it has no connections outside your computer. On a Mac, use Activity Monitor's <b>Network</b> tab. Your browser is listed separately: the app's page uses it only for the things in <a href="#what-it-connects-to">the list above</a>.</li>
+  <li><strong>Block it in the firewall.</strong> In Windows Defender Firewall's <b>Advanced settings</b>, add an <b>Outbound rule</b> that blocks the app's <code>node.exe</code> (in the app folder's <code>_system\\node</code> folder, or <code>C:\\Program Files\\nodejs</code>). The app keeps working; only the update check stops. Remove the rule to update.</li>
+</ol>
 </section>
 
 <section id="open-source">

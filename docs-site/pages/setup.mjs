@@ -9,7 +9,7 @@ export default [
   body: `
 <section id="save-bar">
 <h2>Settings tabs and the Save all changes bar</h2>
-<p>Open ${ui('Settings')} from the sidebar. Settings is split into <b>tabs</b>, a row of buttons at the top of the page: ${ui('Business type')}, ${ui('Company')}, ${ui('Profiles')}, ${ui('Terms')}, ${ui('Print &amp; PDF')}, ${ui('Features')}, ${ui('Stock')}, ${ui('Region')}, ${ui('App lock')}, ${ui('Backups')}, ${ui('Google Drive')}, ${ui('Import/Export')} and ${ui('Updates')}. Click one to show that tab. The tab you are on is filled in blue. On a phone or a small screen the buttons wrap onto two or three lines; nothing is hidden.</p>
+<p>Open ${ui('Settings')} from the sidebar. Settings is split into <b>tabs</b>, a row of buttons at the top of the page: ${ui('Business type')}, ${ui('Company')}, ${ui('Profiles')}, ${ui('Terms')}, ${ui('Print &amp; PDF')}, ${ui('Features')}, ${ui('Stock')}, ${ui('Region')}, ${ui('App lock')}, ${ui('Privacy &amp; internet')}, ${ui('Backups')}, ${ui('Google Drive')}, ${ui('Import/Export')} and ${ui('Updates')}. Click one to show that tab. The tab you are on is filled in blue. On a phone or a small screen the buttons wrap onto two or three lines; nothing is hidden.</p>
 <p>The app remembers the tab you had open until you close the browser tab, so coming back to Settings opens the same tab.</p>
 <p><b>The ? buttons.</b> The ${ui('?')} at the top right of Settings opens the help for the tab you are on. Every card inside a tab also has its own small ${ui('?')} next to its title, which opens the help for just that card, here or on the <a href="print-settings.html">Print and PDF</a> and <a href="backup.html">Backups</a> pages. They open in your web browser and need internet.</p>
 <h3>The Save all changes bar</h3>
@@ -432,6 +432,11 @@ export default [
   <li><b>"Current PIN is wrong"</b>: check Caps Lock is not the problem (PINs are digits only) and try again; after five tries, wait 30 seconds.</li>
   <li><b>Forgot the PIN?</b> Open the Free-GST-Billing folder (where you start the app), make a new empty file there named <code>RESET-PIN</code>, and reload the app. The PIN is removed and the file deleted. Your invoices are not touched.</li>
 </ul>
+</section>
+
+<section id="privacy-internet">
+<h2>Privacy &amp; internet</h2>
+<p>The ${ui('Privacy &amp; internet')} tab says, in one table, everything the app uses the internet for and when. Tick <b>Offline mode</b> and the app never goes online by itself: no update check, no supporters list, no automatic copy of each PDF to Google Drive. ${ui('Check for Updates')} and other things you click still work when you click them. It also tells you how to check this yourself in two minutes. The full answer is on <a href="security.html#offline-mode">Is it safe?</a>.</p>
 </section>
 
 <section id="backups">

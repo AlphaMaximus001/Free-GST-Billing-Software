@@ -493,6 +493,7 @@ const EXPORTABLE_LOCALSTORAGE_KEYS = [
   'gst_regionMode',                  // 'india' | 'international' | 'both'
   'gst_enabledModules',              // map of disabled feature toggles
   'gst_businessType',                // v1.10.83 — business type picked in Settings / first run
+  'gst_offlineMode',                 // v1.10.83 — Offline mode: no automatic internet use
   'gst_menuOrder',                   // v1.10.83 — sidebar order
   'gst_filing_status',               // GSTR-1/3B "Filed" pill states per period key
   'gst_printSettings',               // v1.8.4 — thermal printer defaults (font, weight, all-caps, etc.)

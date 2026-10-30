@@ -1325,6 +1325,12 @@ app.get('/api/changelog', (req, res) => {
 });
 
 app.get('/api/check-update', async (req, res) => {
+  // v1.10.83 - Offline mode (Settings → Privacy & internet): no automatic
+  // check. ?now=1 is the Check for Updates button, which the user clicked.
+  if (readJSON(LOCAL_PREFS_PATH, {}).gst_offlineMode === '1' && req.query.now !== '1') {
+    res.json({ current: pkg.version, updateAvailable: false, offlineMode: true });
+    return;
+  }
   try {
     // Two parallel fetches: package.json (definitive version source) and the
     // GitHub Releases API (for release notes). Both have a 4s timeout so a

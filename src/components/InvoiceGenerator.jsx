@@ -16,6 +16,7 @@ import { baseCurrencyOf, currencyForClient, isForeignClient } from '../utils/fx'
 import InvoiceCurrency from './InvoiceCurrency';
 import PrintPreviewModal from './PrintPreviewModal';
 import { ensureToken, findOrCreateFolder, uploadPDF } from '../services/googleDrive';
+import { isOfflineMode } from '../utils/offlineMode';
 import DOMPurify from 'dompurify';
 import InvoicePreview from './InvoicePreview';
 import { suggestGstRate, autoFillRate, rateText } from '../utils/hsnRates';
@@ -2219,6 +2220,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       const folderName = latestProfile.googleDriveFolder || 'GST Billing Invoices';
       // v1.10.83 - Settings → Features → Google Drive off means no upload.
       if (!clientId || !isModuleEnabled('googleDrive', getEnabledModules())) return;
+      if (isOfflineMode()) { toast('Offline mode is on, so the PDF was not sent to Google Drive. It is saved on this computer.', 'info', 6000); return; }
 
       const hasToken = await ensureToken(clientId);
       if (!hasToken) {
