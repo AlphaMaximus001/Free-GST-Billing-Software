@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { FileText, Download, Upload, ExternalLink, CheckCircle, ChevronDown, ChevronRight, AlertTriangle, BookOpen, BarChart3 } from 'lucide-react';
 import { getAllBills, getAllExpenses, getAllPurchases, getProfile, getEnabledModules } from '../store';
+import { hsnTable, stripEmpty } from '../utils/gstr1Json';
 import { formatCurrency, INVOICE_TYPES, getStateCode, formatDateGST, getFilingPeriod, hsnUqc, getFYOptions, belongsToProfile, toCsvLine, isCancelledBill, b2clThreshold, GST_PORTAL_RATES, setOffITC, splitLineTax, roundQty, placeOfSupplyLabel, countsAsSales, parseLocalDate, isModuleEnabled } from '../utils';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
@@ -1281,6 +1282,12 @@ export default function GSTReturns() {
     // offenders so the user can fix them in the source invoice.
     // v1.10.83 - an invoice in another currency without a rate would go into
     // the HSN summary in dollars as if they were rupees.
+    // v1.10.83 (#133) - things the portal refuses the whole file for.
+    if (!profile.gstin) blocked.push('Your business GSTIN is not set (Settings → Company).');
+    if (filterMode === 'fy') blocked.push('A GSTR-1 file is for one month (or one quarter if you file quarterly). Choose Month or Quarter above.');
+    const noPos = bills.filter(b => (b.data?.client?.gstin || billIsInterstate(b)) && !isExportBill(b)
+      && !getStateCode(b.data?.details?.placeOfSupply || b.data?.client?.state || ''));
+    if (noPos.length > 0) blocked.push(`${noPos.length} invoice(s) have no place of supply (${noPos.slice(0, 3).map(b => b.invoiceNumber).join(', ')}). Open each and set the client's state or Place of Supply.`);
     const noRate = noRateBills;
     if (noRate.length > 0) {
       blocked.push(`${noRate.length} invoice(s) in a foreign currency have no exchange rate (${noRate.slice(0, 3).map(b => b.invoiceNumber).join(', ')}). Open each and enter the rate.`);
@@ -1393,23 +1400,43 @@ export default function GSTReturns() {
       });
     });
 
+    // v1.10.83 (#133) - credit notes to buyers without a GSTIN (not exports):
+    // a large inter-state one goes in Table 9B (cdnur, as B2CL); the rest
+    // reduce their B2CS row, as the portal expects (and as GSTR-3B and the HSN
+    // summary already do). typ "OE" (not e-commerce) on every B2CS row.
+    const unregNotes = creditNotes.filter(b => !b.data?.client?.gstin && !isExportBill(b));
+    const isLargeNote = (b) => billIsInterstate(b) && (b.totalAmount || 0) > b2clThreshold(b.invoiceDate);
     const b2csMap = {};
-    b2cSmall.forEach(bill => {
+    const addB2cs = (bill, sign) => {
       const { profile: prof, client, items, details } = bill.data;
       const isInter = billIsInterstate(bill);
       const isIntraUT = billIsIntraUT(bill);
       const pos = getStateCode(details?.placeOfSupply || client?.state || prof?.state || '');
       const splyTy = isInter ? 'INTER' : 'INTRA';
       (items || []).forEach(item => {
-        const rate = item.taxPercent || 0; const key = `${splyTy}_${pos}_${rate}`;
-        if (!b2csMap[key]) b2csMap[key] = { sply_ty: splyTy, pos, rt: rate, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
+        const rate = Number(item.taxPercent) || 0; const key = `${splyTy}_${pos}_${rate}`;
+        if (!b2csMap[key]) b2csMap[key] = { sply_ty: splyTy, pos, typ: 'OE', rt: rate, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
         const split = billSplit(bill, item, isInter, !!bill.data?.taxInclusive, isIntraUT);
-        b2csMap[key].txval += split.taxable;
-        b2csMap[key].iamt += split.igst;
-        b2csMap[key].camt += split.cgst;
-        b2csMap[key].samt += split.sgst + split.utgst; // v1.10.31 — UTGST folded
-        b2csMap[key].csamt += split.cess; // v1.10.31 — cess from split
+        b2csMap[key].txval += sign * split.taxable;
+        b2csMap[key].iamt += sign * split.igst;
+        b2csMap[key].camt += sign * split.cgst;
+        b2csMap[key].samt += sign * (split.sgst + split.utgst); // v1.10.31 — UTGST folded
+        b2csMap[key].csamt += sign * split.cess; // v1.10.31 — cess from split
       });
+    };
+    b2cSmall.forEach(bill => addB2cs(bill, 1));
+    unregNotes.filter(b => !isLargeNote(b)).forEach(bill => addB2cs(bill, -1));
+    const cdnurArr = unregNotes.filter(isLargeNote).map(bill => {
+      const { client, totals, items, details } = bill.data;
+      const rateMap = {};
+      (items || []).forEach(item => {
+        const rate = Number(item.taxPercent) || 0; if (!rateMap[rate]) rateMap[rate] = { txval: 0, iamt: 0, csamt: 0 };
+        const split = billSplit(bill, item, true, !!bill.data?.taxInclusive);
+        rateMap[rate].txval += split.taxable; rateMap[rate].iamt += split.igst; rateMap[rate].csamt += split.cess;
+      });
+      return { typ: 'B2CL', ntty: 'C', nt_num: bill.invoiceNumber, nt_dt: formatDateGST(bill.invoiceDate), val: round2(totals?.total || 0),
+        pos: getStateCode(details?.placeOfSupply || client?.state || ''),
+        itms: Object.entries(rateMap).map(([rt, d], i) => ({ num: i + 1, itm_det: { rt: Number(rt), txval: round2(d.txval), iamt: round2(d.iamt), csamt: round2(d.csamt) } })) };
     });
     const b2csArr = Object.values(b2csMap).map(d => ({ ...d, txval: round2(d.txval), iamt: round2(d.iamt), camt: round2(d.camt), samt: round2(d.samt), csamt: round2(d.csamt) }));
 
@@ -1431,7 +1458,7 @@ export default function GSTReturns() {
     });
 
     const cdnrMap = {};
-    creditNotes.filter(b => b.data?.client?.gstin).forEach(bill => {
+    creditNotes.filter(b => b.data?.client?.gstin && !isExportBill(b)).forEach(bill => {
       const { client, totals, items, details } = bill.data;
       const ctin = client.gstin; if (!cdnrMap[ctin]) cdnrMap[ctin] = { ctin, nt: [] };
       const isInter = billIsInterstate(bill);
@@ -1448,8 +1475,10 @@ export default function GSTReturns() {
       // classification as the original supply (P1 #11, #12, #13).
       const rchrg = bill.data?.invoiceOptions?.reverseCharge ? 'Y' : 'N';
       const isSEZ = !!client?.isSEZ;
-      const isLUT = /LUT|Letter of Undertaking|zero.?rated/i.test(bill.data?.customTerms || '') || !!bill.data?.invoiceOptions?.isLUT;
-      const invType = isSEZ ? (isLUT ? 'SEWOP' : 'SEWP') : 'R';
+      // v1.10.83 - same rules as B2B: the LUT tick first, "LUT" as a word, and
+      // SEZ with reverse charge filed as R.
+      const isLUT = !!bill.data?.invoiceOptions?.isLUT || /\bLUT\b|Letter of Undertaking/i.test(bill.data?.customTerms || '');
+      const invType = rchrg === 'Y' ? 'R' : (isSEZ ? (isLUT ? 'SEWOP' : 'SEWP') : 'R');
       cdnrMap[ctin].nt.push({ ntty: 'C', nt_num: bill.invoiceNumber, nt_dt: formatDateGST(bill.invoiceDate), val: round2(totals?.total || 0), pos, rchrg, inv_typ: invType,
         itms: Object.entries(rateMap).map(([rt, d], i) => ({ num: i + 1, itm_det: { rt: Number(rt), txval: round2(d.txval), iamt: round2(d.iamt), camt: round2(d.camt), samt: round2(d.samt), csamt: round2(d.csamt) } })) });
     });
@@ -1471,9 +1500,12 @@ export default function GSTReturns() {
         // One row per HSN, rate AND unit, as in the CSV: two units under one
         // HSN used to add kilograms to pieces under the first row's unit.
         const uqc = hsnUqc(item);
-        const rate = item.taxPercent || 0; const key = `${hsn}_${rate}_${uqc}`;
+        // v1.10.83 (#133) - Table 12 has a B2B list (buyers with a GSTIN, SEZ
+        // too) and a B2C list (no GSTIN, and exports).
+        const b2b = !!bill.data?.client?.gstin && !isExportBill(bill);
+        const rate = Number(item.taxPercent) || 0; const key = `${b2b ? 'B2B' : 'B2C'}_${hsn}_${rate}_${uqc}`;
         if (uqc === 'OTH' && item.unit) unknownUnitCount += 1;
-        if (!hsnJsonMap[key]) hsnJsonMap[key] = { hsn_sc: hsn, desc: item.name || '', uqc, qty: 0, rt: rate, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
+        if (!hsnJsonMap[key]) hsnJsonMap[key] = { b2b, hsn_sc: hsn, desc: item.name || '', uqc, qty: 0, rt: rate, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
         // UTGST goes in samt (it was dropped for intra-UT invoices, so the
         // JSON's HSN table disagreed with B2B and with the CSV).
         const split = billSplit(bill, item, isInter, !!bill.data?.taxInclusive, isIntraUT);
@@ -1490,36 +1522,21 @@ export default function GSTReturns() {
       docs: list.map((d, i) => ({ num: i + 1, from: d.from, to: d.to, totnum: d.total, cancel: d.cancelled, net_issue: d.total - d.cancelled })),
     }));
 
-    // v1.10.43 — Aggregate turnover fields required by portal.
-    // `gt`     = aggregate turnover of the PREVIOUS FY (typically
-    //            entered on the portal, but the JSON must carry the
-    //            field even if 0 — omission trips schema validation).
-    // `cur_gt` = turnover in the CURRENT FY up to the previous month.
-    // Both accept `0` and can be overridden inline on the portal
-    // during filing, so we ship them zero-filled to satisfy the
-    // schema without asking the user for numbers they'd re-enter
-    // anyway. Users on aggregate turnover > 5 Cr can flip
-    // profile.aatoAbove5Cr (also drives HSN digit-length gate).
-    const gt = Number(profile?.prevFYTurnover) || 0;
-    const cur_gt = Number(profile?.currentFYTurnover) || 0;
-
-    const gstr1 = {
-      // v1.10.43 — Root schema fields the offline utility validates
-      // BEFORE any per-row check. Omission was our #1 cause of "Error
-      // in JSON structure validation" (RET191106) reports.
-      //   version: current GSTR-1 offline utility (v3.x series).
-      //   hash:    placeholder string; the portal computes the real
-      //            hash on receipt. `"hash"` is the reference value
-      //            every published sample uses.
-      gstin, fp, gt, cur_gt,
+    // v1.10.83 (#133) - as India Compliance writes it (accepted by the portal):
+    // gstin, fp, version and hash, then the tables. The turnover fields gt /
+    // cur_gt were only for 2017-18 returns and are no longer sent. Blank values
+    // and empty tables are removed: the portal rejects them.
+    const gstr1 = stripEmpty({
+      gstin, fp,
       version: 'GST3.1.6',
       hash: 'hash',
       b2b: Object.values(b2bMap), b2cs: b2csArr,
-      ...(Object.keys(b2clMap).length > 0 ? { b2cl: Object.values(b2clMap) } : {}),
-      ...(Object.keys(cdnrMap).length > 0 ? { cdnr: Object.values(cdnrMap) } : {}),
-      hsn: { data: Object.values(hsnJsonMap).map((r, i) => ({ num: i + 1, ...r, qty: roundQty(r.qty, 2), txval: round2(r.txval), iamt: round2(r.iamt), camt: round2(r.camt), samt: round2(r.samt), csamt: round2(r.csamt) })) },
+      b2cl: Object.values(b2clMap),
+      cdnr: Object.values(cdnrMap),
+      cdnur: cdnurArr,
+      hsn: hsnTable(Object.values(hsnJsonMap).map((r) => ({ ...r, qty: roundQty(r.qty, 2), txval: round2(r.txval), iamt: round2(r.iamt), camt: round2(r.camt), samt: round2(r.samt), csamt: round2(r.csamt) })), fp),
       doc_issue: { doc_det: docDet },
-    };
+    });
 
     const blob = new Blob([JSON.stringify(gstr1, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

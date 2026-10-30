@@ -731,6 +731,40 @@ try {
     `3.1(b) ${JSON.stringify(zr0.cells)} -> ${JSON.stringify(zr1.cells)}`);
   check('#61 GST Returns flags the export for GSTR-1 Table 6A', zr1.notice);
 
+  // ---- v1.10.83 (#133): the GSTR-1 JSON is in the portal's current format ---
+  // Its own two invoices, in a month nothing else uses (June 2025, after the
+  // May 2025 HSN split): one to a registered buyer, one to an unregistered one.
+  const beta = { gstin: OTHER_GSTIN, businessName: 'Smoke Beta', country: 'India', state: 'Karnataka' };
+  const g1Bill = (id, inv, client) => ({ id, invoiceNumber: inv, invoiceType: 'tax-invoice', clientName: client.name, status: 'unpaid',
+    totalAmount: 1180, invoiceDate: '2025-06-15', payments: [], items: [],
+    data: { profile: beta, client, details: { invoiceNumber: inv, invoiceDate: '2025-06-15', placeOfSupply: 'Karnataka' },
+      items: [{ name: 'Smoke HSN item with a description well over thirty characters', hsn: '4820', unit: 'Nos', quantity: 2, rate: 500, taxPercent: 18 }],
+      totals: { subtotal: 1000, taxableAmount: 1000, cgst: 90, sgst: 90, igst: 0, cess: 0, total: 1180, isInterstate: false } } });
+  await api('/api/bills', g1Bill('smoketest-g1-b2b', 'SMK133-B2B', { name: 'Smoke Registered', gstin: '29AAKFM4321Q1ZP', state: 'Karnataka', country: 'India' }));
+  await api('/api/bills', g1Bill('smoketest-g1-b2c', 'SMK133-B2C', { name: 'Smoke Walk-in', state: 'Karnataka', country: 'India' }));
+  await reopenView('GST Returns');
+  await page.evaluate(() => [...document.querySelectorAll('button')].find((x) => x.innerText.trim() === 'GSTR-1')?.click());
+  await sleep(800);
+  const periodSelects = page.locator('select.form-input');
+  await periodSelects.nth(0).selectOption('month');
+  await periodSelects.nth(1).selectOption('5');
+  await periodSelects.nth(2).selectOption('2025');
+  await sleep(1000);
+  const [g1] = await Promise.all([
+    page.waitForEvent('download', { timeout: 20000 }).catch(() => null),
+    page.evaluate(() => [...document.querySelectorAll('button')].find((x) => x.innerText.trim() === 'JSON Export')?.click()),
+  ]);
+  const g1json = g1 ? JSON.parse(readFileSync(await g1.path(), 'utf8')) : null;
+  const hsnKeys = g1json?.hsn ? Object.keys(g1json.hsn) : [];
+  check('v83 #133 GSTR-1 JSON splits the HSN summary into hsn_b2b / hsn_b2c, with no blank values',
+    !!g1json && g1json.fp === '062025' && hsnKeys.join() === 'hsn_b2b,hsn_b2c'
+      && g1json.hsn.hsn_b2b[0].desc.length <= 30 && (g1json.b2cs || []).length > 0 && g1json.b2cs.every((r) => r.typ === 'OE')
+      && !JSON.stringify(g1json).includes('""') && !('gt' in g1json) && (g1json.b2b || [])[0]?.inv?.[0]?.inum === 'SMK133-B2B',
+    g1 ? `${g1.suggestedFilename()} hsn: ${hsnKeys.join(',')}` : `no download: ${await page.evaluate(() => document.body.innerText.match(/(GSTR-1 export blocked|No invoices)[^\n]*/)?.[0] || '')}`);
+  await page.evaluate(() => Promise.all(['smoketest-g1-b2b', 'smoketest-g1-b2c'].map((id) => fetch(`/api/bills/${id}`, { method: 'DELETE' }))));
+  await periodSelects.nth(1).selectOption(String(new Date().getMonth()));
+  await periodSelects.nth(2).selectOption(String(new Date().getFullYear()));
+
   // ---- #64 item 1: an open screen must follow a company switch -------------
   await reopenView('Expenses');
   const exp0 = await screenText();

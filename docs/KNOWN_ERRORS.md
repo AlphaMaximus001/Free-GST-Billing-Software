@@ -720,6 +720,34 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-071 - The GST portal refused the GSTR-1 JSON ("Download the latest version of Offline tool")
+
+**Version:** every version up to v1.10.82 · fixed in v1.10.83
+**Reported by:** @abhi783821 (#133, 2026-10-30), August 2026 return
+
+**Symptom** - Returns Dashboard → GSTR-1 → Prepare Offline → Upload: "File
+could not be uploaded! Download the latest version of Offline tool to generate
+the JSON file or ensure to validate your uploaded file against the template
+published at Specification Portal."
+
+**Cause** - from the May 2025 return the portal wants the HSN summary (Table
+12) as two lists, `hsn: { hsn_b2b, hsn_b2c }`; `exportGSTR1JSON`
+(src/components/GSTReturns.jsx) still wrote one list, `hsn: { data }`. The
+file also had full item names as HSN descriptions (the limit is 30), no
+`typ: "OE"` on B2CS rows, empty tables and blank values, and the 2017-18-only
+turnover fields `gt` / `cur_gt`.
+
+**Rule** - the GSTR-1 JSON follows a maintained reference whose files the
+portal accepts: India Compliance (resilient-tech/india-compliance,
+`gst_india/utils/gstr_1/sections/*.py`, `to_gov`). When the portal changes
+a table, check that reference first. B2B = buyers with a GSTIN (SEZ too); B2C
+= no GSTIN, and exports. Blank values are stripped before writing.
+
+**Guard** - scripts/gstr1-json-test.mjs (`npm run test:unit`) and the smoke
+check "v83 #133 GSTR-1 JSON splits the HSN summary".
+
+---
+
 ## ERR-070 - CSV import made a second client when the name was mistyped
 
 **Version:** every version up to v1.10.82 · fixed in v1.10.83

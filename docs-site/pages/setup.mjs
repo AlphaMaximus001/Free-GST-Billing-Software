@@ -93,14 +93,12 @@ export default [
 
 <section id="gstr-details">
 <h2>GSTR filing details</h2>
-<p>A grey box inside Company Details, shown only when the country is India. It is used for one thing: the <a href="gst-returns.html#json-checks">GSTR-1 and GSTR-3B JSON files</a> you upload to the GST portal. All three are optional.</p>
+<p>A grey box inside Company Details, shown only when the country is India. It is used for one thing: the <a href="gst-returns.html#json-checks">GSTR-1 and GSTR-3B JSON files</a> you upload to the GST portal.</p>
 <div class="table-wrap"><table>
   <tr><th>Field</th><th>What it does</th></tr>
   <tr><td>Aggregate turnover (AATO) is above ₹5 crore</td><td>Tick it if your total sales last year, for all your GSTINs together on one PAN, were more than ₹5 crore. The line below then says <b>6-digit HSN</b>: every item needs an HSN code of at least 6 digits. Unticked, 4 digits are enough. The GST portal refuses a GSTR-1 where an HSN is too short.</td></tr>
-  <tr><td>Previous FY aggregate turnover (₹)</td><td>Last financial year's turnover in rupees, such as 5000000. Goes into the file's <code>gt</code> field.</td></tr>
-  <tr><td>Current FY turnover so far (₹)</td><td>This year's turnover so far. Goes into the file's <code>cur_gt</code> field.</td></tr>
 </table></div>
-<p>Left empty, both turnovers are sent as 0, which the portal accepts; you can also correct them on the portal while filing. Save with ${ui('Save Profile')} or ${ui('Save all changes')}.</p>
+<p>Save with ${ui('Save Profile')} or ${ui('Save all changes')}. (Older versions also asked for last year's and this year's turnover. The GSTR-1 file no longer carries them: those fields were only for 2017-18 returns.)</p>
 <h3>Something wrong?</h3>
 <ul>
   <li><b>GSTR-1 upload fails on HSN length</b>: check whether the tick box matches your turnover, then lengthen the HSN codes on your <a href="products.html">products</a>.</li>

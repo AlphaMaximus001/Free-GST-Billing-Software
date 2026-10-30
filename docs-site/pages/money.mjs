@@ -259,6 +259,9 @@ export default [
 <ul>
   <li>An invoice or credit note number longer than 16 characters, or with anything other than letters, digits, <code>-</code> or <code>/</code>. The message names the first three.</li>
   <li>An item with a GST rate the portal does not accept. The portal takes 0, 0.1, 0.25, 1, 1.5, 3, 5, 6, 7.5, 12, 18, 28 and 40%.</li>
+  <li>Your own GSTIN is not set in <a href="settings.html#company-details">Settings, Company</a>.</li>
+  <li><b>Full year</b> is chosen as the period. A GSTR-1 file is for one month, or one quarter if you file quarterly.</li>
+  <li>An invoice to a registered buyer, or an inter-state sale, with no place of supply (no client state and no Place of Supply on the invoice).</li>
 </ul>
 <p><strong>These download with a warning</strong> (the message starts "GSTR-1 JSON exported. ⚠"):</p>
 <ul>
@@ -266,8 +269,8 @@ export default [
   <li>HSN codes shorter than 4 digits, or 6 if you ticked turnover above ₹5 crore in <a href="settings.html#gstr-details">Settings</a>.</li>
   <li>Custom units, which are sent as OTH (others).</li>
 </ul>
-<p><strong>What the JSON holds:</strong> B2B invoices, B2C totals, B2C Large invoices, credit notes to registered clients, the HSN summary and the document summary, plus your turnover figures. These are taken from <a href="settings.html#gstr-details">Settings, GSTR filing details</a>; they are optional and you can change them on the portal.</p>
-<p><strong>What you add on the portal by hand:</strong> exports (Table 6A), credit notes to unregistered buyers (if needed), debit notes, advances received (Table 11), amendments to earlier periods (Table 9A), and nil-rated, exempt or non-GST sales (Table 8). Items at 0% are sent at a 0% rate in B2B and B2C.</p>
+<p><strong>What the JSON holds:</strong> B2B invoices, B2C totals, B2C Large invoices, credit notes to registered clients, credit notes to buyers without a GSTIN (a large inter-state one in Table 9B; the rest reduce the B2C totals), the HSN summary and the document summary. It is laid out the way the portal takes it today: from the May 2025 return, the HSN summary (Table 12) comes in two lists, <b>B2B</b> (buyers with a GSTIN, SEZ units too) and <b>B2C</b> (buyers without a GSTIN, and exports), each description at most 30 characters, and services with unit <b>NA</b> and quantity 0. Empty tables and blank values are left out, because the portal rejects them.</p>
+<p><strong>What you add on the portal by hand:</strong> exports (Table 6A), credit notes on exports, debit notes, advances received (Table 11), amendments to earlier periods (Table 9A), and nil-rated, exempt or non-GST sales (Table 8). Items at 0% are sent at a 0% rate in B2B and B2C.</p>
 <div class="note tip"><strong>Something wrong?</strong>
 <p>Blocked? Open each invoice the message names, correct the number or the rate, save, and export again. See <a href="troubleshooting.html#gstr1-blocked">"GSTR-1 export blocked"</a>. "No invoices to export" means the period has no tax invoices or credit notes: check the <a href="#period">period</a>.</p></div>
 </section>

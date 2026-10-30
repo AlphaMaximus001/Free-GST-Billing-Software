@@ -247,6 +247,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wording.
 
 ### Fixed
+- **The GST portal refused the GSTR-1 JSON** with "File could not be
+  uploaded! Download the latest version of Offline tool..." (#133, thanks
+  @abhi783821). From the May 2025 return the portal wants the HSN summary
+  (Table 12) as two lists, B2B and B2C; the app still sent one. The file now
+  has both lists, HSN descriptions of at most 30 characters, *OE* on every
+  B2C row, no empty tables or blank values, and no turnover fields (they were
+  only for 2017-18). Credit notes to buyers without a GSTIN are now in it
+  too: they reduce the B2C totals, and a large inter-state one goes in Table
+  9B. The export now stops, with the reason, when your GSTIN is missing, the
+  period is a full year, or an invoice has no place of supply. **Export the
+  JSON again** for any month you could not upload.
 - **CSV invoice import made a duplicate client when the name was mistyped**
   even though the GSTIN matched a saved client (#132, thanks @surajparshad8).
   A row with a saved GSTIN now goes to that client under its saved name, and
