@@ -19,7 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   automatic copy of each PDF to Google Drive. Check for Updates and other
   things you click still work. The tab, the *Is it safe?* guide page and the
   GitHub page also explain how to check it yourself in two minutes (switch the
-  internet off: everything works) and why the app is free.
+  internet off: everything works) and why the app is free. The sidebar now
+  says **Free forever** under the app's name: no paid version, no locked
+  features, no ads, no tracking.
 - **Purpose code for payments from abroad.** Each payment account can hold
   an RBI purpose code (for example P0802 software consultancy, P1006
   business consultancy, P1099 other services), picked from a list or typed.

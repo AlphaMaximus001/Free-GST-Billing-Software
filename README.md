@@ -1,6 +1,6 @@
 <div align="center">
 
-# Free GST Billing Software — 100% Free, No Subscription, No Limits
+# Free GST Billing Software — Free Forever, Works Offline, No Tracking
 
 ### The only GST invoicing software you'll never have to pay for.
 
@@ -14,7 +14,9 @@
 
 **Create GST-compliant invoices, file GSTR-1 / GSTR-3B / GSTR-2B reconciliation, track TDS / TCS, bill international clients in 22 currencies, manage inventory — all without paying a single rupee. Ever.**
 
-Your data never leaves your computer. No cloud. No signup. No tracking. No limits. Open-source and offline-first.
+**Free forever. Works on your computer, even offline. No tracking. No ads. No signup.**
+
+Your data never leaves your computer. No cloud and no limits. Open source, so you can [check every claim yourself](#dont-trust-us-check-it-in-2-minutes).
 
 **A free invoice builder and invoice maker** for shop owners, freelancers, consultants, traders and small businesses in India: make a GST invoice, quotation (proforma / estimate), bill of supply, credit note or delivery challan in minutes and save it as a PDF. Free billing software and a free, open-source alternative to Tally, Vyapar, Zoho and myBillBook.
 
@@ -753,6 +755,7 @@ We believe every business in India deserves professional billing software withou
 
 **So what's the catch? There isn't one, and your data is not the product.**
 
+- **It stays free, forever.** No paid version, no locked features, no ads, no tracking. And because it is MIT-licensed open source, the app you have today can always be used, copied and kept by anyone, even if we stopped working on it. Nobody can take it away or start charging for it.
 - **It costs very little to keep going.** The app runs on your computer: there are no servers or cloud bills for us to pay.
 - **How we earn:** paid work for businesses that want it (custom features, setup and moving data in, support plans) and people who choose to support the project.
 - **Tracking you would gain us nothing.** We sell no ads and no data, so there is nothing to collect. And the code is public, so you can check this instead of believing it.

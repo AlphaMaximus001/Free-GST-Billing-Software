@@ -11,6 +11,8 @@ export default [
   nav: 'Welcome',
   lead: 'Make GST invoices, keep track of who owes you, and prepare your GST returns. On your own computer, with no account and no monthly fee.',
   body: `
+<div class="note tip"><strong>Free forever. Works on your computer, even offline. No tracking. No ads.</strong>
+<p>Your invoices never leave your computer, there is no account to make, and nothing is ever sold to you inside the app. Don't take our word for it: <a href="security.html#check-yourself">check it yourself in two minutes</a>.</p></div>
 <ul class="doors">
   <li><a href="install.html"><b>Install it</b><span>Download, extract, click Install. About three minutes, no admin rights needed.</span></a></li>
   <li><a href="first-invoice.html"><b>Make your first invoice</b><span>From a blank app to a GST tax invoice you can send, in five minutes.</span></a></li>

@@ -666,7 +666,11 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 500;
+  line-height: 1.35;
 }
+/* v1.10.83 - "Free forever" under the app name. */
+.sidebar-free { color: #22c55e; font-weight: 700; }
+html:not([data-theme="dark"]) .sidebar-free { color: #16a34a; }
 
 .sidebar-nav {
   display: flex;

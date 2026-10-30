@@ -876,7 +876,7 @@ function App() {
           </div>
           <div>
             <h2 className="sidebar-title">GST Billing</h2>
-            <p className="sidebar-subtitle">by DiceCodes</p>
+            <p className="sidebar-subtitle" title="Free forever. Works on this computer, even offline. No tracking, no ads."><span className="sidebar-free">Free forever</span><br />by DiceCodes</p>
           </div>
           {/* Auto-hide as a ☰ button (was a text checkbox): pressed = the menu
               shrinks to icons and opens when pointed at. */}

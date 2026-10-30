@@ -83,6 +83,7 @@ export default [
 <h2>Why is it free? What is the catch?</h2>
 <p>There is no catch, and your data is not the product.</p>
 <ul>
+  <li><strong>It stays free, forever.</strong> There will be no paid version, no locked features, no ads and no tracking. And because the code is open source under the MIT licence, the app you have today can always be used, copied and kept by anyone, even if we stopped working on it. Nobody can take it away or start charging you for it.</li>
   <li><strong>It costs very little to keep going.</strong> The app runs on your computer, so there are no servers and no cloud bills for us to pay.</li>
   <li><strong>How we earn.</strong> Free GST Billing is made by DiceCodes, a small software company in India. We earn from paid work for businesses that want it (custom features, setup and moving data in, support plans) and from people who choose to support the project. See <a href="support.html">Support &amp; About</a>.</li>
   <li><strong>Tracking you would gain us nothing.</strong> We do not sell ads or data, so there is nothing to collect. Collecting your data would also break the one promise the app is built on.</li>
