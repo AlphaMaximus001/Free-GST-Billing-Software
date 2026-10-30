@@ -224,10 +224,9 @@ export default function RecurringInvoices() {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div>
-            <h1 className="page-title">Recurring Invoices</h1>
+            <h1 className="page-title">Recurring Invoices <HelpButton title="Recurring invoices — how to use" doc="recurring" size={16} /></h1>
             <p className="page-subtitle">Auto-generate invoices for retainer clients</p>
           </div>
-          <HelpButton title="Recurring invoices — how to use" doc="recurring" />
         </div>
         <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> New Template</button>
       </div>

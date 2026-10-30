@@ -132,10 +132,9 @@ export default function CashBook({ onOpenView }) {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div>
-            <h1 className="page-title">Cash book</h1>
+            <h1 className="page-title">Cash book <HelpButton title="Cash book" doc="cash-book" size={16} /></h1>
             <p className="page-subtitle">Cash in and out, with the cash in hand</p>
           </div>
-          <HelpButton title="Cash book" doc="cash-book" />
         </div>
       </div>
 

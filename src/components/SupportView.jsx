@@ -14,7 +14,7 @@ import WhatsNew from './WhatsNew';
 import SupportersList from './SupportersList';
 import ProblemLog from './ProblemLog';
 import HelpButton from './HelpButton';
-import SafePrivateNote from './SafePrivateNote';
+import { SafePrivateSection } from './SafePrivateNote';
 
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
 
@@ -23,7 +23,8 @@ const UPI_NAME = 'DiceCodes';
 const REPO = 'https://github.com/IamRamgarhia/Free-GST-Billing-Software';
 const EMAIL = 'contact@dicecodes.com';
 const SITE = 'https://dicecodes.com';
-const AMOUNTS = [0, 101, 251, 501];
+// v1.10.83 - ₹200 is the smallest suggested amount; "Any amount" (0) comes last.
+const AMOUNTS = [200, 500, 1000, 0];
 
 const SERVICES = [
   { icon: Code, title: 'Custom software & web apps', text: 'Websites, web apps and business tools built for how you work.' },
@@ -41,7 +42,7 @@ const upiLink = (amount, note) => `upi://pay?pa=${encodeURIComponent(SUPPORT_UPI
   + `&tn=${encodeURIComponent(note)}${amount ? `&am=${amount}.00` : ''}`;
 
 export default function SupportView() {
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState(AMOUNTS[0]);
   const [qr, setQr] = useState('');
   const [copied, setCopied] = useState(false);
   const [businessName, setBusinessName] = useState('');
@@ -95,9 +96,10 @@ export default function SupportView() {
             and your invoices never leave this computer. If it saves you time every month, you can help keep the
             fixes and new features coming.
           </p>
-          <SafePrivateNote style={{ marginTop: '0.85rem', maxWidth: '70ch' }} />
         </div>
       </div>
+
+      <SafePrivateSection style={{ marginBottom: '1.25rem' }} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
         <div className="glass-panel" style={card}>

@@ -1533,6 +1533,35 @@ app.post('/api/control-panel/launch-script', async (req, res) => {
   res.json(result);
 });
 
+// v1.10.83 - Restart from the Control Panel ("if something is not working").
+// A new copy is started with --after-pid and waits for this one to exit, so
+// it gets the same port back. On Windows it is started through WMI, so it is
+// not inside this process's job and survives this process exiting.
+app.post('/api/control-panel/restart', (req, res) => {
+  const serverJs = path.join(__dirname, 'server.js');
+  try {
+    if (isWindows) {
+      const q = (v) => `'${String(v).replace(/'/g, "''")}'`;
+      const cmd = `"${process.execPath}" "${serverJs}" --after-pid ${process.pid}`;
+      const ps = `$si = New-CimInstance -ClassName Win32_ProcessStartup -ClientOnly -Property @{ ShowWindow = [uint16]0 }; `
+        + `$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = ${q(cmd)}; CurrentDirectory = ${q(__dirname)}; ProcessStartupInformation = $si }; `
+        + `exit $r.ReturnValue`;
+      const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps], { windowsHide: true, stdio: 'ignore' });
+      child.on('error', e => { if (!res.headersSent) res.json({ ok: false, error: e.message }); });
+      child.on('exit', code => {
+        if (res.headersSent) return;
+        if (code !== 0) { res.json({ ok: false, error: `Could not start a new copy (code ${code}). Close the app and open it again from its icon.` }); return; }
+        res.json({ ok: true });
+        setTimeout(() => process.exit(0), 400);
+      });
+    } else {
+      spawn(process.execPath, [serverJs, '--after-pid', String(process.pid)], { cwd: __dirname, detached: true, stdio: 'ignore' }).unref();
+      res.json({ ok: true });
+      setTimeout(() => process.exit(0), 400);
+    }
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
 // v1.10.83 - Remove the app, with the user choosing what goes. The program
 // and its icons always go; data, saved PDFs and the backups folder only when
 // ticked. The script runs from a temp copy, waits for this server to exit
@@ -2426,6 +2455,15 @@ app.post('/api/recurring/:id/generate', (req, res) => {
   }
 });
 
+// v1.10.83 - started by Control Panel -> Restart: wait (up to 15 s) for the
+// old copy to exit so this one gets its port.
+const afterPid = Number(process.argv[process.argv.indexOf('--after-pid') + 1]) || 0;
+if (process.argv.includes('--after-pid') && afterPid) {
+  for (let i = 0; i < 60; i++) {
+    try { process.kill(afterPid, 0); } catch { break; }
+    await new Promise(r => setTimeout(r, 250));
+  }
+}
 startServer(STARTING_PORT);
 // Fire once after a short delay so the listener is up first; then once a day
 // for users whose server stays up >24h.

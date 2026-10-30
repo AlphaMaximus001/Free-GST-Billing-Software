@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Download, RefreshCw, Package, FolderOpen, HardDrive, StopCircle, Upload, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
+import { Download, RefreshCw, Package, FolderOpen, HardDrive, StopCircle, Upload, AlertCircle, CheckCircle, Trash2, RotateCcw } from 'lucide-react';
 import PageHeader from './PageHeader';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
+import { docsLink } from '../utils';
 
 // v1.10.44 — In-app Control Panel.
 //
@@ -73,6 +74,26 @@ export default function ControlPanel() {
     }
   };
 
+  // v1.10.83 - restart the server, then reload this page once it answers again.
+  const restartApp = async () => {
+    setBusy('restart');
+    setLastResult(null);
+    try {
+      const r = await fetch('/api/control-panel/restart', { method: 'POST' });
+      const data = await r.json();
+      if (!data.ok) { setLastResult({ action: 'restart', ...data }); toast(`Restart failed — ${data.error}`, 'error'); setBusy(null); return; }
+      await new Promise(res => setTimeout(res, 1500));
+      for (let i = 0; i < 40; i++) {
+        try { if ((await fetch('/api/profile', { cache: 'no-store' })).ok) { window.location.reload(); return; } } catch { /* still starting */ }
+        await new Promise(res => setTimeout(res, 750));
+      }
+      setLastResult({ action: 'restart', ok: false, error: 'The app did not come back within 30 seconds. Open it again from its icon or launcher.' });
+    } catch (e) {
+      setLastResult({ action: 'restart', ok: false, error: e.message });
+    }
+    setBusy(null);
+  };
+
   const removeApp = async () => {
     const { data, pdfs, backups } = removeOpts;
     if (data && !window.confirm(backups
@@ -124,7 +145,7 @@ export default function ControlPanel() {
 
   const prettyAction = (a) => ({
     backup: 'Backup', update: 'Update', restore: 'Restore', move: 'Move export',
-    stop: 'Stop server', 'open-data-folder': 'Open data folder',
+    stop: 'Stop server', restart: 'Restart', 'open-data-folder': 'Open data folder',
     'open-backups-folder': 'Open backups folder',
   })[a] || a;
 
@@ -145,11 +166,10 @@ export default function ControlPanel() {
     <div className="dashboard-container">
       <PageHeader
         icon={<HardDrive size={22} />}
-        title="Control Panel"
+        title={<>Control Panel <HelpButton title="Control Panel — how to use" doc="control-panel" size={16} /></>}
         subtitle="Manage the app — update, backup, restore, move to another PC — without touching batch files."
         meta={status?.launcherType ? `${status.launcherType.toUpperCase()} launcher` : null}
       >
-        <HelpButton title="Control Panel — how to use" doc="control-panel" />
       </PageHeader>
 
       {scriptsUnavailable && (
@@ -225,6 +245,14 @@ export default function ControlPanel() {
           onClick={() => runAction('open-backups-folder')}
         />
         <ActionCard
+          icon={<RotateCcw size={22} />}
+          title="Restart the App" doc="control-panel#restart"
+          body="Something not working or stuck? Restarts the app in a few seconds and reloads this page. Save an open invoice first."
+          buttonLabel={busy === 'restart' ? 'Restarting…' : 'Restart'}
+          disabled={!!busy}
+          onClick={restartApp}
+        />
+        <ActionCard
           icon={<StopCircle size={22} />}
           title="Stop Server" doc="control-panel#stop"
           body="Shuts down the local Node server. The app will stop responding until you re-open it from the launcher / shortcut."
@@ -237,9 +265,13 @@ export default function ControlPanel() {
           icon={<Trash2 size={22} />}
           title="Remove the App" doc="control-panel#remove"
           body="Uninstalls the app and its icons from this computer. You choose whether your data, PDFs and backups go too."
-          buttonLabel={status && !status.canRemove ? 'Not available here' : 'Remove…'}
-          disabled={!!busy || !status?.canRemove}
-          onClick={() => { setRemoveOpen(true); setTimeout(() => document.getElementById('remove-app')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}
+          buttonLabel={status && !status.canRemove ? 'How to remove it' : 'Remove…'}
+          disabled={!!busy || !status}
+          onClick={() => {
+            // Not an installed copy (source code, or an old layout): the guide's steps instead.
+            if (!status.canRemove) { window.open(docsLink(status.platform === 'darwin' ? 'install-mac#uninstall-mac' : 'install#uninstall'), '_blank', 'noopener'); return; }
+            setRemoveOpen(true); setTimeout(() => document.getElementById('remove-app')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+          }}
           variant="danger"
         />
       </div>

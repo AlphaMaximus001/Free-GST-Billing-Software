@@ -799,7 +799,7 @@ export default function SettingsView({ onSaved }) {
             boxShadow: '0 6px 18px rgba(var(--primary-rgb), 0.35)',
           }}>⚙</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 className="page-title" style={{ margin: 0 }}>Settings</h1>
+            <h1 className="page-title" style={{ margin: 0 }}>Settings <HelpButton title="Settings" doc={SETTINGS_TAB_DOCS[activeSection] || 'settings'} size={16} /></h1>
             <p className="page-subtitle" style={{ margin: '0.15rem 0 0' }}>
               Business profile, branding, integrations & data
               <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.5rem', borderRadius: 999, background: 'var(--bg-secondary)', border: '1px solid var(--border)', marginLeft: '0.55rem', fontWeight: 600 }}>
@@ -807,7 +807,6 @@ export default function SettingsView({ onSaved }) {
               </span>
             </p>
           </div>
-          <HelpButton title="Settings" doc={SETTINGS_TAB_DOCS[activeSection] || 'settings'} />
         </div>
       </div>
 

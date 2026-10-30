@@ -1378,10 +1378,9 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       <PageHeader
         compact
         icon="📊"
-        title="Dashboard"
+        title={<>Dashboard <HelpButton title="Dashboard — how to use" doc="dashboard" size={16} /></>}
         subtitle="Overview of your invoices"
         meta={`${bills.length} invoice${bills.length === 1 ? '' : 's'}`}>
-        <HelpButton title="Dashboard — how to use" doc="dashboard" />
         <LockButton />
         <BulkCsvImport kind="sales" onDone={loadBills} />
         {einvoiceOn && (

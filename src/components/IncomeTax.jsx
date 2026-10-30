@@ -222,10 +222,9 @@ export default function IncomeTax() {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div>
-            <h1 className="page-title">Income Tax Helper</h1>
+            <h1 className="page-title">Income Tax Helper <HelpButton title="Income tax — how to use" doc="income-tax" size={16} /></h1>
             <p className="page-subtitle">FY {CURRENT_FY} · AY {CURRENT_AY} — Old vs New Regime, bank-statement import, ITR summary</p>
           </div>
-          <HelpButton title="Income tax — how to use" doc="income-tax" />
         </div>
       </div>
 

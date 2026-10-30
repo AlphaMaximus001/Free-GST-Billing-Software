@@ -678,8 +678,9 @@ export default [
   <tr><td><a href="#move">Move to Another PC</a></td><td>${ui('Export for Move')}</td><td>Saves your data and settings as one ZIP on your Desktop. See <a href="backup.html#move-pc">Moving to a new computer</a>.</td></tr>
   <tr><td>Open Data Folder</td><td>${ui('Open')}</td><td>Opens the folder with your bills, clients, products and settings.</td></tr>
   <tr><td>Open Backups Folder</td><td>${ui('Open')}</td><td>Opens <code>Documents\\FreeGSTBill Backups</code>.</td></tr>
+  <tr><td><a href="#restart">Restart the App</a></td><td>${ui('Restart')}</td><td>Restarts the app when something is not working, then reloads the page.</td></tr>
   <tr><td><a href="#stop">Stop Server</a></td><td>${ui('Stop Server')}</td><td>Stops the app. Open it again from the launcher or shortcut.</td></tr>
-  <tr><td><a href="#remove">Remove the App</a></td><td>${ui('Remove…')}</td><td>Uninstalls the app. You tick whether your data, PDFs and backups are deleted too.</td></tr>
+  <tr><td><a href="#remove">Remove the App</a></td><td>${ui('Remove…')}</td><td>Uninstalls the app. You tick whether your data, PDFs and backups are deleted too. Where it cannot remove itself, the button reads ${ui('How to remove it')} and opens the steps.</td></tr>
 </table></div>
 <p>After each action a panel shows whether it worked, with the details underneath if something went wrong. See <a href="#result">The result panel</a>. Each button is explained step by step below.</p>
 <figure><img src="assets/img/app-control-panel.png" alt="The Control Panel." loading="lazy"><figcaption>The Control Panel.</figcaption></figure>
@@ -751,6 +752,18 @@ export default [
 <p><b>Something wrong?</b> If it says "No data folder to export", or the disk is full, see <a href="troubleshooting.html#disk-full">the disk is full</a>; for the restore step see <a href="troubleshooting.html#restore-failed">a backup or restore failed</a>.</p>
 </section>
 
+<section id="restart">
+<h3>Restart the App</h3>
+<p><b>What it does.</b> Turns the app off and on again in a few seconds, then reloads the page by itself.</p>
+<p><b>When to use it.</b> When something is not working: a page will not load, a button does nothing, or after an update or restore.</p>
+<ol>
+  <li>Save any bill you are typing. Then click ${ui('Restart')}. The button shows <b>Restarting...</b>.</li>
+  <li>After a few seconds the page reloads with the app running again, on the same address.</li>
+</ol>
+<p><b>Is it safe?</b> Yes. Everything is saved as you work. A bill still being typed and not saved is not kept.</p>
+<p><b>Something wrong?</b> If it says the app did not come back within 30 seconds, open it again from its Desktop icon or launcher. See <a href="troubleshooting.html#cannot-connect">Failed to fetch, App Not Running</a>.</p>
+</section>
+
 <section id="stop">
 <h3>Stop Server</h3>
 <p><b>What it does.</b> Turns the app off. The page stops answering until you open the app again.</p>
@@ -780,7 +793,7 @@ export default [
   <li>Click ${ui('Remove the app')}. If your data is ticked, it asks once more. The app closes and the page says it is being removed. Close the window.</li>
 </ol>
 <p><b>Is it safe?</b> If you delete your data but keep the backups, a last copy, <code>before-removal-<i>date</i>.zip</code> (Mac and Linux: <code>.tar.gz</code>), is saved in <code>Documents\\FreeGSTBill Backups</code> first. If that copy cannot be made, your data is kept. Whatever you keep stays in the app folder; install the app into the same folder again and it is all there. Other files you put in the app folder yourself are not touched, and neither is a second backup folder you chose in Settings.</p>
-<p><b>Something wrong?</b> <b>Not available here</b> means the app is running from source code or an old ZIP; see <a href="install.html#uninstall">Removing the app</a> for the other ways. On Windows, if a file is in use, a message names the folder to delete by hand after a restart.</p>
+<p><b>Something wrong?</b> If the button reads ${ui('How to remove it')}, the app is running from source code or an old ZIP and cannot remove itself; the button opens <a href="install.html#uninstall">Removing the app</a> with the other ways. On Windows, if a file is in use, a message names the folder to delete by hand after a restart.</p>
 </section>
 
 <section id="result">

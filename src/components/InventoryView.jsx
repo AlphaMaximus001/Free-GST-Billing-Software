@@ -193,10 +193,9 @@ export default function InventoryView() {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div>
-            <h1 className="page-title">Products</h1>
+            <h1 className="page-title">Products <HelpButton title="Products — how to use" doc="products" size={16} /></h1>
             <p className="page-subtitle">Manage your products and services catalog</p>
           </div>
-          <HelpButton title="Products — how to use" doc="products" />
         </div>
         {/* Wraps on a phone: with Make there are four buttons (v1.10.83, #115). */}
         <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>

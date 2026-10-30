@@ -169,6 +169,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once the rest arrives. You can also record the TDS on its own.
 
 ### Changed
+- **Control Panel → Restart the App.** When something is not working, one
+  click restarts the app on the same address and reloads the page.
+- **Remove the App always leads somewhere.** Where the app cannot remove
+  itself (run from source code or an old ZIP), the button reads *How to
+  remove it* and opens the steps, instead of a greyed-out *Not available
+  here*.
+- **The help "?" sits next to each page title**, instead of floating in
+  the middle of the header.
+- **Safe and private is its own section on Support & About**, with every
+  point: data on this computer, no account, offline, no tracking, not open
+  to other computers, open source, the install, backups, PIN lock, problem
+  reports, security fixes and your part. Each opens its part of the guide.
+- **Support amounts are ₹200, ₹500, ₹1,000 or any amount.**
 - **The app's status is a dot on *Control Panel*.** The *App Ready* box
   under the menu is gone: a green dot on the Control Panel button means the
   app is running, red means it is not. Control Panel holds what the

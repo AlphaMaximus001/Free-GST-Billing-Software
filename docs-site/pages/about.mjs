@@ -31,7 +31,7 @@ export default [
 <section id="about">
 <h2>Free, and it stays free</h2>
 <p>Free GST Billing is built and maintained by <a href="${SITE.publisher.url}">DiceCodes</a> in India. No ads, no account, no locked features, and your invoices never leave your computer. The full source code is on <a href="${SITE.repo}">GitHub</a> under the MIT licence.</p>
-<p>The <b>Safe and private</b> box in this card links to <a href="security.html">Is it safe? Security and privacy</a>: where your data is, every address the app connects to, and how to check it yourself.</p>
+<p>Below it, <b>Safe and private</b> lists what happens to your data: it stays on this computer, no account, works offline, no tracking, other computers cannot open it, open source, a safe install, daily backups, the PIN lock, problem reports, security fixes, and your part. Each point opens its part of <a href="security.html">Is it safe? Security and privacy</a>.</p>
 <p>If it saves you time every month, you can help keep the fixes and new features coming.</p>
 </section>
 
@@ -44,7 +44,7 @@ export default [
     <p class="upi-label">UPI ID</p>
     <p class="upi-id"><code>${UPI_ID}</code></p>
     <p class="upi-amounts">On your phone, tap an amount to open your UPI app:
-      <a href="${upi(101)}">₹101</a> <a href="${upi(251)}">₹251</a> <a href="${upi(501)}">₹501</a> <a href="${upi(0)}">Any amount</a></p>
+      <a href="${upi(200)}">₹200</a> <a href="${upi(500)}">₹500</a> <a href="${upi(1000)}">₹1,000</a> <a href="${upi(0)}">Any amount</a></p>
   </div>
 </div>
 <p>The payment note says "Free GST Billing support". Paying from the app's Support &amp; About page adds your business name to it, so DiceCodes can thank you.</p>
@@ -53,7 +53,7 @@ export default [
 <p>Giving money is completely optional. Nothing in the app is locked, and nothing is ever printed on your invoices, whatever you choose. The QR code is drawn inside the app, so the card works even without internet.</p>
 <div class="table-wrap"><table>
   <tr><th>On the card</th><th>What it does</th></tr>
-  <tr><td>${ui('Any amount')} ${ui('₹101')} ${ui('₹251')} ${ui('₹501')}</td><td>Picks the amount the QR code asks for. <b>Any amount</b> leaves it blank so you type it in your UPI app.</td></tr>
+  <tr><td>${ui('₹200')} ${ui('₹500')} ${ui('₹1000')} ${ui('Any amount')}</td><td>Picks the amount the QR code asks for. <b>Any amount</b> leaves it blank so you type it in your UPI app.</td></tr>
   <tr><td>The QR code</td><td>Scan it with GPay, PhonePe, Paytm, BHIM or your bank's app. The payee is <b>DiceCodes</b>.</td></tr>
   <tr><td><b>UPI ID</b> and ${ui('Copy UPI ID')}</td><td>To pay from a phone that cannot scan this screen: copy the ID and paste it in your UPI app as "Pay to UPI ID". It shows <b>Copied</b> for two seconds.</td></tr>
   <tr><td><b>Payment note</b></td><td>The note your UPI app fills in: "Free GST Billing support", plus your business name from Settings.</td></tr>

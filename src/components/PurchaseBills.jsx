@@ -1091,10 +1091,9 @@ export default function PurchaseBills() {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div>
-            <h1 className="page-title">{poEnabled ? 'Purchases' : 'Purchase Bills'}</h1>
+            <h1 className="page-title">{poEnabled ? 'Purchases' : 'Purchase Bills'} <HelpButton title="Purchase Bills — how to use" doc="purchases" size={16} /></h1>
             <p className="page-subtitle">Track supplier invoices for ITC claims in GSTR-3B</p>
           </div>
-          <HelpButton title="Purchase Bills — how to use" doc="purchases" />
         </div>
         {tab === 'orders' ? (
           <div className="flex gap-2">

@@ -308,10 +308,9 @@ export default function ReceiptVoucher() {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div>
-            <h1 className="page-title">Receipts</h1>
+            <h1 className="page-title">Receipts <HelpButton title="Receipts — how to use" doc="receipts" size={16} /></h1>
             <p className="page-subtitle">Generate payment receipts for clients</p>
           </div>
-          <HelpButton title="Receipts — how to use" doc="receipts" />
         </div>
         <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> New Receipt</button>
       </div>

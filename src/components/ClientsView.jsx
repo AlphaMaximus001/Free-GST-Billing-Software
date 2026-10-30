@@ -705,10 +705,9 @@ export default function ClientsView({ onEdit, onDuplicate, onNew }) {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div>
-            <h1 className="page-title">Clients</h1>
+            <h1 className="page-title">Clients <HelpButton title="Clients — how to use" doc="clients" size={16} /></h1>
             <p className="page-subtitle">Client-wise invoice ledger and outstanding</p>
           </div>
-          <HelpButton title="Clients — how to use" doc="clients" />
         </div>
         <div className="flex gap-2">
           <button className="btn btn-secondary" onClick={() => setShowImport(true)}>

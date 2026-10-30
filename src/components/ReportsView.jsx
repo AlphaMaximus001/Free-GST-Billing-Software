@@ -229,10 +229,9 @@ export default function ReportsView() {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div>
-            <h1 className="page-title">Reports</h1>
+            <h1 className="page-title">Reports <HelpButton title="Reports — how to use" doc="reports" size={16} /></h1>
             <p className="page-subtitle">Financial reports and receivables analysis</p>
           </div>
-          <HelpButton title="Reports — how to use" doc="reports" />
         </div>
       </div>
 

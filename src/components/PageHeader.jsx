@@ -34,7 +34,9 @@ export default function PageHeader({ icon, title, subtitle, meta, children, comp
       borderRadius: 12,
       marginBottom: '1.25rem',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+      {/* v1.10.83 - flex: 1 so the help / action buttons sit at the right edge;
+          the row was only as wide as its text, leaving them mid-header. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: 0 }}>
         {icon !== undefined && (
           <div style={{
             width: 44, height: 44,

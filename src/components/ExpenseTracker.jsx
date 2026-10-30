@@ -267,10 +267,9 @@ export default function ExpenseTracker() {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div>
-            <h1 className="page-title">Expenses</h1>
+            <h1 className="page-title">Expenses <HelpButton title="Expenses — how to use" doc="expenses" size={16} /></h1>
             <p className="page-subtitle">Track business expenses for P&L and ITC claims</p>
           </div>
-          <HelpButton title="Expenses — how to use" doc="expenses" />
         </div>
         <div className="flex gap-2">
           <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> Add Expense</button>
