@@ -720,6 +720,27 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-070 - CSV import made a second client when the name was mistyped
+
+**Version:** every version up to v1.10.82 · fixed in v1.10.83
+**Reported by:** @surajparshad8 (#132, 2026-10-30)
+
+**Symptom** - importing invoices from a CSV with a wrong firm name for an
+existing client, but that client's correct GSTIN, created a new client with
+the wrong name instead of using the saved one.
+
+**Cause** - `salesCsvToBills` (src/utils/bulkCsv.js) looked saved clients up
+by name only. The GSTIN in the row was copied onto the invoice but never used
+to find the client.
+
+**Rule** - a GSTIN identifies a client; a name does not. Look a client up by
+GSTIN first, then by name. A GSTIN match uses the saved client and its saved
+name. Two new rows with one GSTIN are one client.
+
+**Guard** - scripts/csv-test.mjs, "[#132]" (run by `npm run test:unit`).
+
+---
+
 ## ERR-069 - A client abroad, billed in dollars, got a domestic invoice with no LUT
 
 **Version:** every version up to v1.10.82 · fixed in v1.10.83
