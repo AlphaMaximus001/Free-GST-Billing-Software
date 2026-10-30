@@ -182,6 +182,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to other computers, open source, the install, backups, PIN lock, problem
   reports, security fixes and your part. Each opens its part of the guide.
 - **Support amounts are ₹200, ₹500, ₹1,000 or any amount.**
+- **The LUT line on an export invoice is one quiet line.** The Rule 46 words
+  are unchanged (they are required word for word), but the green box and
+  bold type are gone.
 - **Ticked invoices as separate PDFs.** Next to *One merged PDF* (formerly
   *Bulk PDF*), *Separate PDFs (ZIP)* downloads one PDF per invoice, named by
   its invoice number, in one ZIP. The date filters now read *From* and *To*,

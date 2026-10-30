@@ -1051,7 +1051,7 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   const gridNotices = (
     <>
       {exportDecl && (
-        <div data-pdf-page-boundary="" style={{ margin: '2px 0 6px', fontSize: '0.92em', fontWeight: 600 }}>{exportDecl}</div>
+        <div data-pdf-page-boundary="" style={{ margin: '2px 0 6px', fontSize: '0.85em' }}>{exportDecl}</div>
       )}
       {options.reverseCharge && isIndia && showGST && (
         <div data-pdf-page-boundary="" style={{ margin: '2px 0 6px', fontSize: '0.92em' }}>
@@ -1428,9 +1428,11 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
         </div>
       ) : null}
 
-      {/* v1.10.83 - export / SEZ endorsement (Rule 46), worded exactly. */}
+      {/* v1.10.83 - export / SEZ endorsement (Rule 46). The wording is the
+          rule's, word for word; how it looks is not, so it is one quiet line
+          ("do we need to write the LUT thing this loud?"). */}
       {exportDecl && (
-        <div style={{ margin: '0 2rem 0.5rem', padding: '0.5rem 0.75rem', background: 'var(--info-bg)', border: '1px solid var(--info-border)', borderRadius: 4, fontSize: '0.78rem', color: 'var(--info-text)', fontWeight: 600 }}>
+        <div style={{ margin: '0 2rem 0.5rem', fontSize: '0.68rem', lineHeight: 1.45, color: '#475569', fontWeight: 400 }}>
           {exportDecl}
         </div>
       )}
