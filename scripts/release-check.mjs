@@ -97,6 +97,24 @@ const crlf = unixScripts.filter((f) => readFileSync(f, 'latin1').includes('\r'))
 check('every .sh / .command uses LF line endings (ERR-014)', !crlf.length, `CRLF in ${crlf.join(', ')}.`);
 check('READ ME FIRST.txt is plain ASCII', !/[^\x00-\x7F]/.test(read('release-templates/READ ME FIRST.txt')), 'Notepad on some PCs garbles other characters.');
 
+// Errors users reported, each with the cheapest check that would catch it
+// coming back (the 30 Oct 2026 guard audit of docs/KNOWN_ERRORS.md).
+console.log('\nErrors users reported stay fixed');
+const hta = read('release-templates/Free GST Billing - WINDOWS.hta');
+check('ERR-002 the launcher says UTF-8 and is plain ASCII', /charset=utf-8/i.test(hta) && !/[^\x00-\x7F]/.test(hta), 'Its text turns into garbage on Indian-locale Windows.');
+check('ERR-017 the launcher spots being run from inside the ZIP', hta.includes("'\\\\appdata\\\\local\\\\temp\\\\'"), 'Run from the ZIP it said "_system missing" instead of "extract first".');
+const csp = (/http-equiv="Content-Security-Policy" content="([^"]*)"/.exec(read('src/index.html')) || [])[1] || '';
+const cspHas = (dir, src) => new RegExp(`${dir}[^;]*\\s${src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|;|$)`).test(csp);
+check('ERR-004 the security policy allows the print frame, workers and blob images', ['frame-src', 'worker-src', 'img-src'].every((d) => cspHas(d, 'blob:')), 'Print, PDF or OCR is blocked by src/index.html.');
+const minNode = Number((/\$MinNodeMajor\s*=\s*(\d+)/.exec(readFileSync(join(tdir, 'ensure-node.ps1'), 'utf8')) || [])[1]);
+check('ERR-060 the scripts and package.json agree on the oldest Node.js', minNode === Number((/(\d+)/.exec(pkg.engines?.node || '') || [])[1]), `ensure-node.ps1 says ${minNode}, package.json engines says ${pkg.engines?.node}.`);
+const psdrive = [...readdirSync(tdir).filter((f) => f.endsWith('.ps1')).map((f) => join(tdir, f)), join(ROOT, 'install.ps1')]
+  .filter((f) => /Get-PSDrive/.test(readFileSync(f, 'utf8')) && !(/AvailableFreeSpace/.test(readFileSync(f, 'utf8')) && /-le 0/.test(readFileSync(f, 'utf8'))));
+check('ERR-067 free-space checks treat "0 MB free" as unknown', !psdrive.length, `${psdrive.join(', ')}: Get-PSDrive alone reported 0 MB free and blocked installs.`);
+const srcFiles = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? srcFiles(join(dir, e.name)) : /\.(jsx?|html)$/.test(e.name) ? [join(dir, e.name)] : []));
+const installPrompt = srcFiles(join(ROOT, 'src')).filter((f) => readFileSync(f, 'utf8').includes('beforeinstallprompt'));
+check('ERR-072 the app does not offer the browser\'s "Install app" icon', !installPrompt.length, `${installPrompt.join(', ')}: that icon cannot start the app ("Needs a Quick Start").`);
+
 console.log('\nLive data the app reads');
 let sup = null; try { sup = parseSupporters(JSON.parse(read('supporters.json'))); } catch { /* reported below */ }
 check('supporters.json is valid (the app hides the tracker otherwise)', !!sup, 'Fix supporters.json (use scripts/add-supporter.mjs).');

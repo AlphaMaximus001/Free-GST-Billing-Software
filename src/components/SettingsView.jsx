@@ -1346,7 +1346,7 @@ export default function SettingsView({ onSaved }) {
                           onChange={e => setEditingAccount(a => ({ ...a, purposeCode: e.target.value.toUpperCase().trim() }))}
                           placeholder="e.g. P0802 for software work" />
                         <datalist id="purpose-codes">
-                          {PURPOSE_CODES.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
+                          {PURPOSE_CODES.map(p => <option key={p.code} value={p.code}>{`${p.code} - ${p.label}`}</option>)}
                         </datalist>
                         <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>The RBI code for what you are paid for. Printed with these bank details on invoices to clients abroad, so they can quote it on the transfer. Your bank can confirm it.</small>
                       </div>

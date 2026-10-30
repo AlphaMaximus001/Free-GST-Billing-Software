@@ -47,7 +47,7 @@ npm run release:check    # everything below marked [auto]
 
 ## 4. Test on real systems (the script cannot do these)
 
-- [ ] **Docker, fresh Ubuntu install** of the exact ZIP + the smoke suite (`docker77/run.sh` in the playwright image).
+- [ ] **Docker, fresh Ubuntu install** of the exact ZIP + the smoke suite: `npm run test:fresh-linux` (Playwright image; it unpacks the ZIP, starts the app with its own Linux start script and runs tests/smoke.mjs).
 - [ ] **`npm run test:update-unix`**: the Linux / NAS updater in Alpine and Debian.
 - [ ] **If anything under `release-templates/` changed:** run **Open App** from the extracted ZIP on Windows with a fake old Node.js first on PATH (a `node.cmd` printing `v6.10.1`) and an empty or half-done `node_modules`; it must repair itself and start (ERR-060).
 - [ ] **If `install.ps1`, `install.sh` or `start-windows.ps1` changed:** run the one-line install against the built ZIP, never your real install: `FREEGSTBILL_ZIP=<zip>`, `FREEGSTBILL_DIR=<short temp folder>`, `FREEGSTBILL_TEST=<temp folder>` (icons and backups go there, no questions, no window), `FREEGSTBILL_PORT=47412`. Run it twice (the second run is an update: a marker file in `_system/data` must survive) and once with `-Uninstall` / `--uninstall`. Linux: in `node:20-bookworm-slim` and in plain `debian:bookworm-slim` (no Node: it must fetch it). Mac: the same three runs of `install.sh` on a real Mac, then open the Free GST Billing app from Launchpad.

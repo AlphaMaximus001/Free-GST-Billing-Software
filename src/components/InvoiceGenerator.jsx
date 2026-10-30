@@ -4509,7 +4509,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                       onChange={(e) => setInvoiceOptions(prev => ({ ...prev, purposeCode: e.target.value.toUpperCase().trim() }))}
                       placeholder={accountCode ? `${accountCode} (from your bank account)` : 'e.g. P0802 software, P1006 consulting'} />
                     <datalist id="purpose-codes-inv">
-                      {PURPOSE_CODES.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
+                      {PURPOSE_CODES.map(p => <option key={p.code} value={p.code}>{`${p.code} - ${p.label}`}</option>)}
                     </datalist>
                   </div>
                 );

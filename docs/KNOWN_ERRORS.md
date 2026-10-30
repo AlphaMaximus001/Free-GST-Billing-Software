@@ -102,6 +102,8 @@ MSHTML and the long form is the reliable one there.
 encoding, so keep the nice typography; PowerShell cannot be trusted to,
 so strip to ASCII. Do not "fix" the HTA by stripping its emoji.
 
+**Automated (30 Oct 2026):** `npm run release:check` fails if the launcher loses `charset=utf-8` or gains a non-ASCII character ("ERR-002 ...").
+
 **Guard:** none — HTA is not covered by `assertAsciiOnly()`. Check by
 eye when editing the launcher.
 
@@ -190,6 +192,8 @@ only in Chrome hides this entire class of bug.
 > `blob:` explicitly. Today: `worker-src` (Tesseract), `img-src`,
 > `frame-src` (PDF print). A directive with an explicit value does **not**
 > inherit `default-src`.
+
+**Automated (30 Oct 2026):** `npm run release:check` fails if `frame-src`, `worker-src` or `img-src` in src/index.html loses `blob:` ("ERR-004 ...").
 
 **Guard:** none automated. When adding any `createObjectURL` usage, check
 which CSP directive governs the sink and confirm it lists `blob:`.
@@ -623,6 +627,8 @@ differed from the saved baseline, which is what raised the unsaved-changes bar.
 the form, and reset the dirty baseline afterwards. Clearing a form is not the
 same as creating a record, and the active profile is a single file, not a list.
 
+**Audit, 30 Oct 2026:** the smoke check named below does not exist in tests/smoke.mjs. Writing it is planned for 7 Nov; until then this is checked by hand.
+
 **Guard** - `tests/smoke.mjs` (#66): after Add New Profile the previous company
 is present in Business Profiles and the form is not marked dirty.
 
@@ -672,6 +678,8 @@ checked, so there was no way to tell the two apart.
 **Rule** - when a program reports that a file is missing, it names the folder it
 looked in. A path the user can compare against what is on screen ends the
 argument in one glance; "a file is missing" starts it.
+
+**Automated (30 Oct 2026):** `npm run release:check` fails if the launcher loses its Temp-folder check ("ERR-017 ...").
 
 **Guard** - the launcher now detects a `%LOCALAPPDATA%\Temp\` location and says
 so in its own words ("Windows opened this file straight out of the ZIP"), with
@@ -742,6 +750,8 @@ easier one.
 `app-shortcut.ps1` (`New-AppShortcut`, which runs start-windows.ps1
 -AppWindow -Hidden; install.ps1 has a copy), Mac `Free GST Billing.app`, Linux
 `free-gst-billing.desktop`. Never offer the browser's install prompt again.
+
+**Automated (30 Oct 2026):** `npm run release:check` fails if `beforeinstallprompt` appears anywhere in src/ ("ERR-072 ...").
 
 **Guard** - start-windows.ps1 `Move-IconsToApp` turns old launcher icons into
 app icons; the "Needs a Quick Start" screen tells anyone with a browser icon
@@ -869,6 +879,8 @@ read `(Get-PSDrive C).Free`. On some PCs that property is empty; `[int]($null /
 **Rule** - free space comes from `[IO.DriveInfo]::new(root).AvailableFreeSpace`
 first, Get-PSDrive second; an empty or zero reading means "cannot tell" and
 never blocks (a truly full disk still fails later with a clear npm/copy error).
+
+**Automated (30 Oct 2026):** `npm run release:check` fails if a .ps1 uses `Get-PSDrive` without the `AvailableFreeSpace` / `-le 0` handling ("ERR-067 ...").
 
 **Guard** - both functions treat `$null` / 0 as unknown. Workaround for older
 versions: install to another drive (`$env:FREEGSTBILL_DIR = 'D:\Free GST
@@ -1049,6 +1061,8 @@ never checked npm's exit code.
 **Rule** - never trust a runtime by its name: check its version against
 `engines` before using it, and treat a failed install step as a failed update.
 
+**Automated (30 Oct 2026):** `npm run release:check` fails if `$MinNodeMajor` and package.json `engines.node` disagree ("ERR-060 ...").
+
 **Guard** - `_system-scripts/ensure-node.ps1` (shared by install, update and
 start) accepts Node.js 18+ only, else fetches the portable Node.js into
 `_system\node`; start reinstalls the packages when it had to. Verified by hand
@@ -1198,6 +1212,8 @@ bare code (10) instead of the portal's "10-Bihar".
 
 **Rule** - what the screen shows for a return table is grouped exactly as the
 portal's table is. Places of supply are written "NN-State" (placeOfSupplyLabel).
+
+**Audit, 30 Oct 2026:** the "Table 7 ... 10-Bihar" smoke check named below does not exist; only the unit test runs. The smoke check is planned for 7 Nov.
 
 **Guard** - unit test "Place of supply written the portal way"; smoke/e2e check
 "GSTR-1 Table 7 shows the inter-state sale under 10-Bihar".
