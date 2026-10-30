@@ -243,6 +243,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wording.
 
 ### Fixed
+- **CSV invoice import made a duplicate client when the name was mistyped**
+  even though the GSTIN matched a saved client (#132, thanks @surajparshad8).
+  A row with a saved GSTIN now goes to that client under its saved name, and
+  two new rows with one GSTIN make one client.
 - **Billing a client abroad in dollars, with the client saved as in India,
   gave a domestic invoice with no LUT.** The client form starts on India, so
   clients abroad were often saved that way. The invoice now says *Billing in

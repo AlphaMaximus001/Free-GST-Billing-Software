@@ -121,6 +121,21 @@ console.log('\n[Review] Day-first and month-first dates');
   eq(`${p.purchases.length}/${p.warnings.length}`, '1/1', 'Purchases get the same warning');
 }
 
+console.log('\n[#132] A GSTIN already saved finds that client, whatever the name');
+{
+  const profile = { country: 'India', state: 'Punjab' };
+  const head = 'Invoice Number,Invoice Date,Client Name,Client GSTIN,Item Name,Rate,GST %\n';
+  const clients = [{ id: 'c1', name: 'Sharma Traders', gstin: '03AAACS1234A1Z5', state: 'Punjab', phone: '98100' }];
+  const r = salesCsvToBills(head + 'A1,2026-10-01,Sharma Tradres,03aaacs1234a1z5,Pens,100,18\n', { profile, clients });
+  eq(r.newClients.length, 0, 'a mistyped name with a saved GSTIN adds no new client');
+  eq(r.bills[0].clientName, 'Sharma Traders', '...and the invoice goes to the saved client, by its saved name');
+  eq(r.bills[0].data.client.phone, '98100', '...with the saved client details');
+  const two = salesCsvToBills(head + 'B1,2026-10-01,New Co,03BBBCN1234B1Z5,Pens,100,18\nB2,2026-10-02,New Company,03BBBCN1234B1Z5,Ink,50,18\n', { profile });
+  eq(two.newClients.length, 1, 'two new rows with one GSTIN make one new client, not two');
+  eq(two.bills.map((b) => b.clientName).join('|'), 'New Co|New Co', '...and both invoices use its first name');
+  eq(salesCsvToBills(head + 'C1,2026-10-01,Sharma Traders,,Pens,100,18\n', { profile, clients }).newClients.length, 0, 'no GSTIN on the row: still found by name');
+}
+
 console.log('\n────────────────────────────────────────');
 console.log(`Passed: ${passed}   Failed: ${failed}`);
 if (failed) process.exit(1);
