@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   GitHub page also explain how to check it yourself in two minutes (switch the
   internet off: everything works) and why the app is free. The sidebar now
   says **Free forever** under the app's name: no paid version, no locked
-  features, no ads, no tracking.
+  features, no ads, no tracking. While Offline mode is on, Support & About says the
+  supporters figures are the last ones seen; turning it off reads the latest.
 - **Purpose code for payments from abroad.** Each payment account can hold
   an RBI purpose code (for example P0802 software consultancy, P1006
   business consultancy, P1099 other services), picked from a list or typed.

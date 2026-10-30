@@ -10,6 +10,7 @@ import { toast } from './Toast';
 import { getProfile } from '../store';
 import { upiNote } from '../utils/supporters';
 import useSupporters from './useSupporters';
+import { useOfflineMode } from '../utils/offlineMode';
 import WhatsNew from './WhatsNew';
 import SupportersList from './SupportersList';
 import ProblemLog from './ProblemLog';
@@ -48,6 +49,7 @@ export default function SupportView() {
   const [businessName, setBusinessName] = useState('');
   const [withName, setWithName] = useState(true);
   const tracker = useSupporters();
+  const [offline] = useOfflineMode();
   const note = upiNote(withName ? businessName : '');
 
   useEffect(() => { getProfile().then((p) => setBusinessName(p?.businessName || '')).catch(() => {}); }, []);
@@ -164,6 +166,13 @@ export default function SupportView() {
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Every rupee goes into fixes and new features.{tracker.updated ? ` Updated ${new Date(`${tracker.updated}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.` : ''}
               </p>
+              {/* v1.10.83 - Offline mode does not read the list, so say these
+                  are the last numbers seen (reported: "I only see 6"). */}
+              {offline && (
+                <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: '#d97706' }}>
+                  Offline mode is on, so these are the last numbers this app saw. Turn it off with the Wi-Fi button at the top to see the latest.
+                </p>
+              )}
               {tracker.goal && (
                 <div style={{ marginTop: '0.85rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8rem', flexWrap: 'wrap' }}>
