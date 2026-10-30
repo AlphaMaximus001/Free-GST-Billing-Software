@@ -1830,10 +1830,17 @@ try {
         sessionStorage.setItem('gst_currentView', 'new'); sessionStorage.removeItem('gst_invoiceDraft');
       }, q);
       await page.reload({ waitUntil: 'networkidle' });
-      await sleep(3000);
+      await sleep(1500);
       await dismissFirstRun(page);
-      await page.getByRole('button', { name: /^Save$/ }).first().click();
-      await sleep(3500);
+      // Wait for the result, not a fixed time: under the release gate a busy
+      // machine sometimes needed longer than 3.5 s, and the check failed
+      // although both invoices were made (31 Oct 2026).
+      const save79 = page.getByRole('button', { name: /^Save$/ }).first();
+      await save79.waitFor({ state: 'visible', timeout: 30000 });
+      const count79 = async () => (await get79('/api/bills')).filter((x) => x.clientName === 'Smoke Test Client' && x.invoiceType === 'tax-invoice').length;
+      const had79 = await count79();
+      await save79.click();
+      for (let i = 0; i < 60 && (await count79()) === had79; i++) await sleep(250);
     }
     const after79 = (await get79('/api/bills')).filter((x) => x.clientName === 'Smoke Test Client' && x.invoiceType === 'tax-invoice').map((x) => x.id);
     const made79 = after79.filter((id) => !before79.includes(id));
