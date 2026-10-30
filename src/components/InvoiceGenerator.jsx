@@ -4474,6 +4474,19 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                   </button>
                 </div>
               )}
+              {/* v1.10.83 - GST switched off (Customize → Tax % column) on a tax
+                  invoice to a client abroad or in an SEZ: no place of supply, no
+                  LUT box and no LUT line, with nothing saying why. */}
+              {!showGST && INVOICE_TYPES[invoiceType]?.showGST && profile?.gstin && (profile?.country || 'India') === 'India'
+                && (isForeignClient(client, profile) || client?.isSEZ) && !readOnlyDoc && (
+                <div className="form-group full-width notice notice-warn" style={{ padding: '0.6rem 0.85rem', borderRadius: 6, display: 'block', fontSize: '0.82rem', lineHeight: 1.5 }}>
+                  <strong>Export under LUT? GST is turned off on this invoice.</strong> Without it (Customize → Tax % column), there is no LUT box and the LUT line is not printed. A GST-registered business needs it on an export or SEZ invoice; under the LUT the tax is still 0.{' '}
+                  <button type="button" className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', marginTop: 4 }}
+                    onClick={() => setInvoiceOptions(prev => ({ ...prev, showGST: true, showPlaceOfSupply: true }))}>
+                    Turn GST on
+                  </button>
+                </div>
+              )}
               {/* v1.10.83 - the RBI purpose code the client quotes on the wire;
                   blank uses the payment account's (Settings → Payment accounts). */}
               {(isForeignClient(client, profile) || (invoiceOptions.currency || baseCurrency) !== baseCurrency) && baseCurrency === 'INR' && (() => {

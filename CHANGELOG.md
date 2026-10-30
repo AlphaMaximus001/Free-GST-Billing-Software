@@ -233,7 +233,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Setting it makes the invoice an export: "Outside India", the LUT, no IGST.
   A client abroad with an Indian state as Place of supply (picked by hand or
   kept from a copied invoice) gets the same kind of note, with *Make it an
-  export*.
+  export*. So does a tax invoice to a client abroad with GST turned off
+  (Customize → Tax % column, which hides the LUT too), with *Turn GST on*.
 - **The purpose-code suggestion list showed dark on a light screen** when
   Windows was in dark mode. The browser's own pop-ups now follow the app's
   theme.

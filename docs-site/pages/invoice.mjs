@@ -191,10 +191,11 @@ export default [
   <li><b>Have a LUT?</b> appears when no LUT is saved. It explains why to file one (no tax to pay and wait for), and links to <a href="gst-basics.html#lut">how to file it</a> (form GST RFD-11, free, once a financial year). You can still tick the box if you have a LUT and have not added it yet; the declaration then prints without the ARN.</li>
   <li><b>⚠ Your saved LUT is for FY …</b> appears when the saved LUT is for another year than the invoice date. File the new year's LUT and update Settings.</li>
 </ul>
-<p><b>No LUT box?</b> Then the app does not see this invoice as an export. Two notes say why, each with a button to fix it:</p>
+<p><b>No LUT box?</b> Then the app does not see this invoice as an export. A note says why, with a button to fix it:</p>
 <ul>
   <li><b>Export under LUT? First set the client's country.</b> You are billing in a foreign currency, but the client is saved in India (the client form starts on India). Click ${ui("Set the client's country")} and choose their country.</li>
   <li><b>Export under LUT? Place of supply is …</b> The client is abroad, but Place of supply is an Indian state. Click ${ui('Make it an export')} to set it back to <b>Outside India (export)</b>.</li>
+  <li><b>Export under LUT? GST is turned off on this invoice.</b> The <b>Tax % column</b> tick in ${ui('Customize')} switches GST off for the whole invoice, which hides the LUT too. Click ${ui('Turn GST on')}; under the LUT the tax is still 0.</li>
 </ul>
 <p>The tick also decides the GST returns and the e-invoice: SEZ invoices go in GSTR-1 as <b>SEZ without payment</b> (SEWOP) or <b>with payment</b> (SEWP), and the e-invoice file uses EXPWOP / SEZWOP or EXPWP / SEZWP. Exports abroad still go in Table 6A on the portal by hand, see <a href="gst-returns.html#top-bar">the warnings above the tabs</a>. The E-Way Bill file uses 0% rates under a LUT. More on export invoices: <a href="gst-basics.html#export-invoice">What to print on an export or SEZ invoice</a>.</p>
 </section>
