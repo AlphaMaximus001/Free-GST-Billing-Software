@@ -720,6 +720,35 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-072 - The app's Desktop icon showed "Needs a Quick Start" after a restart
+
+**Version:** v1.10.2 to v1.10.82 · fixed in v1.10.83
+**Reported by:** the maintainer (2026-10-30): the icon "should have all things
+like running server" when opened next time.
+
+**Symptom** - after the computer was restarted, a Free GST Billing Software
+icon on the Desktop opened a window saying *Free GST Billing Software Needs a
+Quick Start*, and nothing started.
+
+**Cause** - that icon was not the installer's. It was made by Chrome or Edge
+from the app's own "Install as Desktop App" banner (src/App.jsx,
+`beforeinstallprompt`). A browser app icon only opens a browser window on the
+saved address; it cannot start the app's server, so the page came from the
+offline cache with no server behind it. The ZIP install's own icon opened the
+launcher, which then needed *Open App*, so the browser icon looked like the
+easier one.
+
+**Rule** - the only icon the app offers is the installer's: Windows
+`app-shortcut.ps1` (`New-AppShortcut`, which runs start-windows.ps1
+-AppWindow -Hidden; install.ps1 has a copy), Mac `Free GST Billing.app`, Linux
+`free-gst-billing.desktop`. Never offer the browser's install prompt again.
+
+**Guard** - start-windows.ps1 `Move-IconsToApp` turns old launcher icons into
+app icons; the "Needs a Quick Start" screen tells anyone with a browser icon
+to use the Free GST Billing icon instead.
+
+---
+
 ## ERR-071 - The GST portal refused the GSTR-1 JSON ("Download the latest version of Offline tool")
 
 **Version:** every version up to v1.10.82 · fixed in v1.10.83

@@ -184,6 +184,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once the rest arrives. You can also record the TDS on its own.
 
 ### Changed
+- **One icon that opens the app.** On Windows, the Free GST Billing icon (the
+  blue B) on the Desktop and in the Start menu now starts the app if it is not
+  running and opens it in its own window: one click, nothing else. Before, an
+  install from the ZIP opened the launcher and needed a second click on
+  *Open App*. Icons from an earlier install change over by themselves the
+  first time the app starts after this update. The launcher stays in the app
+  folder for installing, updating and repairs; update, backup, restart and
+  stop are in the Control Panel.
+- **No more "Install as Desktop App" banner.** The icon it made (through
+  Chrome or Edge) opened only a browser window and could not start the app,
+  so after a restart it showed *Needs a Quick Start*. That screen now says so
+  and points to the Free GST Billing icon. Remove the old one: right-click
+  it, then *Uninstall*.
+- **"Can I put it online?" answered.** The guide's *Is it safe?* page and the
+  GitHub page now say why the app should not be hosted on Railway, Render or
+  a server yet (no login on its server; Supabase would not be used). The old
+  online-deployment guide, which said it worked with no code changes, is
+  replaced by that answer.
 - **Control Panel → Restart the App.** When something is not working, one
   click restarts the app on the same address and reloads the page.
 - **Remove the App always leads somewhere.** Where the app cannot remove

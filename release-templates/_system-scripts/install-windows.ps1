@@ -2,9 +2,9 @@
 #
 # Invoked by the HTA launcher on first run. Idempotent - safe to
 # re-run any time. Installs Node.js if missing, runs npm install
-# inside _system/, and creates a Desktop shortcut pointing at the
-# HTA launcher so the user never has to open the extract folder
-# again.
+# inside _system/, and creates Desktop and Start Menu icons that open
+# the app (see app-shortcut.ps1) so the user never has to open the
+# extract folder again.
 
 $ErrorActionPreference = 'Continue'
 $Host.UI.RawUI.WindowTitle = 'Free GST Billing - Installer'
@@ -12,7 +12,6 @@ $Host.UI.RawUI.WindowTitle = 'Free GST Billing - Installer'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $SystemDir = $ScriptDir
 $RootDir   = Split-Path -Parent $ScriptDir
-$LauncherHTA = Join-Path $RootDir 'Free GST Billing - WINDOWS.hta'
 
 Write-Host ''
 Write-Host '  ============================================================'
@@ -120,42 +119,23 @@ try {
 Pop-Location
 }
 
-# --- Step 3: Desktop shortcut ---
+# --- Steps 3 and 4: Desktop and Start Menu icons ---
+# v1.10.83 - the icons open the app itself (start-windows.ps1 starts the
+# server when it is not running, then opens the app in its own window), the
+# same as the one-line install's. They used to open the launcher, which
+# needed a second click on Open App. The launcher stays in the app folder for
+# installing, updating and repairs; the app's Control Panel does the rest.
+. (Join-Path $SystemDir 'app-shortcut.ps1')
 Write-Host ''
-Write-Host '  Creating Desktop shortcut...'
-try {
-  $desktop = [Environment]::GetFolderPath('Desktop')
-  $shortcutPath = Join-Path $desktop 'Free GST Billing.lnk'
-  $wsh = New-Object -ComObject WScript.Shell
-  $sc = $wsh.CreateShortcut($shortcutPath)
-  # Point the shortcut at mshta.exe with the HTA as its argument.
-  # This way double-clicking the shortcut always opens the launcher
-  # even if the user later associates .hta with something else.
-  $sc.TargetPath = 'mshta.exe'
-  $sc.Arguments = "`"$LauncherHTA`""
-  $sc.WorkingDirectory = $RootDir
-  $iconPath = Join-Path $SystemDir 'app-icon.ico'
-  if (Test-Path $iconPath) { $sc.IconLocation = $iconPath }
-  $sc.Description = 'Free GST Billing Software - open the launcher'
-  $sc.Save()
-  Write-Host "  Desktop shortcut created: $shortcutPath"
-} catch {
-  Write-Host "  WARNING: could not create Desktop shortcut ($($_.Exception.Message)). You can still launch by double-clicking the HTA."
+Write-Host '  Creating the Desktop and Start Menu icons...'
+foreach ($dir in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
+  try {
+    New-AppShortcut (Join-Path $dir 'Free GST Billing.lnk') $SystemDir
+    Write-Host "  Icon created in $dir"
+  } catch {
+    Write-Host "  WARNING: could not create the icon in $dir ($($_.Exception.Message)). You can still open the app from the launcher in the app folder."
+  }
 }
-
-# --- Step 4: Start Menu shortcut (Programs list) ---
-try {
-  $startMenu = Join-Path ([Environment]::GetFolderPath('Programs')) 'Free GST Billing.lnk'
-  $wsh = New-Object -ComObject WScript.Shell
-  $sc = $wsh.CreateShortcut($startMenu)
-  $sc.TargetPath = 'mshta.exe'
-  $sc.Arguments = "`"$LauncherHTA`""
-  $sc.WorkingDirectory = $RootDir
-  $iconPath = Join-Path $SystemDir 'app-icon.ico'
-  if (Test-Path $iconPath) { $sc.IconLocation = $iconPath }
-  $sc.Description = 'Free GST Billing Software'
-  $sc.Save()
-} catch { }
 
 # --- Step 5: Hide _system folder so root looks clean ---
 try {
@@ -194,7 +174,7 @@ Write-Host '  ============================================================'
 Write-Host ''
 Write-Host '  Opening the app in your browser now...'
 Write-Host ''
-Write-Host '  Next time, use the Free GST Billing shortcut on your Desktop.'
+Write-Host '  Next time, click the Free GST Billing icon on your Desktop or in the Start menu.'
 Write-Host ''
 
 # v1.10.69 - finish the job. Leaving a console window saying "now go and
@@ -204,7 +184,7 @@ Write-Host ''
 # the launcher path and for the one-command install alike.
 $starter = Join-Path $SystemDir 'start-windows.ps1'
 if (Test-Path $starter) {
-  & $starter
+  & $starter -AppWindow
 } else {
   Write-Host '  Could not find start-windows.ps1 - open the launcher and click Open App.'
   Read-Host '  Press Enter to close'

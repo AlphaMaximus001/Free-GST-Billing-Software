@@ -100,9 +100,7 @@ function App() {
     return localStorage.getItem('freegstbill_theme') === 'dark';
   });
   const [showWelcome, setShowWelcome] = useState(false);
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [serverDown, setServerDown] = useState(false);
-  const deferredPrompt = useRef(null);
   const retryTimer = useRef(null);
 
   const [serverStatus, setServerStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
@@ -355,28 +353,10 @@ function App() {
     };
   }, []);
 
-  // Capture PWA install prompt. Banner re-appears 14 days after dismissal
-  // (was: dismissed forever — too aggressive, users who closed it during
-  // a busy moment never saw it again).
-  useEffect(() => {
-    const dismissedAt = localStorage.getItem('freegstbill_pwa_dismissed_at');
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      || window.navigator.standalone === true; // iOS Safari
-    if (isStandalone) return;
-    // 14-day cool-down on dismissal
-    if (dismissedAt) {
-      const days = (Date.now() - Number(dismissedAt)) / 86400000;
-      if (days < 14) return;
-    }
-
-    const handler = (e) => {
-      e.preventDefault();
-      deferredPrompt.current = e;
-      setShowInstallBanner(true);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+  // v1.10.83 - the "Install as Desktop App" banner is gone. The browser icon
+  // it made opens only a browser window: it cannot start the app's server, so
+  // after a restart it showed "Needs a Quick Start". The installers' own
+  // Free GST Billing icon starts the server and opens the app.
 
   useEffect(() => {
     sessionStorage.setItem('gst_currentView', currentView);
@@ -483,25 +463,6 @@ function App() {
     clone._isDuplicate = true;
     setEditingBill(clone);
     setCurrentView('new');
-  };
-
-  const handleInstallPWA = async () => {
-    if (!deferredPrompt.current) return;
-    deferredPrompt.current.prompt();
-    const result = await deferredPrompt.current.userChoice;
-    if (result.outcome === 'accepted') {
-      setShowInstallBanner(false);
-    }
-    deferredPrompt.current = null;
-  };
-
-  const dismissInstallBanner = () => {
-    setShowInstallBanner(false);
-    // Timestamp-based dismissal — the 14-day cool-down in the install-prompt
-    // effect uses this to decide whether to re-show. Old boolean key kept for
-    // back-compat with v1.6.0 — readers that find only the legacy key treat
-    // it as "permanently dismissed" (same as today's behaviour for them).
-    localStorage.setItem('freegstbill_pwa_dismissed_at', String(Date.now()));
   };
 
   const handleConvertToInvoice = (bill) => {
@@ -799,9 +760,13 @@ function App() {
           <div className="server-down-steps">
             <p className="server-down-hint">How to start it:</p>
             <ol>
-              <li>Double-click <strong>Free GST Billing</strong> on your Desktop, then click <strong>Open App</strong></li>
+              <li>Double-click the <strong>Free GST Billing</strong> icon on your Desktop (the blue <strong>B</strong>)</li>
               <li>Or search <strong>"Free GST Billing"</strong> in the Start Menu</li>
             </ol>
+            {/* v1.10.83 - an icon made by the browser ("Install as Desktop App",
+                removed in this version) opens this window but cannot start the
+                app. Say so, or people keep clicking it. */}
+            <p className="server-down-hint">Opened this from a Chrome or Edge app icon? That icon cannot start the app. Use the Free GST Billing icon instead; you can remove the other one (right-click it, then Uninstall).</p>
           </div>
           <p className="server-down-safe">All your invoices, clients, and data are safely stored on your computer. They are never deleted or shared.</p>
           <div className="server-down-waiting">
@@ -1011,16 +976,6 @@ function App() {
         </nav>
       </div>
 
-      {showInstallBanner && (
-        <div className="pwa-install-banner">
-          <Download size={18} />
-          <span>
-            <strong>Install as Desktop App</strong> — own icon, no browser, opens instantly. Right-click the icon for quick-jump to New Invoice / GST Returns.
-          </span>
-          <button className="pwa-install-btn" onClick={handleInstallPWA}>Install App</button>
-          <button className="pwa-dismiss-btn" onClick={dismissInstallBanner} title="Remind me later (re-shows in 14 days)"><X size={16} /></button>
-        </div>
-      )}
       <div className="main-content">
         {topActions.length > 0 && <div className="app-topbar">{topActions}</div>}
         {/* v1.10.83 - a screen that throws shows "ran into a problem" here

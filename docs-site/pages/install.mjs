@@ -102,7 +102,7 @@ ${which}
   <li><strong>If Windows warns you</strong>See <a href="#windows-protected">"Windows protected your PC"</a> just below: click ${ui('More info')}, then ${ui('Run anyway')}. If it asks <i>Do you want to run this file?</i>, click ${ui('Run')} or ${ui('Open')}.</li>
   <li><strong>Click Install</strong>A small window opens with one big button. Click ${ui('Install')}. There is nothing to fill in.</li>
   <li><strong>Leave the black window alone</strong>A black window appears and does the work: it may get Node.js (the engine the app runs on, about 30 MB, kept inside the app folder). This takes 1 to 3 minutes. Don't close it; it closes by itself.</li>
-  <li><strong>The app opens in your browser</strong>at <code>http://localhost:47371</code>. A short welcome asks for your business details. See <a href="first-run.html">The first-run setup</a>.</li>
+  <li><strong>The app opens by itself</strong>in its own window, at <code>http://localhost:47371</code>. A <b>Free GST Billing</b> icon is now on your Desktop and in the Start menu. A short welcome asks for your business details. See <a href="first-run.html">The first-run setup</a>.</li>
 </ol>
 <figure class="pair">
   <img src="${img('launcher-install.png')}" alt="The launcher before install, showing one Install button">
@@ -127,11 +127,11 @@ ${which}
 <section id="every-day">
 <h2>Every day after that</h2>
 <ol class="steps">
-  <li><strong>Double-click "Free GST Billing" on your Desktop</strong>The install put this shortcut there (and in the Start menu).</li>
-  <li><strong>Click Open App</strong>The app opens in your browser. You can close the launcher window.</li>
+  <li><strong>Double-click the "Free GST Billing" icon on your Desktop</strong>The install put this icon (the blue <b>B</b>) there and in the Start menu. It starts the app and opens it in its own window. There is nothing else to click.</li>
 </ol>
-<p>To stop the app: open the launcher, click ${ui('More options')}, then ${ui('Stop the app')}. Restarting the computer also stops it.</p>
-<p>Your data is in the <code>_system\\data</code> folder inside Free-GST-Billing. Back it up with ${ui('More options')} → ${ui('Back up my data')}; see <a href="backup.html">Backups</a>.</p>
+<p>Update, back up, restore, restart and stop the app from the <a href="control-panel.html">Control Panel</a> in the app's menu. Restarting the computer also stops it. The launcher, <b>Free GST Billing - WINDOWS</b> in the Free-GST-Billing folder, stays there for updates and repairs.</p>
+<p>Your data is in the <code>_system\\data</code> folder inside Free-GST-Billing; see <a href="backup.html">Backups</a>.</p>
+<p>Use only this icon. If you also have a Free GST Billing app icon made by Chrome or Edge, remove it (right-click it, then ${ui('Uninstall')}): it opens a window but cannot start the app.</p>
 </section>
 
 <section id="what-install-does">
@@ -391,7 +391,7 @@ bash "_system/start-unix.sh"</code></pre>
 
 <section id="windows">
 <h2>Windows: other ways</h2>
-<p><b>From the launcher:</b> double-click <b>Free GST Billing</b> on your Desktop → ${ui('More options')} → ${ui('Update to the latest version')} → then ${ui('Open App')}.</p>
+<p><b>From the launcher:</b> double-click <b>Free GST Billing - WINDOWS</b> in the Free-GST-Billing folder → ${ui('More options')} → ${ui('Update to the latest version')} → then ${ui('Open App')}.</p>
 <p><b>By hand, with the ZIP</b> (if the app does not open at all):</p>
 <ol class="steps">
   <li><strong>Download</strong><a class="download" href="${SITE.download}">Download Free GST Billing</a></li>

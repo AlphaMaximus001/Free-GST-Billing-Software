@@ -164,7 +164,7 @@ if (-not $npmOk) {
   Write-Host ''
   Write-Host '  The new version is in place, but it is not ready to run yet (see above).' -ForegroundColor Red
   Write-Host '  Your data is safe (a backup was made above). Fix the problem shown,'
-  Write-Host '  then click Open App: it finishes the install by itself.'
+  Write-Host '  then open the app from its icon: it finishes the install by itself.'
   Read-Host '  Press Enter to close'
   exit 1
 }

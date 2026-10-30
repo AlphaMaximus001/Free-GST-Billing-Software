@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#quick-start--installation)
 [![Latest release](https://img.shields.io/github/v/release/IamRamgarhia/Free-GST-Billing-Software?label=Latest&color=orange)](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest)
-[![PWA](https://img.shields.io/badge/PWA-installable-purple.svg)](#install-as-a-desktop-app-pwa)
+[![Desktop icon](https://img.shields.io/badge/Desktop-one--click%20icon-purple.svg)](#the-free-gst-billing-icon)
 [![GitHub Stars](https://img.shields.io/github/stars/IamRamgarhia/Free-GST-Billing-Software?style=social)](https://github.com/IamRamgarhia/Free-GST-Billing-Software)
 [![Countries](https://img.shields.io/badge/Countries-22-blue.svg)](#key-features)
 [![GST](https://img.shields.io/badge/GST-Compliant-success.svg)](#clipboard-gst-compliance--filing)
@@ -24,7 +24,7 @@ Your data never leaves your computer. No cloud and no limits. Open source, so yo
 
 <sub>Always the newest version · about 16 MB · Windows, macOS and Linux in one ZIP · <a href="https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest">release notes</a></sub>
 
-[⬇ Download ZIP](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip) &nbsp;|&nbsp; [📦 Releases](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases) &nbsp;|&nbsp; [📖 Documentation](https://dicecodes.com/free-gst-software-documentation/) &nbsp;|&nbsp; [⚡ 3-Step Install](#quick-start--installation) &nbsp;|&nbsp; [☁ Run Online (Vercel / Supabase / Railway)](./docs/DEPLOY_ONLINE.md) &nbsp;|&nbsp; [🧾 First Invoice in 5 Minutes](#your-first-invoice-in-5-minutes) &nbsp;|&nbsp; [📸 Screenshots](#screenshots) &nbsp;|&nbsp; [🐛 Report Bug](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues)
+[⬇ Download ZIP](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip) &nbsp;|&nbsp; [📦 Releases](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases) &nbsp;|&nbsp; [📖 Documentation](https://dicecodes.com/free-gst-software-documentation/) &nbsp;|&nbsp; [⚡ 3-Step Install](#quick-start--installation) &nbsp;|&nbsp; [🧾 First Invoice in 5 Minutes](#your-first-invoice-in-5-minutes) &nbsp;|&nbsp; [📸 Screenshots](#screenshots) &nbsp;|&nbsp; [🐛 Report Bug](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues)
 
 </div>
 
@@ -113,9 +113,9 @@ The launcher:
 - Creates a **Desktop shortcut** + **Start-Menu entry** so you never open the folder again
 - Starts the server and opens your browser at **http://localhost:47371**
 
-From then on, click the Desktop shortcut. To update / backup / restore / move to another PC / stop the server — use the buttons in that same launcher, or the in-app **⚙ Control Panel** in the sidebar. No batch files, no CMD windows.
+From then on, click the **Free GST Billing** icon on your Desktop: it starts the app and opens it in its own window. To update / backup / restore / move to another PC / stop the server, use the in-app **⚙ Control Panel** in the sidebar (or the launcher in the app folder). No batch files, no CMD windows.
 
-> **☁ Want to run it online instead (access from multiple devices)?** See the full **[Online Deployment Guide → docs/DEPLOY_ONLINE.md](./docs/DEPLOY_ONLINE.md)** — four paths compared (Railway lift-and-shift, Vercel + Supabase serverless, own VPS, free Cloudflare Tunnel) with costs, trade-offs, SQL schema, and code snippets. Read the trade-offs first — the local install is still the right answer for ~95% of users.
+> **☁ Can I host it online (Railway, Render, Supabase)?** Not yet. The app has no login on its server, so anyone who found the address could read or delete your books, and it keeps its data as files, not in a database. [Why, and what to do instead](https://dicecodes.com/free-gst-software-documentation/security.html#host-online). Using it from a phone or tablet on the same Wi-Fi is planned for the update on Saturday 7 November 2026.
 
 ---
 
@@ -145,7 +145,6 @@ More screenshots, next to the steps they show, in the [documentation](https://di
 ## 📑 Table of Contents
 
 - [Install in 60 Seconds](#-install-in-60-seconds-windows-one-click) — *Windows one-click*
-- [☁ Run Online (Vercel + Supabase, Railway, VPS, Cloudflare Tunnel)](./docs/DEPLOY_ONLINE.md) — *for multi-device / team access*
 - [Why Choose Free GST Billing Software?](#why-choose-free-gst-billing-software)
 - [Your First Invoice in 5 Minutes](#your-first-invoice-in-5-minutes) — *start here if you're new*
 - [Key Features](#key-features)
@@ -156,7 +155,7 @@ More screenshots, next to the steps they show, in the [documentation](https://di
   - [Sharing & Export](#outbox_tray-sharing--export)
   - [Customization](#gear-customization)
 - [Quick Start / Installation](#quick-start--installation)
-- [Install as a Desktop App (PWA)](#install-as-a-desktop-app-pwa)
+- [The Free GST Billing icon](#the-free-gst-billing-icon)
 - [How to Self-File GST Returns](#how-to-self-file-gst-returns)
 - [Free GST Billing Software vs Paid Alternatives](#-comparison-free-gst-billing-software-vs-paid-alternatives)
 - [Tech Stack](#tech-stack)
@@ -185,8 +184,8 @@ You need: Windows 10/11 PC, ~50 MB free disk, your business name + bank details 
    (Do **not** use the green *Code -> Download ZIP* button — that gives the source code without the built app.)
 2. Right-click the downloaded ZIP → **Extract All** → pick a folder you'll remember (e.g. `Documents\FreeGSTBill`)
 3. Open the **extracted** folder → double-click **`Free GST Billing - WINDOWS`** (each launcher is named after the system it is for)
-4. Click **Install Node & App**. It installs Node.js for you if you do not have it, then sets everything up. Takes 1–2 minutes the first time
-5. Click **Open App** — the app opens in your browser at `http://localhost:47371`, and a Desktop shortcut is waiting for you next time
+4. Click **Install**. It installs Node.js for you if you do not have it, then sets everything up. Takes 1–2 minutes the first time
+5. The app opens by itself at `http://localhost:47371`, and a **Free GST Billing** icon is on your Desktop for next time
 
 > **Easier: one line, no ZIP, no warnings.** Press **Windows + R**, paste this, press **Enter**:
 > `powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"`
@@ -285,7 +284,6 @@ Every 🆕 row below is a feature we shipped in v1.10 that competitors either pa
 | **Multi-account payments per business** | ✅ Unlimited | ✅ | ⚠ Paid | ✅ | ✅ |
 | **Custom per-line units (kg, ltr, Hrs + custom)** | ✅ | ⚠ Limited | ⚠ Paid | ✅ | ⚠ Limited |
 | **22-country multi-currency** | ✅ | ⚠ Paid | ❌ | ✅ (Premium) | ❌ |
-| **PWA installable (own window, no browser)** | ✅ | ❌ Desktop only | ❌ Android-first | ❌ Web only | ❌ Web only |
 | **Offline-first (works without internet)** | ✅ | ✅ | ⚠ Limited | ❌ Cloud | ❌ Cloud |
 | **Your data on YOUR computer (no cloud)** | ✅ | ✅ | ⚠ Cloud sync | ❌ Cloud | ❌ Cloud |
 | **Open-source (MIT licensed)** | ✅ | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary |
@@ -462,7 +460,7 @@ If we priced every 🆕 feature at the going rate on the paid alternatives:
 | **Terms & Conditions** | Rich-text editor (B/I/U, lists, headings, links) + 13 India business-type starter templates + reusable saved-template library |
 | **Multi-Business Profiles** | Separate profiles with different GSTIN, bank details, logo, signature, country, currency. Switcher in the header for one-click context change — the dashboard and every report re-filter immediately, with no reload. Records saved before you began separating businesses stay visible under all of them and are never hidden; a one-click **Assign to ‹business›** prompt lets you attach them when you are ready |
 | **Dark Mode** | Full dark theme with automatic persistence and theme-aware utility classes everywhere |
-| **PWA Installable** | Install as a standalone desktop app via Chrome or Edge — opens instantly, no browser needed |
+| **Own Desktop icon** | One click starts the app and opens it in its own window, no browser tabs |
 | **Online documentation** | Every screen explained, with search; the **User Guide** button and each screen's **?** help open it |
 
 ---
@@ -498,9 +496,9 @@ It checks the computer, downloads the release (packages included), installs to `
 1. **Download the ZIP** → [click here](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip) or grab the latest from [Releases](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases)
 2. **Extract** it anywhere (e.g. `Documents\FreeGSTBill`) — right-click the ZIP → *Extract All*
 3. Open the extracted folder and **double-click** `Free GST Billing - WINDOWS.hta`
-4. Click **Install Node & App** once. When it finishes, click **Open App** — the app opens at **http://localhost:47371**, and a **Desktop shortcut** and **Start-Menu entry** are created for you
+4. Click **Install** once. When it finishes, the app opens by itself at **http://localhost:47371**, and a **Free GST Billing** icon is put on your Desktop and in the Start menu
 
-That's it. The launcher installs Node.js if you don't have it. From then on, click the Desktop shortcut. Update, Backup, Restore, Move to another PC and Stop Server are buttons in that same launcher — and in the app's in-built **⚙ Control Panel**.
+That's it. The launcher installs Node.js if you don't have it. From then on, click the Desktop icon: it starts the app and opens it. Update, Backup, Restore, Move to another PC and Stop Server are in the app's **⚙ Control Panel**, and in the launcher in the app folder.
 
 > **Do not run the launcher from inside the ZIP.** Windows will let you
 > double-click it while you are still browsing the compressed folder, but it
@@ -537,44 +535,15 @@ For live-reload development:
 npm run dev              # dev server on http://localhost:5173 · API on http://localhost:47371
 ```
 
-### Option 3: Install as a Desktop App (any OS)
+### The Free GST Billing icon
 
-Once the server is running, open the URL in Chrome / Edge / Brave and click **Install** in the address bar. The app gets its own window, icon, and jump-list — see [Install as a Desktop App (PWA)](#install-as-a-desktop-app-pwa) below.
+Every install (the launcher, the one-line command, Mac and Linux) puts a **Free GST Billing** icon on your computer: the blue **B**, on the Desktop and in the Start menu on Windows. Click it every day: it starts the app if it is not running and opens it in its own window. Update, backup, restart and stop are in the app's **⚙ Control Panel**.
 
-### Option 4: Deploy online (advanced — Vercel + Supabase, Railway, VPS, Cloudflare Tunnel)
+> Use only this icon. Don't use the browser's own **Install app** button (in Chrome or Edge's address bar): that icon opens a window but cannot start the app, so after a restart it only shows "Needs a Quick Start". If you already have one, right-click it and choose **Uninstall**.
 
-For solo users who want access from multiple devices, or small teams sharing invoices across a shop and an accountant's laptop — **[docs/DEPLOY_ONLINE.md](./docs/DEPLOY_ONLINE.md)** walks through four honest paths (Railway lift-and-shift, Vercel + Supabase serverless, own VPS, free Cloudflare Tunnel) with costs, trade-offs, and code snippets.
+### Online hosting (Railway, Render, Supabase): not yet
 
-> **Read the trade-offs first.** Going online means your business data lives on someone else's server — the local install exists precisely to avoid that. For most users the local install is still the right answer.
-
-## Install as a Desktop App (PWA)
-
-Free GST Billing Software is a **Progressive Web App** — once installed, it gets its own icon, its own window, and behaves exactly like a regular Windows / macOS / Linux app. No browser chrome, no localhost URL visible to the user.
-
-### How to install as a PWA
-
-1. Open **http://localhost:47371** in Chrome / Edge / Brave (any Chromium browser)
-2. Click the orange **Install as Desktop App** banner at the top — or the **➕ install icon** in the address bar
-3. The app opens in its own window with the GST Billing Software icon in your Start Menu / taskbar
-
-### After installation — manifest shortcuts
-
-Right-click the pinned PWA icon (Windows taskbar / Start Menu / Edge's app launcher) and you get a jump-list:
-
-- 🆕 **New Invoice** → straight to the invoice form
-- 📊 **Dashboard** → recent invoices and stats
-- 📋 **GST Returns** → GSTR-1 / 3B / 2B reconciliation
-- ⚙ **Settings** → business profile, accounts, modules
-
-No need to land on the Dashboard first — jump directly to the most-used flow.
-
-### Offline-first
-
-The PWA caches its full app shell + fonts + icons on first install. Even if your localhost server isn't running for some reason, the app still loads (and tells you the server is offline rather than just showing a blank page). Service worker auto-updates the cache when you upgrade.
-
-> 🪟 **Coming in v2.0:** Native `.exe` installer (Tauri repackage) with code-signed binary, Add/Remove Programs entry, system tray icon, and native auto-update. The PWA flow stays as the developer / power-user fallback.
-
----
+The app has no login on its server yet, so it must not be put on the internet. See [Can I put it online?](https://dicecodes.com/free-gst-software-documentation/security.html#host-online).
 
 ## How to Self-File GST Returns
 
@@ -721,7 +690,6 @@ See **[CHANGELOG.md](./CHANGELOG.md)** for a detailed history of every release. 
 The deep-dive material lives in **[docs/](./docs/)**:
 
 - **[docs/USER_GUIDE.md](./docs/USER_GUIDE.md)** — plain-language handbook for end users (Quick Start → Daily Use → Backup → Migration → FAQ → Troubleshooting). Also available **inside the app** as a searchable view with one-click PDF export.
-- **[docs/DEPLOY_ONLINE.md](./docs/DEPLOY_ONLINE.md)** — deploy the app online (Vercel + Supabase, Railway lift-and-shift, own VPS, free Cloudflare Tunnel). Four paths with honest trade-offs, costs, and code snippets. Read this only if you have a specific reason to move off the local install.
 - **[docs/COMPETITOR_GAPS.md](./docs/COMPETITOR_GAPS.md)** — gap analysis vs ERPNext / Akaunting / Invoice Ninja / Crater + Tally / Vyapar / Zoho Books / ClearTax / Marg, with the prioritised post-1.4 roadmap.
 - **[docs/TAX_HELPER_PLAN.md](./docs/TAX_HELPER_PLAN.md)** — three-tier proposal for the v1.5.x Income Tax Helper (bank-statement CSV import + ITR Filing Summary PDF + optional ITR-4 JSON).
 
@@ -883,13 +851,13 @@ Find the message you see. **None of these touch your invoices**: they stay in th
 | Mac: **"cannot be opened because Apple cannot check it"** / **"unidentified developer"** | The app isn't signed by Apple. **Control-click** the file → **Open** → **Open**, once. Or **System Settings → Privacy & Security → Open Anyway**. |
 | **"Node.js … is too old"**, **`npm ERR!`**, or a file named **`npm-debug.log`** in `_system` | The PC has an old Node.js. **v1.10.81 and later fix this themselves**: click **Install** or **Open App** again. On an older version: install **Node.js LTS** from [nodejs.org](https://nodejs.org), delete **only** `_system\node_modules`, then click **Install**. Never delete `_system\data`. |
 | **"could not install the app's dependencies"** / **"cannot reach the internet"** | The first install needs the internet. Check the connection; in an office, a proxy or firewall may block `registry.npmjs.org`. Click **Install** again: it carries on where it stopped. |
-| **"Still starting…"** / **"The server has not answered in 90 seconds"** | The first start after an install or update is slow while antivirus checks the new files. Wait a minute and open <http://localhost:47371>. Still nothing? Close the black window and click **Open App** again. |
-| **"Free GST Billing is already installed on this computer, in: …"** | You extracted a new ZIP into a new folder. Your invoices are in the folder it names: open that copy from your Desktop shortcut and use **More options → Update to the latest version**. Delete the new folder. |
+| **"Still starting…"** / **"The server has not answered in 90 seconds"** | The first start after an install or update is slow while antivirus checks the new files. Wait a minute and open <http://localhost:47371>. Still nothing? Close the black window and open the app again from its icon. |
+| **"Free GST Billing is already installed on this computer, in: …"** | You extracted a new ZIP into a new folder. Your invoices are in the folder it names: click **Update the installed copy** in the launcher, then delete the new folder. |
 | **"The app cannot write to its own folder"** | Don't keep it in `C:\Program Files`. Move the whole Free-GST-Billing folder to Documents or `D:\` and open it from there. |
 | **"Drive … is almost full"** | The install needs about 400 MB free. Empty the Recycle Bin or delete old downloads. |
 | **"Node.js was downloaded but will not run"** | Antivirus removed it. Add the app folder to its exclusions and click **Install** again. |
 | **"Install Node.js LTS now?"** (winget) | The app couldn't download Node.js itself and offers Windows' own installer. Type **Y** to accept (Windows may ask permission), or install it yourself from the page it opens. |
-| **"Cannot connect to server"**, **"This site can't be reached"**, or a blank page | The app isn't running. Open the Desktop shortcut and click **Open App**. |
+| **"Cannot connect to server"**, **"This site can't be reached"**, or a blank page | The app isn't running. Click the **Free GST Billing** icon on your Desktop. |
 | The update finished but nothing changed | Reload the page with **Ctrl + F5**. |
 | Forgot the app PIN | In the app folder (next to the launcher), create an empty text file named `RESET-PIN` and reload the app. The PIN is removed; invoices aren't touched. |
 | Linux / Mac / NAS: **"Node.js … is too old"** or **"not installed"** | The message lists the command for your system (`apt`, `dnf`, `pacman`, `apk`, `brew` or nvm). Install Node.js 20, then open the launcher again. |
@@ -931,7 +899,7 @@ The `.hta` launcher is Windows-only, but the app itself works on macOS and Linux
 Updates only refresh the app code and dependencies. Your `data/` folder (invoices, clients, products, settings) and `Saved Invoices/` PDF archive are **never touched**. The updater also saves a backup ZIP to `Documents\FreeGSTBill Backups` before it changes anything.
 
 ### Is there a mobile app?
-Not yet — the PWA installs as a desktop app today. A native Android app is on the v2.x roadmap.
+No, and no Android app is planned. Using the app from a phone or tablet on the same Wi-Fi as your computer is planned for the update on Saturday 7 November 2026.
 
 ### Can I import data from Tally / Vyapar / Excel?
 CSV import is supported today for clients and products. Direct Tally XML import is on the Coming Soon roadmap. Free-form Excel import requires manual mapping today.

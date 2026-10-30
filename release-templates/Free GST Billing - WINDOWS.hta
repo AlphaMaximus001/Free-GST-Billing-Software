@@ -633,7 +633,7 @@
 
     setState('Ready',
       'Your app is installed. It opens in your browser.', 'ok');
-    setPrimary('Open App', 'Starts the app', function () { runScript('start-windows.ps1'); }, false);
+    setPrimary('Open App', 'Starts the app', function () { runScript('start-windows.ps1', '-AppWindow'); }, false);
     setSteps('');
     setMore([
       { label: 'Update to the latest version', run: function () { runScript('update-windows.ps1'); } },

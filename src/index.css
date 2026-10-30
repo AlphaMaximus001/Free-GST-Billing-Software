@@ -215,50 +215,6 @@ body {
   position: relative;
 }
 
-/* PWA Install Banner */
-.pwa-install-banner {
-  position: fixed;
-  top: 0;
-  left: 260px;
-  right: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 1.25rem;
-  background: linear-gradient(135deg, #1e40af, #3b82f6);
-  color: white;
-  font-size: 0.9rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-.pwa-install-banner span { flex: 1; }
-.pwa-install-btn {
-  background: white;
-  color: #1e40af;
-  border: none;
-  padding: 0.4rem 1rem;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.pwa-install-btn:hover { background: #e0e7ff; }
-.pwa-dismiss-btn {
-  background: none;
-  border: none;
-  color: rgba(255,255,255,0.7);
-  cursor: pointer;
-  padding: 0.25rem;
-  display: flex;
-  align-items: center;
-}
-.pwa-dismiss-btn:hover { color: white; }
-
-@media (max-width: 768px) {
-  .pwa-install-banner { left: 0; }
-}
-
 /* App status dot on the Control Panel menu button (v1.10.83) */
 .server-status-dot {
   width: 8px;
@@ -619,7 +575,6 @@ body {
   .app-layout > .main-content { padding: calc(52px + 1rem) 1rem 1.5rem; }
   .app-layout .settings-savebar { left: 0; } /* the sidebar is off-screen on phones */
   .app-layout .settings-bar { top: -1rem; } /* just under the fixed mobile header; two classes to outrank the base rule below */
-  .pwa-install-banner { top: 52px; }
 }
 .sidebar::-webkit-scrollbar { width: 10px; }
 .sidebar::-webkit-scrollbar-thumb {

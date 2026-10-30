@@ -107,7 +107,7 @@ export default [
 
 <section id="app-not-running">
 <h2>"Needs a Quick Start"</h2>
-<p>If the app's engine is not running, the page says <b>Free GST Billing Software Needs a Quick Start</b>. Your data is safe. Double-click <b>Free GST Billing</b> on your Desktop and click ${ui('Open App')}; the page carries on by itself once it is running.</p>
+<p>If the app's engine is not running, the page says <b>Free GST Billing Software Needs a Quick Start</b>. Your data is safe. Double-click the <b>Free GST Billing</b> icon on your Desktop or in the Start menu: it starts the app, and the page carries on by itself once it is running. An app icon made by Chrome or Edge cannot start the app; use ours, and remove the other one (right-click it, then ${ui('Uninstall')}).</p>
 </section>
 `,
 },
@@ -213,8 +213,7 @@ export default [
 <p>You may see: <strong>"Failed to fetch"</strong> (Chrome, Edge), <strong>"NetworkError when attempting to fetch resource"</strong> (Firefox) or <strong>"Load failed"</strong> (Safari), often after words like <i>Restore failed:</i> or <i>Export failed:</i>; a red dot on <b>Control Panel</b> in the menu; a page saying <strong>"Free GST Billing Software Needs a Quick Start"</strong>; <strong>"Could not check the PIN. Is the app still running?"</strong>; or the browser's own <strong>"This site can't be reached"</strong> or a blank page.</p>
 <p>The app's engine (the server on your computer) is not running: the computer was restarted, the app was stopped, or it closed. Nothing already saved is lost.</p>
 <ol>
-  <li>Double-click <b>Free GST Billing</b> on your Desktop (Mac: <b>Free GST Billing - MAC</b>; Linux: the start command in <a href="install-linux.html#start">Step 3</a>).</li>
-  <li>Click ${ui('Open App')}. It starts the app if needed and opens the right address.</li>
+  <li>Double-click the <b>Free GST Billing</b> icon on your Desktop or in the Start menu (Mac: <b>Free GST Billing - MAC</b>; Linux: the start command in <a href="install-linux.html#start">Step 3</a>). It starts the app if needed and opens the right address. If a small launcher window opens instead (an install from before version 1.10.83, the first time), click ${ui('Open App')}.</li>
   <li>Wait up to a minute. The "Needs a Quick Start" page carries on by itself once the app is running; otherwise press <kbd>F5</kbd> to reload.</li>
   <li>Try what failed again.</li>
 </ol>
@@ -226,7 +225,7 @@ export default [
 <p>You may see: <strong>"Port 47371 is busy, trying 47372..."</strong>, <strong><code>EADDRINUSE</code></strong> or <strong>"address already in use"</strong>. These lines only appear when the app is started from a Terminal or Command Prompt.</p>
 <p>Another program, or a second copy of Free GST Billing, already uses that port (the "door" the browser knocks on). The app picks the next free one by itself and saves it in <code>data\\port.txt</code>; the launcher reads that file, so ${ui('Open App')} goes to the right address.</p>
 <ol>
-  <li>Always open the app with the shortcut and ${ui('Open App')}, not a bookmark of <code>localhost:47371</code>, which may now be the other program.</li>
+  <li>Always open the app with its <b>Free GST Billing</b> icon (or the launcher's ${ui('Open App')}), not a bookmark of <code>localhost:47371</code>, which may now be the other program.</li>
   <li>If the launcher says it has not answered, close it and click ${ui('Open App')} once more: it reads the new port.</li>
   <li>The <a href="control-panel.html#about">Control Panel</a> shows the port the app is using.</li>
   <li>Two copies of the app on one computer? Keep using the one with your invoices; see <a href="#already-installed">Already installed</a>.</li>
@@ -279,7 +278,7 @@ export default [
 <p>The browser kept parts of the old version after an update. The app normally reloads itself once to fix this.</p>
 <ol>
   <li>Press <kbd>Ctrl</kbd> + <kbd>F5</kbd> (Mac: <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd>).</li>
-  <li>If it comes back, close every tab of the app, then open it again from the shortcut with ${ui('Open App')}.</li>
+  <li>If it comes back, close every tab of the app, then open it again from its <b>Free GST Billing</b> icon.</li>
 </ol>
 </section>
 

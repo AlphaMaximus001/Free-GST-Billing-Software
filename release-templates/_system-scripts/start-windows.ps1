@@ -63,6 +63,30 @@ function Move-ToRenamedLauncher {
 }
 Move-ToRenamedLauncher
 
+# v1.10.83 - the Desktop and Start Menu icons open the app directly (see
+# app-shortcut.ps1); before, the ZIP install's icons opened the launcher and
+# needed a second click on Open App. An install that updates to this version
+# keeps its old icons, so turn the ones that open THIS folder's launcher into
+# app icons. Others (another copy, anything the user made) are left alone.
+function Move-IconsToApp {
+  if ((Split-Path -Leaf $SystemDir) -ne '_system') { return }
+  $hta = Join-Path (Split-Path -Parent $SystemDir) 'Free GST Billing - WINDOWS.hta'
+  try {
+    . (Join-Path $SystemDir 'app-shortcut.ps1')
+    $wsh = New-Object -ComObject WScript.Shell
+    foreach ($dir in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
+      if (-not $dir -or -not (Test-Path -LiteralPath $dir)) { continue }
+      foreach ($lnk in Get-ChildItem -LiteralPath $dir -Filter '*.lnk' -File -ErrorAction SilentlyContinue) {
+        if (([string]$wsh.CreateShortcut($lnk.FullName).Arguments).Trim().Trim('"') -ne $hta) { continue }
+        New-AppShortcut $lnk.FullName $SystemDir
+      }
+    }
+  } catch {
+    # The old icon still opens the launcher, which still works.
+  }
+}
+Move-IconsToApp
+
 # v1.10.75 - updating only ever ADDED files, so an install that started on an
 # older version kept launchers and scripts that no longer do anything (and
 # look like a second copy of the app). Remove them, by exact name only, and
@@ -205,7 +229,7 @@ if (-not (Test-PackagesReady)) {
   Pop-Location
   if ($npmCode -ne 0) {
     Show-InstallHelp
-    Write-Host '  Then click Open App again.'
+    Write-Host '  Then open the app again.'
     Exit-WithProblem
   }
 }
@@ -250,5 +274,5 @@ Write-Host ''
 Write-Host '  The server has not answered in 90 seconds.' -ForegroundColor Yellow
 Write-Host '  It may still be starting - try this address in your browser:'
 Write-Host "  http://localhost:$port/"
-Write-Host '  If that does not work, close this window and click Open App again.'
+Write-Host '  If that does not work, close this window and open the app again.'
 Exit-WithProblem
