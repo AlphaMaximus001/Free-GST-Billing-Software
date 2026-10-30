@@ -728,6 +728,30 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-074 - Products CSV import filled in only the names
+
+**Version:** every version up to v1.10.82 · fixed in v1.10.83 (the #121 import)
+**Reported by:** @ethbroken-svg (#134, 2026-10-30)
+
+**Symptom** - importing a products CSV with the columns Name, HSN/SAC,
+Purchase price, Selling price, GST %, Unit, Stock saved every name, but HSN,
+both prices and GST % stayed empty.
+
+**Cause** - the old import (InventoryView.jsx `handleCSVImport`) knew only the
+exact headings `hsn`, `rate`, `gst%`, `unit`, `stock`, and had no purchase or
+selling price at all. The app's own Products export writes `HSN/SAC`,
+`Purchase price`, `Selling price` and `GST %`, so its own file did not import
+back. Only Name, Unit and Stock matched.
+
+**Rule** - every import reads what the matching export writes, and headings
+are matched loosely (case, spaces, %, / ignored; src/utils/listCsv.js).
+
+**Guard** - scripts/csv-test.mjs "[#134]": the reported file imports with every
+column, and the Products screen's own export headings (read from
+InventoryView.jsx, so a change to them is caught) all import.
+
+---
+
 ## ERR-073 - After a refresh the menu showed "GST Billing" for a moment, then the business's logo
 
 **Version:** v1.10.83 before release (the option was new) · fixed the same day

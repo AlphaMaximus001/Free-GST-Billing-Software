@@ -271,6 +271,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wording.
 
 ### Fixed
+- **Products CSV import filled in only the names** (#134, thanks
+  @ethbroken-svg). A file with HSN/SAC, Purchase price, Selling price and
+  GST % columns (what the Products export itself writes) left those empty. The
+  import now reads them. Products already imported without their details:
+  delete them and import the file again.
 - **A purchase bill that added several new products could lose one.** Two
   products saved in the same instant got the same ID, so one replaced the
   other. New records now always get an ID of their own.

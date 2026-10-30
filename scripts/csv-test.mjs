@@ -12,6 +12,8 @@
 
 import { toCsvCell, toCsvLine } from '../src/utils.js';
 import { dateOrderNote, parseCsv, toIsoDate, toNum, salesCsvToBills, billsToSalesCsv, purchaseCsvToRecords, purchasesToCsv, SALES_TEMPLATE, PURCHASE_TEMPLATE } from '../src/utils/bulkCsv.js';
+import { productsCsvToList } from '../src/utils/listCsv.js';
+import { readFileSync } from 'fs';
 
 let passed = 0, failed = 0;
 function eq(actual, expected, label) {
@@ -134,6 +136,24 @@ console.log('\n[#132] A GSTIN already saved finds that client, whatever the name
   eq(two.newClients.length, 1, 'two new rows with one GSTIN make one new client, not two');
   eq(two.bills.map((b) => b.clientName).join('|'), 'New Co|New Co', '...and both invoices use its first name');
   eq(salesCsvToBills(head + 'C1,2026-10-01,Sharma Traders,,Pens,100,18\n', { profile, clients }).newClients.length, 0, 'no GSTIN on the row: still found by name');
+}
+
+console.log('\n[#134] The Products export imports back, every column');
+{
+  // The exact file from the report: v1.10.82's own Products export, filled in
+  // in Excel (saved as CSV UTF-8, so with a byte-order mark).
+  const v82 = '﻿Name,HSN/SAC,Purchase price,Selling price,GST %,Unit,Stock\r\nPVC 2 PIPE 4KG ISI AST,39172390,822,822,18,Ft,0\r\n';
+  const p = productsCsvToList(v82, []).products[0];
+  eq(JSON.stringify([p.hsn, p.purchasePrice, p.sellingPrice, p.taxPercent, p.unit, p.stock]), JSON.stringify(['39172390', 822, 822, 18, 'Ft', 0]),
+    'HSN/SAC, both prices and GST % are read, not only the name');
+  // Today's export headings, read from the Products screen itself, so a change
+  // to them that the import does not follow fails here.
+  const src = readFileSync(new URL('../src/components/InventoryView.jsx', import.meta.url), 'utf8');
+  const headers = JSON.parse((/headers=\{(\[[^\]]*\])\}/.exec(src) || [])[1].replace(/'/g, '"'));
+  const row = { Name: 'Pen', Type: 'Goods', 'HSN/SAC': '9608', 'Purchase price': 6, 'Selling price': 10, 'GST %': 12, Unit: 'Nos', Stock: 40 };
+  const now = productsCsvToList([toCsvLine(headers), toCsvLine(headers.map((h) => row[h] ?? ''))].join('\n'), []).products[0];
+  eq(JSON.stringify([now?.hsn, now?.purchasePrice, now?.sellingPrice, now?.taxPercent, now?.unit, now?.stock]), JSON.stringify(['9608', 6, 10, 12, 'Nos', 40]),
+    `the screen's own export headings (${headers.join(', ')}) all import`);
 }
 
 console.log('\n────────────────────────────────────────');
