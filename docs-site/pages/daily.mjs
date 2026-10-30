@@ -311,15 +311,16 @@ export default [
 
 <section id="print-preview">
 <h2>The print preview</h2>
-<p>The <b>Print preview</b> window shows an invoice exactly as it will print, on the paper size chosen for it, with the same design, logo, QR code and totals. A cancelled invoice shows <b>CANCELLED</b> across it, and an invoice with an IRN shows the IRN and QR code. It opens in two places:</p>
+<p>The <b>Print preview</b> window shows an invoice exactly as it will print, on the paper size chosen for it, with the same design, logo, QR code and totals. A cancelled invoice shows <b>CANCELLED</b> across it, and an invoice with an IRN shows the IRN and QR code. It opens in three places:</p>
 <ul>
   <li>From the 👁 <b>View</b> button on a Dashboard row, for any invoice, to check it without opening the editor.</li>
+  <li>From ${ui('Full view')} in the Live preview bar while you make or edit an invoice, on any paper size. See <a href="invoices.html#preview">The live preview</a>.</li>
   <li>From ${ui('Print')} on the invoice screen when the invoice is on a <b>receipt (thermal) paper</b> size. On A4 and other sheet sizes, Print goes straight to your browser's print window, which has its own preview. See also <a href="thermal-printing.html#print-preview">the thermal print preview</a>.</li>
 </ul>
 <p>The line under the title names the paper, such as <b>A4 — click Print to send to your printer</b>.</p>
 <table>
   <tr><th>Control</th><th>What it does</th></tr>
-  <tr><td>Zoom slider, ${ui('−')} and ${ui('+')}</td><td>Make the preview smaller or bigger, from 30% to 250%. ${ui('−')} and ${ui('+')} step 10% at a time. It opens at 70% for A4 so the whole page fits, and 160% for a narrow receipt so you can read it. Zoom only changes this preview: the print is always full size on the chosen paper.</td></tr>
+  <tr><td>Zoom slider, ${ui('−')} and ${ui('+')}</td><td>Make the preview smaller or bigger, from 30% to 250%. ${ui('−')} and ${ui('+')} step 10% at a time. It opens at 70% for A4 so the whole page fits, and 160% for a narrow receipt so you can read it; on a smaller window or a phone it opens smaller, so the whole width of the page fits. Zoom only changes this preview: the print is always full size on the chosen paper.</td></tr>
   <tr><td>The percentage (such as ${ui('70%')})</td><td>Click it to go back to the normal size.</td></tr>
   <tr><td>${ui('Download PDF')}</td><td>Only when opened from the invoice screen. Saves and downloads the PDF instead of printing, the same as <a href="invoices.html#save-download">Save &amp; Download</a>.</td></tr>
   <tr><td>${ui('Cancel')}, ${ui('✕')} or <kbd>Esc</kbd></td><td>Close it without printing. A click outside the window also closes it.</td></tr>

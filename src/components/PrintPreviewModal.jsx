@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, Printer, Download, Loader, ZoomIn, ZoomOut } from 'lucide-react';
 import InvoicePreview from './InvoicePreview';
 import HelpButton from './HelpButton';
@@ -37,6 +37,16 @@ export default function PrintPreviewModal({
   // paper (see fitZoom below).
   const [zoom, setZoom] = useState(null);
   const modalRef = useRef(null);
+  // v1.10.83 - the width the page has to fit in, so the default size follows
+  // the window (asked for: "it should be responsive").
+  const [areaW, setAreaW] = useState(0);
+  const observer = useRef(null);
+  const areaRef = useCallback((el) => {
+    observer.current?.disconnect();
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    observer.current = new ResizeObserver(([entry]) => setAreaW(entry.contentRect.width));
+    observer.current.observe(el);
+  }, []);
 
   // Esc-to-close keyboard shortcut, matching every other modal in the app.
   useEffect(() => {
@@ -89,8 +99,11 @@ export default function PrintPreviewModal({
   // For thermal the preview scales to fit the modal since the receipt
   // is very narrow (48-104mm) — a 1:1 view would show a strip that's
   // dwarfed by the modal chrome. For A4 we show at ~70% so the whole
-  // page fits without scrolling on typical laptop viewports.
-  const fitZoom = isThermal ? 160 : 70; // on the slider's 5% steps
+  // page fits without scrolling on typical laptop viewports. v1.10.83 -
+  // smaller when the window is narrower, so the page always fits across.
+  const pagePx = (Number(paperCfg.widthMm) || 210) * 96 / 25.4 + 16; // + the 0.5rem frame
+  const maxFit = isThermal ? 160 : 70;
+  const fitZoom = areaW ? Math.max(30, Math.min(maxFit, Math.floor((areaW / pagePx) * 20) * 5)) : maxFit; // on the slider's 5% steps
   const zoomPct = zoom ?? fitZoom;
   const stepZoom = (d) => setZoom(Math.max(30, Math.min(250, zoomPct + d)));
 
@@ -103,7 +116,7 @@ export default function PrintPreviewModal({
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: isThermal ? 'min(520px, 96vw)' : 'min(900px, 96vw)',
-          maxHeight: '92vh',
+          maxHeight: 'min(92vh, 92dvh)',
           padding: 0,
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
@@ -140,7 +153,7 @@ export default function PrintPreviewModal({
             size: zoomed in, the page scrolls both ways instead of being cut
             off. margin auto, not flex centring, keeps the left edge
             reachable when it is wider than the window. */}
-        <div style={{
+        <div ref={areaRef} style={{
           flex: 1, minHeight: 0,
           overflow: 'auto',
           padding: '1.25rem 0.75rem',

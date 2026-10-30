@@ -182,6 +182,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to other computers, open source, the install, backups, PIN lock, problem
   reports, security fixes and your part. Each opens its part of the guide.
 - **Support amounts are ₹200, ₹500, ₹1,000 or any amount.**
+- **Full view while making an invoice.** The Live preview bar has *Full
+  view*: the whole page in the print preview window, with Print and
+  Download PDF. The print preview also opens at a size that fits the window,
+  phone included.
 - **The LUT line on an export invoice is one quiet line.** The Rule 46 words
   are unchanged (they are required word for word), but the green box and
   bold type are gone.

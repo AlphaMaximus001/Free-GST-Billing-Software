@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import { ArrowLeft, Plus, Trash2, Download, UserPlus, Pencil, Settings, ChevronUp, ChevronDown, MessageCircle, Check, Loader, Truck, Printer, Eye, EyeOff, QrCode } from 'lucide-react';
+import { Maximize2, ArrowLeft, Plus, Trash2, Download, UserPlus, Pencil, Settings, ChevronUp, ChevronDown, MessageCircle, Check, Loader, Truck, Printer, Eye, EyeOff, QrCode } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { saveBill, deleteBill, applyStockChanges, getNextInvoiceNumber, getTermsTemplates, getAllClients, saveClient, getProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllRecurring, getAllBills, getEnabledModules, getBusinessType } from '../store';
@@ -3276,6 +3276,14 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     await executePrint();
   };
 
+  // v1.10.83 - the preview window can now be opened any time (Full view), so
+  // its Print button gets the same blank-invoice check as the Print button.
+  const printFromPreview = async () => {
+    const problem = validateForSave();
+    if (problem) { toast(problem, 'warning'); return; }
+    await executePrint();
+  };
+
   // The copy kept in the app's "Saved Invoices" folder (Client / Month / file.pdf).
   const saveToInvoicesFolder = (pdfBlob, fileName) => {
     const invoiceDate = details.invoiceDate ? new Date(details.invoiceDate) : new Date();
@@ -4923,6 +4931,19 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                   borderRadius: 999,
                   letterSpacing: '0.02em',
                 }}>Fit</button>
+              {/* v1.10.83 - the full-size print preview while making the invoice. */}
+              <button type="button" title="See the whole page as it will print"
+                onClick={() => setShowPrintPreview(true)}
+                style={{
+                  padding: '0.28rem 0.75rem',
+                  border: '1px solid var(--border)',
+                  background: 'var(--card-bg)',
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                  fontSize: '0.72rem', fontWeight: 700,
+                  borderRadius: 999,
+                  display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                }}><Maximize2 size={12} /> Full view</button>
             </span>
           </div>
           {/* v1.10.48 — The frame reserves the SCALED size (natural × zoom)
@@ -4962,7 +4983,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       <PrintPreviewModal
         isOpen={showPrintPreview}
         onClose={() => setShowPrintPreview(false)}
-        onPrint={executePrint}
+        onPrint={printFromPreview}
         onDownloadPdf={generatePDF}
         cancelled={editingBill?.status === 'cancelled'}
         einvoice={einvoice}

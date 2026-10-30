@@ -468,6 +468,7 @@ export default [
 <ul>
   <li>A cancelled invoice shows CANCELLED across it; a proforma shows a faint ESTIMATE.</li>
   <li>On a thermal paper size the preview is a narrow receipt.</li>
+  <li>${ui('Full view')} opens the whole page in the <a href="dashboard.html#print-preview">print preview</a> window, with ${ui('Print')} and ${ui('Download PDF')}.</li>
   <li>To give the form more room, click ${ui('Hide Preview')} in the toolbar.</li>
 </ul>
 <p>If something prints differently from the preview, see <a href="troubleshooting.html#missing-on-pdf">Something is missing from the PDF</a>.</p>
