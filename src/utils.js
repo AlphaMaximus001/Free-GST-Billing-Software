@@ -1925,6 +1925,7 @@ export const MENU_ITEMS = [
   { id: 'guide', label: 'User guide', module: 'guide', section: 'top', help: 'The ? button at the top right: opens the online help.' },
   { id: 'notifications', label: 'Notifications', module: 'notifications', section: 'top', help: 'Bell at the top right: overdue invoices, GST due dates and low stock.' },
   { id: 'lock', label: 'Lock app', module: null, section: 'top', help: 'Padlock at the top right, shown only when a PIN is set.' },
+  { id: 'offline', label: 'Offline mode', module: 'offlineButton', section: 'top', help: 'Wi-Fi button at the top right: turn Offline mode on or off, and see what changes.' },
   { id: 'darkMode', label: 'Dark mode', module: 'darkMode', section: 'top', help: 'Moon / sun button at the top right: light or dark screens.' },
   { id: 'support', label: 'Support & About', module: null, section: 'bottom', help: 'Who makes this app, version and how to get help.' },
   { id: 'controlpanel', label: 'Control Panel', module: 'controlPanel', section: 'bottom', help: 'Update, backup, restore and move to another PC.' },

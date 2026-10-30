@@ -12,7 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Offline mode, and proof the app keeps your data private.** Settings has
   a new *Privacy & internet* tab: one table of everything the app uses the
-  internet for, and when, and an *Offline mode* switch. With it on, the app
+  internet for, and when, and an *Offline mode* switch. The same switch is a
+  Wi-Fi button at the top right of every screen, which shows what Offline
+  mode changes and what stays the same. With it on, the app
   never goes online by itself: no update check, no supporters list, no
   automatic copy of each PDF to Google Drive. Check for Updates and other
   things you click still work. The tab, the *Is it safe?* guide page and the

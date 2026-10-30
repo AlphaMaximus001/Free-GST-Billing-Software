@@ -36,7 +36,7 @@ export default [
 
 <section id="offline-mode">
 <h2>Offline mode: never go online by itself</h2>
-<p>In ${ui('Settings')} → <b>Privacy &amp; internet</b>, tick <b>Offline mode</b>. From then on the app makes no internet connection by itself:</p>
+<p>Click the Wi-Fi button at the top right of any screen and then ${ui('Turn Offline mode on')}, or tick <b>Offline mode</b> in ${ui('Settings')} → <b>Privacy &amp; internet</b>. The button turns orange, with a line through it, while it is on. From then on the app makes no internet connection by itself:</p>
 <ul>
   <li>no automatic check for a new version;</li>
   <li>no reading of the supporters list;</li>

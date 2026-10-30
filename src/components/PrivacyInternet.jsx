@@ -2,10 +2,9 @@
 // sure this is safe... how can we show them we are not tracking any data, or
 // that they can turn the internet off". Every row here must match the code and
 // docs-site/pages/security.mjs (#what-it-connects-to); change them together.
-import { useState } from 'react';
 import { WifiOff, ShieldCheck } from 'lucide-react';
 import HelpButton from './HelpButton';
-import { isOfflineMode, setOfflineMode } from '../utils/offlineMode';
+import { useOfflineMode } from '../utils/offlineMode';
 import { docsLink } from '../utils';
 
 const USES = [
@@ -19,8 +18,7 @@ const USES = [
 const cell = { padding: '0.45rem 0.6rem', borderTop: '1px solid var(--border)', verticalAlign: 'top' };
 
 export default function PrivacyInternet() {
-  const [offline, setOffline] = useState(isOfflineMode);
-  const toggle = (on) => { setOfflineMode(on); setOffline(on); };
+  const [offline, toggle] = useOfflineMode();
   return (
     <>
       <h3 className="section-title">Privacy &amp; internet <HelpButton title="Privacy and internet" doc="security#offline-mode" size={16} style={{ marginLeft: 6 }} /></h3>

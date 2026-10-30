@@ -40,6 +40,7 @@ const SupportView = lazy(() => import('./components/SupportView'));
 import StarBanner from './components/StarBanner';
 import AppFooter from './components/AppFooter';
 import LockButton from './components/LockButton';
+import OfflineModeButton from './components/OfflineModeButton';
 import HelpButton from './components/HelpButton';
 import { lockNow } from './utils/appLock';
 import { getPrintSettings } from './utils/printSettings';
@@ -578,6 +579,11 @@ function App() {
     ),
     /* v1.10.80 (#98) - only when a PIN is set. */
     lock: <LockButton key={id} className="topbar-btn" label={null} />,
+    /* v1.10.83 - Offline mode on / off, and what it changes. */
+    offline: <OfflineModeButton key={id} className="topbar-btn" onOpenSettings={() => {
+      try { sessionStorage.setItem('gst_settingsTab', 'section-privacy'); } catch { /* storage blocked */ }
+      setCurrentView('settings');
+    }} />,
     darkMode: (
       <button key={id} type="button" className="topbar-btn" onClick={() => setDarkMode(d => !d)}
         title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={darkMode ? 'Light mode' : 'Dark mode'}>
