@@ -65,6 +65,8 @@ function ViewLoading() {
   );
 }
 
+const MENU_BRAND_KEY = 'gst_menuBrand';
+
 function App() {
   // v1.9.3 — Setup Wizard shown on first-run (before onboardingComplete = true)
   const [showWizard, setShowWizard] = useState(() => {
@@ -91,6 +93,20 @@ function App() {
     return last && last !== 'guide' ? last : 'dashboard';
   });
   const [profile, setProfile] = useState(null);
+  // v1.10.83 - the menu's own name and logo, as last shown (see `brand` below).
+  const [menuBrandCache] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(MENU_BRAND_KEY) || 'null'); } catch { return null; }
+  });
+  useEffect(() => {
+    if (!profile) return; // not loaded yet: keep what was there
+    try {
+      const name = String(profile.businessName || '').trim();
+      if (!profile.showInMenu || !name) { localStorage.removeItem(MENU_BRAND_KEY); return; }
+      const keep = { showInMenu: true, businessName: name, logo: profile.logo || '' };
+      try { localStorage.setItem(MENU_BRAND_KEY, JSON.stringify(keep)); }
+      catch { localStorage.setItem(MENU_BRAND_KEY, JSON.stringify({ ...keep, logo: '' })); } // a very large logo: the name at least
+    } catch { /* browser storage off: the menu simply waits for the profile */ }
+  }, [profile]);
   const [editingBill, setEditingBill] = useState(() => {
     try {
       const saved = sessionStorage.getItem('gst_editingBill');
@@ -528,7 +544,11 @@ function App() {
   const topIds = menu.filter(m => m.section === 'top').map(m => m.id);
   // v1.10.83 - the business's own name and logo at the top of the menu, when
   // it says so (Settings → Branding, or the first-run setup).
-  const ownBrand = !!profile?.showInMenu && !!String(profile?.businessName || '').trim();
+  // The profile comes from the server a moment after the first paint; until
+  // then the menu uses the name and logo it showed last time (kept in this
+  // browser), so a refresh does not flash "GST Billing" before the logo.
+  const brand = profile || menuBrandCache;
+  const ownBrand = !!brand?.showInMenu && !!String(brand?.businessName || '').trim();
   const topActions = topIds.map(id => ({
     guide: (
       <button key={id} type="button" className="topbar-btn" onClick={openDocs}
@@ -843,15 +863,15 @@ function App() {
       {navOpen && <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" />}
       <div className={`sidebar${navOpen ? ' sidebar-open' : ''}`} onClick={closeNavAfterPick}>
         <div className="sidebar-brand">
-          <div className={`sidebar-logo${ownBrand && profile.logo ? ' sidebar-logo-own' : ''}`}>
-            {ownBrand && profile.logo ? <img src={profile.logo} alt="" />
-              : ownBrand ? <span className="sidebar-logo-letter">{profile.businessName.trim().charAt(0).toUpperCase()}</span>
+          <div className={`sidebar-logo${ownBrand && brand.logo ? ' sidebar-logo-own' : ''}`}>
+            {ownBrand && brand.logo ? <img src={brand.logo} alt="" />
+              : ownBrand ? <span className="sidebar-logo-letter">{brand.businessName.trim().charAt(0).toUpperCase()}</span>
                 : <FileText size={22} />}
           </div>
           {/* "by DiceCodes" always stays, under their name too. "Free forever" is
               in the top bar; on a phone (no top bar) it stays here. */}
           <div className="sidebar-brand-text">
-            <h2 className={`sidebar-title${ownBrand ? ' sidebar-title-own' : ''}`} title={ownBrand ? `${profile.businessName} - Free GST Billing` : undefined}>{ownBrand ? profile.businessName : 'GST Billing'}</h2>
+            <h2 className={`sidebar-title${ownBrand ? ' sidebar-title-own' : ''}`} title={ownBrand ? `${brand.businessName} - Free GST Billing` : undefined}>{ownBrand ? brand.businessName : 'GST Billing'}</h2>
             <p className="sidebar-subtitle" title="Free forever. Works on this computer, even offline. No tracking, no ads."><span className="sidebar-free sidebar-free-phone">Free forever<br /></span>by DiceCodes</p>
           </div>
           {/* Auto-hide as a ☰ button (was a text checkbox): pressed = the menu

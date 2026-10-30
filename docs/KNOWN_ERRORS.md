@@ -728,6 +728,30 @@ and confirm the browser opens on `http://localhost:47371` with no warning.
 
 ---
 
+## ERR-073 - After a refresh the menu showed "GST Billing" for a moment, then the business's logo
+
+**Version:** v1.10.83 before release (the option was new) · fixed the same day
+**Reported by:** the maintainer (2026-10-30), right after trying the option
+
+**Symptom** - with "Show my business name and logo in the app's menu" ticked,
+every refresh first drew the default icon and "GST Billing", then swapped in the
+business's logo and name.
+
+**Cause** - the menu is drawn before the business profile arrives from the
+app's server (`profile` starts as null in src/App.jsx), so the first frame had
+nothing to show but the default.
+
+**Rule** - anything drawn from server data on the first frame needs a value
+for that first frame: here the last shown name and logo, kept in this browser
+(`gst_menuBrand`), replaced by the profile as soon as it arrives and cleared
+when the option is turned off.
+
+**Guard** - checked in a browser with the profile request held back 3 seconds:
+the menu showed the business name and logo throughout. A smoke check for it is
+planned with the 7 Nov guards.
+
+---
+
 ## ERR-072 - The app's Desktop icon showed "Needs a Quick Start" after a restart
 
 **Version:** v1.10.2 to v1.10.82 · fixed in v1.10.83
