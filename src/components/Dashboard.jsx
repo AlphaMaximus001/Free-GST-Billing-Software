@@ -1042,7 +1042,9 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     setBulkBusy(false);
   };
 
-  const bulkExportPDF = async (billsOverride = null) => {
+  // v1.10.83 - mode 'separate': one PDF per invoice, all in one ZIP
+  // (asked for: "download pdf in bulk one by one, not only in a merged file").
+  const bulkExportPDF = async (billsOverride = null, mode = 'merged') => {
     const sel = billsOverride || getSelectedBills();
     if (sel.length === 0) return;
     if (sel.length > 100 && !await confirmAction({
@@ -1055,7 +1057,9 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     try {
       const { jsPDF } = await import('jspdf');
       const html2canvas = (await import('html2canvas')).default;
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+      const newDoc = () => new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+      const doc = newDoc();
+      const files = {};
       // Build each bill in a hidden container, snap it, add as a page.
       // Reuses InvoicePreview via a dynamic import so its CSS + fonts
       // are hydrated once, then reused for each iteration.
@@ -1100,7 +1104,17 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             scale: capScale,
             backgroundColor: '#ffffff', useCORS: false, logging: false,
           });
-          addCanvasAsA4Pages(doc, canvas, ok > 0, safeBreaks(container.firstElementChild || container, canvas));
+          const breaks = safeBreaks(container.firstElementChild || container, canvas);
+          if (mode === 'separate') {
+            const one = newDoc();
+            addCanvasAsA4Pages(one, canvas, false, breaks);
+            const base = String(bill.invoiceNumber || `invoice-${i + 1}`).replace(/[\\/:*?"<>|]+/g, '-');
+            let name = `${base}.pdf`;
+            for (let n = 2; files[name]; n++) name = `${base} (${n}).pdf`;
+            files[name] = new Uint8Array(one.output('arraybuffer'));
+          } else {
+            addCanvasAsA4Pages(doc, canvas, ok > 0, breaks);
+          }
           ok++;
         } catch { /* skip broken bill silently */ }
         // Yield to the event loop between invoices so the browser can
@@ -1112,8 +1126,18 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       if (window.__fgsbBulkAbort) { toast(`Aborted after ${ok} of ${sel.length}`, 'warning'); }
       window.__fgsbBulkAbort = false;
       if (ok === 0) { toast('Could not generate any PDFs', 'error'); return; }
-      const filename = `freegstbill-invoices-${ok}-${new Date().toISOString().split('T')[0]}.pdf`;
-      doc.save(filename);
+      if (mode === 'separate') {
+        const { zipSync } = await import('fflate');
+        // PDFs are already compressed: store them as they are.
+        const blob = new Blob([zipSync(files, { level: 0 })], { type: 'application/zip' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `invoices-${ok}-${localToday()}.zip`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      } else {
+        doc.save(`freegstbill-invoices-${ok}-${localToday()}.pdf`);
+      }
       toast(`Exported ${ok} of ${sel.length} invoices`, 'success');
     } catch (e) {
       toast('Bulk PDF export failed — see console', 'error');
@@ -1599,8 +1623,11 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             {/* v1.10.74 - rows can be Cancelled, so the filter needs it too */}
             <option value="cancelled">Cancelled</option>
           </select>
-          <input type="date" className="filter-date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" />
-          <input type="date" className="filter-date" value={dateTo} onChange={e => setDateTo(e.target.value)} title="To" />
+          {/* v1.10.83 - visible labels: the boxes alone read as "dd-mm-yyyy". */}
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>From
+            <input type="date" className="filter-date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" /></label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>To
+            <input type="date" className="filter-date" value={dateTo} onChange={e => setDateTo(e.target.value)} title="To" /></label>
           {ccOn && <CostCentreFilter centres={centres} value={centreFilter} onChange={setCentreFilter} />}
           {hasFilters && <button className="icon-btn icon-btn-red" onClick={clearFilters} title="Clear" aria-label="Clear filters"><X size={15} /></button>}
           <button type="button" className="btn btn-secondary" onClick={() => setShowColumnPicker(v => !v)}
@@ -1690,7 +1717,9 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             <button type="button" className="btn btn-secondary" disabled={bulkBusy} onClick={bulkExportJSON}
               style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}><FileText size={13} /> Export JSON</button>
             <button type="button" className="btn btn-secondary" disabled={bulkBusy} onClick={() => bulkExportPDF()}
-              style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }} title="Combine selected invoices into one multi-page PDF — CAs love this for filing archives"><Download size={13} /> Bulk PDF</button>
+              style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }} title="Combine the ticked invoices into one multi-page PDF, for filing or your CA"><Download size={13} /> One merged PDF</button>
+            <button type="button" className="btn btn-secondary" disabled={bulkBusy} onClick={() => bulkExportPDF(null, 'separate')}
+              style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }} title="One PDF file per ticked invoice, named by invoice number, downloaded together in a ZIP"><Download size={13} /> Separate PDFs (ZIP)</button>
             {einvoiceOn && (
               <button type="button" className="btn btn-secondary" disabled={bulkBusy} onClick={bulkExportEInvoice}
                 style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }} title="One e-invoice JSON with the ticked invoices, to upload on einvoice1.gst.gov.in"><QrCode size={13} /> E-invoice JSON</button>

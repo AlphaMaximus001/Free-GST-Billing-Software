@@ -13,6 +13,9 @@
    immediately. */
 
 :root {
+  /* v1.10.83 - the browser's own pop-ups (suggestion lists, date pickers)
+     follow the app's theme, not Windows dark mode. */
+  color-scheme: light;
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --primary-light: rgba(37, 99, 235, 0.08);
@@ -56,6 +59,7 @@
 
 /* Dark Mode */
 [data-theme="dark"] {
+  color-scheme: dark;
   --primary: #3b82f6;
   --primary-hover: #2563eb;
   --primary-light: rgba(59, 130, 246, 0.12);

@@ -99,8 +99,6 @@ export default function SupportView() {
         </div>
       </div>
 
-      <SafePrivateSection style={{ marginBottom: '1.25rem' }} />
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
         <div className="glass-panel" style={card}>
           <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Support with UPI <HelpButton title="Support with UPI" doc="support#upi" size={16} /></h3>
@@ -184,6 +182,8 @@ export default function SupportView() {
           </div>
         </div>
       )}
+
+      <SafePrivateSection style={{ marginBottom: '1.25rem' }} />
 
       <WhatsNew />
 

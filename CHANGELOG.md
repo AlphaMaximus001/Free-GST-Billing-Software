@@ -177,11 +177,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   here*.
 - **The help "?" sits next to each page title**, instead of floating in
   the middle of the header.
-- **Safe and private is its own section on Support & About**, with every
+- **Safe and private is its own section on Support & About**, after the ways to support, with every
   point: data on this computer, no account, offline, no tracking, not open
   to other computers, open source, the install, backups, PIN lock, problem
   reports, security fixes and your part. Each opens its part of the guide.
 - **Support amounts are ₹200, ₹500, ₹1,000 or any amount.**
+- **Ticked invoices as separate PDFs.** Next to *One merged PDF* (formerly
+  *Bulk PDF*), *Separate PDFs (ZIP)* downloads one PDF per invoice, named by
+  its invoice number, in one ZIP. The date filters now read *From* and *To*,
+  so any date range is easy to pick before ticking the header box.
 - **The app's status is a dot on *Control Panel*.** The *App Ready* box
   under the menu is gone: a green dot on the Control Panel button means the
   app is running, red means it is not. Control Panel holds what the
@@ -227,6 +231,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   clients abroad were often saved that way. The invoice now says *Billing in
   USD to a client in India?* with a button to the client's Country box.
   Setting it makes the invoice an export: "Outside India", the LUT, no IGST.
+  A client abroad with an Indian state as Place of supply (picked by hand or
+  kept from a copied invoice) gets the same kind of note, with *Make it an
+  export*.
+- **The purpose-code suggestion list showed dark on a light screen** when
+  Windows was in dark mode. The browser's own pop-ups now follow the app's
+  theme.
 - **"Out of Stock" on things whose stock was never entered.** A product with
   a blank stock is now "not counted" (shown as a dash), not 0; the Dashboard
   low-stock strip, the bell and the products list all agree. A blank Stock box

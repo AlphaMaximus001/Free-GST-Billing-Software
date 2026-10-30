@@ -22,6 +22,7 @@
  */
 import { firefox } from 'playwright';
 import { spawn } from 'child_process';
+import { readFileSync } from 'fs';
 import { PDFDocument } from 'pdf-lib';
 import { setTimeout as sleep } from 'timers/promises';
 
@@ -1467,9 +1468,18 @@ try {
     await row.locator('input[type="checkbox"]').check();
     const [dl] = await Promise.all([
       page.waitForEvent('download', { timeout: 60000 }).catch(() => null),
-      page.locator('button', { hasText: 'Bulk PDF' }).first().click(),
+      page.locator('button', { hasText: 'One merged PDF' }).first().click(),
     ]);
-    check('v71 Bulk PDF downloads a PDF of the ticked invoices', !!dl && /\.pdf$/i.test(dl.suggestedFilename()), dl ? dl.suggestedFilename() : 'no download');
+    check('v71 One merged PDF downloads a PDF of the ticked invoices', !!dl && /\.pdf$/i.test(dl.suggestedFilename()), dl ? dl.suggestedFilename() : 'no download');
+    // v1.10.83: one PDF per invoice, in a ZIP.
+    const [zipDl] = await Promise.all([
+      page.waitForEvent('download', { timeout: 60000 }).catch(() => null),
+      page.locator('button', { hasText: 'Separate PDFs (ZIP)' }).first().click(),
+    ]);
+    const zipBytes = zipDl ? readFileSync(await zipDl.path()) : null;
+    const pdfName = `${String(gen.invoiceNumber).replace(/[\\/:*?"<>|]+/g, '-')}.pdf`;
+    check('v83 Separate PDFs downloads a ZIP with the invoice\'s own PDF',
+      !!zipBytes && /\.zip$/i.test(zipDl.suggestedFilename()) && zipBytes.includes(Buffer.from(pdfName)), zipDl ? `${zipDl.suggestedFilename()} (looked for ${pdfName})` : 'no download');
     await page.fill('input[placeholder="Search client or invoice..."]', '');
   }
 

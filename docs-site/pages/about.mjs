@@ -31,7 +31,7 @@ export default [
 <section id="about">
 <h2>Free, and it stays free</h2>
 <p>Free GST Billing is built and maintained by <a href="${SITE.publisher.url}">DiceCodes</a> in India. No ads, no account, no locked features, and your invoices never leave your computer. The full source code is on <a href="${SITE.repo}">GitHub</a> under the MIT licence.</p>
-<p>Below it, <b>Safe and private</b> lists what happens to your data: it stays on this computer, no account, works offline, no tracking, other computers cannot open it, open source, a safe install, daily backups, the PIN lock, problem reports, security fixes, and your part. Each point opens its part of <a href="security.html">Is it safe? Security and privacy</a>.</p>
+<p>After the ways to support, <b>Safe and private</b> lists what happens to your data: it stays on this computer, no account, works offline, no tracking, other computers cannot open it, open source, a safe install, daily backups, the PIN lock, problem reports, security fixes, and your part. Each point opens its part of <a href="security.html">Is it safe? Security and privacy</a>.</p>
 <p>If it saves you time every month, you can help keep the fixes and new features coming.</p>
 </section>
 
