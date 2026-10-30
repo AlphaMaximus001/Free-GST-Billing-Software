@@ -291,7 +291,7 @@ function page(p) {
 </header>
 <div class="shell">
   <nav class="sidebar" id="sidebar" aria-label="Documentation">${sidebar(p.slug)}
-    <p class="sidebar-foot">Written for version ${esc(SITE.version)}. <a href="${SITE.repo}/releases">What changed in each version</a></p>
+    <p class="sidebar-foot">Written for version ${esc(SITE.version)}. <a href="${SITE.repo}/blob/main/CHANGELOG.md">Changelog: what changed in each version</a></p>
   </nav>
   <div class="scrim" hidden></div>
   <main id="main" class="doc">
