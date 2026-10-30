@@ -65,6 +65,9 @@ const billType = (bill) => bill?.invoiceType || bill?.data?.invoiceType || 'tax-
 const sellerGstinOf = (bill) => upper(bill?.data?.profile?.gstin);
 // Exports and zero-rated supplies under a Letter of Undertaking: the same rules
 // the GSTR-1 export uses (GSTReturns.jsx), so both agree on every invoice.
+// An invoice whose terms say LUT but which charges GST is refused below (its
+// printed terms say "without payment"); the GSTR-1 file reports such an invoice
+// as with payment, since the tax was charged (GSTReturns.jsx billIsLut).
 const isLut = (data) => !!data?.invoiceOptions?.isLUT || /\bLUT\b|Letter of Undertaking/i.test(data?.customTerms || '');
 const isExport = (data) => {
   const country = clean(data?.client?.country);
@@ -192,7 +195,7 @@ export const buildEInvoice = (bill, opts = {}) => {
     if (!GST_PORTAL_RATES.includes(l.taxPct)) errors.push(`${label}: ${l.taxPct}% is not a GST rate the portal accepts.`);
   });
   if (supTyp.endsWith('WOP') && rows.some(({ l }) => l.tax > 0)) {
-    errors.push('It is marked as under LUT (without payment of tax) but charges GST.');
+    errors.push('It charges GST, but it is marked as under LUT (without payment of tax), in the LUT tick or its terms. Tick LUT on the invoice, or take the LUT wording out of its terms.');
   }
 
   // Header amounts exactly as printed. Under reverse charge the printed totals
@@ -212,7 +215,8 @@ export const buildEInvoice = (bill, opts = {}) => {
     const hsn = String(item.hsn || '').trim();
     // With "Prices include tax" the rate holds the tax: the e-invoice wants
     // the price before tax, so it is backed out the way the totals do it.
-    const div = showGST && taxInclusive && l.taxPct > 0 ? 1 + l.taxPct / 100 : 1;
+    // Not under a LUT: no tax is taken out there (calc.taxInclusive is false).
+    const div = calc.taxInclusive && l.taxPct > 0 ? 1 + l.taxPct / 100 : 1;
     const TotAmt = r2(l.gross / div);
     const AssAmt = r2(l.taxable);
     const IgstAmt = interstate ? r2(l.tax) : 0;

@@ -266,6 +266,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wording.
 
 ### Fixed
+- **A purchase bill that added several new products could lose one.** Two
+  products saved in the same instant got the same ID, so one replaced the
+  other. New records now always get an ID of their own.
+- **The bulk PDF buttons stayed greyed out** after "Could not generate any
+  PDFs" until you left the Dashboard.
+- **Clicking the app icon twice while it started** could start two copies of
+  the app on the same books; the second one now waits for the first.
+- **Deleting a purchase bill with payments** now says those payments go
+  with it (they leave the Cash book), and suggests editing the bill instead.
+- **The one-line remove** deletes only the app's own files: anything else in
+  the folder it was installed into is left alone. The Windows remove line in
+  the install script's notes now works in Windows PowerShell 5.1.
 - **The GST portal refused the GSTR-1 JSON** with "File could not be
   uploaded! Download the latest version of Offline tool..." (#133, thanks
   @abhi783821). From the May 2025 return the portal wants the HSN summary

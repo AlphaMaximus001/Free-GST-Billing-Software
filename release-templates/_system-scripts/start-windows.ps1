@@ -233,12 +233,31 @@ if (-not (Test-PackagesReady)) {
     Exit-WithProblem
   }
 }
-Write-Host "  Starting server on port $port..."
-Push-Location $SystemDir
-# v1.10.83 - the full path, so the installer can tell this install's server
-# from any other node.exe when it has to stop it for an update.
-Start-Process -FilePath $NodeExe -ArgumentList "`"$(Join-Path $SystemDir 'server.js')`"" -WorkingDirectory $SystemDir -WindowStyle Hidden
-Pop-Location
+# v1.10.83 - the icon runs this hidden, so during a slow first start people
+# click it again. A server for this folder started in the last two minutes is
+# still starting: wait for it instead of starting a second one on the same
+# data (it would move to another port). An older one that never answered is
+# stuck, and a new one is started as before. Two clicks a second apart both
+# get here before either has started node, so only the run holding this
+# folder's lock (held until this script ends) may start one.
+$serverJs = (Join-Path $SystemDir 'server.js').ToLower()
+$hash = [Security.Cryptography.SHA1]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($serverJs))
+$startLock = New-Object System.Threading.Mutex($false, ('Local\FreeGSTBilling-' + (($hash[0..7] | ForEach-Object { $_.ToString('x2') }) -join '')))
+$haveLock = $false
+try { $haveLock = $startLock.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $haveLock = $true }
+$recent = (Get-Date).AddMinutes(-2)
+$starting = @(Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
+  Where-Object { $_.CommandLine -and $_.CommandLine.ToLower().Contains($serverJs) -and $_.CreationDate -gt $recent })
+if (-not $haveLock -or $starting.Count) {
+  Write-Host '  The app is already starting - waiting for it...'
+} else {
+  Write-Host "  Starting server on port $port..."
+  Push-Location $SystemDir
+  # v1.10.83 - the full path, so the installer can tell this install's server
+  # from any other node.exe when it has to stop it for an update.
+  Start-Process -FilePath $NodeExe -ArgumentList "`"$(Join-Path $SystemDir 'server.js')`"" -WorkingDirectory $SystemDir -WindowStyle Hidden
+  Pop-Location
+}
 
 # Poll until the server responds. 15 seconds was not enough: the very first
 # start after an install is cold - Windows Defender reads every one of the

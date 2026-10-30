@@ -152,7 +152,7 @@ console.log('\n[#111] Reverse charge, SEZ and export');
   // An older invoice that only says LUT in its terms but charged GST is still refused.
   const sezTerms = makeBill({ items, client: sezClient });
   const sezTermsDoc = buildEInvoice({ ...sezTerms, data: { ...sezTerms.data, customTerms: 'Supplied under LUT' } });
-  eq(sezTermsDoc.errors, ['It is marked as under LUT (without payment of tax) but charges GST.'], 'SEZ "under LUT" in the terms but charging GST is refused');
+  eq(sezTermsDoc.errors, ['It charges GST, but it is marked as under LUT (without payment of tax), in the LUT tick or its terms. Tick LUT on the invoice, or take the LUT wording out of its terms.'], 'SEZ "under LUT" in the terms but charging GST is refused');
   const sezPaid = buildEInvoice(makeBill({ items, client: sezClient }));
   eq([sezPaid.doc.TranDtls.SupTyp, sezPaid.doc.ValDtls.IgstVal], ['SEZWP', 4500.1], 'SEZ with payment: SEZWP, IGST');
 
@@ -225,6 +225,17 @@ console.log('\n[#111] Bringing the IRN back');
   ], 'typed-in values are checked');
   eq(einvoiceFromInput({ irn: irnB, ackNo: '112610000123456', ackDate: 'x', signedQr: qrFor(irnA, 'A', '01/01/2026') }).errors, ['The Signed QR Code is for a different IRN.'], 'QR code of another invoice is refused');
   eq(einvoiceFromInput({ irn: ` ${irnA.toUpperCase()} `, ackNo: '1126 1000 0123 456', ackDate: '05/10/2026 11:05', signedQr: qrFor(irnA, 'A', '01/01/2026') }).errors, [], 'spaces and capitals in pasted values are fine');
+}
+
+// Pre-release review, 30 Oct: under a LUT "Prices include tax" takes no tax out,
+// so the e-invoice must not either (it made Discount negative).
+{
+  const SEZ = { ...KA_BUYER, name: 'Lotus SEZ Unit', isSEZ: true };
+  const items = [{ name: 'Consulting', hsn: '998311', quantity: 2, rate: 1180, taxPercent: 18, unit: 'Nos' }];
+  const lut = makeBill({ client: SEZ, items, opts: { isLUT: true }, taxInclusive: true });
+  const { doc } = buildEInvoice(lut, { profile: SELLER });
+  eq([doc.TranDtls.SupTyp, doc.ItemList[0].UnitPrice, doc.ItemList[0].Discount, doc.ItemList[0].AssAmt], ['SEZWOP', 1180, 0, 2360],
+    'LUT + prices include tax: price as typed, no negative discount');
 }
 
 console.log(`\n${passed} passed, ${failed} failed (today is ${localToday()})`);

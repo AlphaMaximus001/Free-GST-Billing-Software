@@ -41,6 +41,7 @@ import StarBanner from './components/StarBanner';
 import AppFooter from './components/AppFooter';
 import LockButton from './components/LockButton';
 import OfflineModeButton from './components/OfflineModeButton';
+import { isOfflineMode } from './utils/offlineMode';
 import HelpButton from './components/HelpButton';
 import { lockNow } from './utils/appLock';
 import { getPrintSettings } from './utils/printSettings';
@@ -121,6 +122,9 @@ function App() {
   useEffect(() => {
     let cancelled = false;
     const check = async () => {
+      // The server also skips it when Offline mode is on, but it reads the
+      // copy in the data folder, which can lag behind this browser's.
+      if (isOfflineMode()) return;
       try {
         const res = await fetch('/api/check-update');
         const data = await res.json();

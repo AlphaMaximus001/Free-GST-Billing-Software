@@ -832,9 +832,14 @@ export default function PurchaseBills() {
   };
 
   const handleDelete = async (id) => {
+    // A bill's payments are kept only on the bill, so they go with it.
+    const target = purchases.find(p => p.id === id);
+    const paidNote = hasPurchasePayments(target)
+      ? ` Its payments of ${formatCurrency(purchasePaid(target))} are deleted with it and leave the Cash book. To re-enter the bill, edit it instead.`
+      : '';
     if (await confirmAction({
       title: 'Delete this purchase bill?',
-      message: 'Stock levels for the products in this bill will be reverted. Any GST ITC already claimed against this bill in past returns stays as filed.',
+      message: `Stock levels for the products in this bill will be reverted. Any GST ITC already claimed against this bill in past returns stays as filed.${paidNote}`,
       confirmLabel: 'Delete',
       tone: 'danger',
     })) {

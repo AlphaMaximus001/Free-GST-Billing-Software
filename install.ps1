@@ -11,7 +11,7 @@
 # registry, no service: everything stays under the user's own profile.
 #
 # To remove the app (it asks before deleting any data):
-#   powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create(([Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1))) -Uninstall"
+#   powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; & ([scriptblock]::Create((irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1))) -Uninstall"
 #
 # `iex` cannot pass parameters, so settings come from environment variables:
 #   FREEGSTBILL_DIR   install into (or update) this folder
@@ -346,14 +346,18 @@ function Uninstall-App {
   # The program goes; the books stay unless the user says otherwise.
   $keep = @('data', 'Saved Invoices', 'Trash')
   Get-ChildItem -LiteralPath $sys -Force | Where-Object { $keep -notcontains $_.Name } | Remove-Item -Recurse -Force
-  Get-ChildItem -LiteralPath $dest -Force | Where-Object { $_.Name -ne '_system' } | Remove-Item -Recurse -Force
+  # Only the app's own files beside _system: the folder may be one the user
+  # chose (FREEGSTBILL_DIR, D:\, Documents) with their own files in it. The
+  # same rule as uninstall-windows.ps1.
+  Get-ChildItem -LiteralPath $dest -Force | Where-Object { $_.Name -like 'Free GST Billing - *' -or $_.Name -eq 'READ ME FIRST.txt' } | Remove-Item -Recurse -Force
   Write-Host '  The app and its icons are removed.' -ForegroundColor Green
   Write-Host ''
   Write-Host "  Your invoices, clients and settings are still in $sys"
   $answer = if ($Test) { '' } else { Read-Host '  To delete them too, type DELETE and press Enter (just Enter = keep them)' }
   if ($answer.Trim() -eq 'DELETE') {
     $backup = Backup-Data $sys
-    Remove-Item -LiteralPath $dest -Recurse -Force
+    Remove-Item -LiteralPath $sys -Recurse -Force
+    if (-not @(Get-ChildItem -LiteralPath $dest -Force).Count) { Remove-Item -LiteralPath $dest -Force }
     Write-Host '  Deleted.'
     if ($backup) { Write-Host "  One last copy was saved to $backup - delete that file too if you want nothing left." }
   } else {

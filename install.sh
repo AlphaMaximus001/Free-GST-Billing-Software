@@ -386,8 +386,11 @@ uninstall_app() {
     case "$(basename "$entry")" in data | 'Saved Invoices' | Trash) continue ;; esac
     rm -rf "$entry"
   done
-  for entry in "$DIR"/* "$DIR"/.[!.]*; do
-    if [ -e "$entry" ] && [ "$entry" != "$DIR/_system" ]; then rm -rf "$entry"; fi
+  # Only the app's own files beside _system: the folder may be one the user
+  # chose (FREEGSTBILL_DIR, a NAS share) with their own files in it. The same
+  # rule as uninstall-unix.sh.
+  for entry in "$DIR"/'Free GST Billing - '* "$DIR/READ ME FIRST.txt"; do
+    [ -e "$entry" ] && rm -rf "$entry"
   done
   printf '  The app and its icons are removed.\n'
   if [ "$OS" = Darwin ]; then printf '  If it is in the Dock, drag it out.\n'; fi
@@ -401,7 +404,8 @@ uninstall_app() {
   if [ "$answer" = DELETE ]; then
     BACKUP=''
     backup_data
-    rm -rf "$DIR"
+    rm -rf "$SYS"
+    rmdir "$DIR" 2>/dev/null
     printf '  Deleted.\n'
     [ -z "$BACKUP" ] || printf '  One last copy was saved to %s - delete that file too if you want nothing left.\n' "$BACKUP"
   else

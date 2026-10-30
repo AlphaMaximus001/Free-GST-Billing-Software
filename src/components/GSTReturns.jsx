@@ -45,6 +45,13 @@ function readFilingStatus(key) {
 // v1.10.83 - an export / SEZ invoice under a LUT charged no IGST
 // (totals.lutZeroRated): its lines report their value and rate with zero tax,
 // as the invoice printed them. Tax-inclusive prices had no tax in them.
+// v1.10.83 - SEZ "without payment" (SEWOP) only when the invoice charged no
+// tax. The LUT tick, or LUT words in the terms (old invoices; the export terms
+// preset has them), cannot make an invoice that charged IGST into SEWOP.
+// einvoice.js isLut uses the same rule.
+const TAX_KEYS = ['igst', 'cgst', 'sgst', 'utgst', 'rcmTaxIgst', 'rcmTaxCgst', 'rcmTaxSgst', 'rcmTaxUtgst'];
+const billIsLut = (bill) => (!!bill?.data?.invoiceOptions?.isLUT || /\bLUT\b|Letter of Undertaking/i.test(bill?.data?.customTerms || ''))
+  && !TAX_KEYS.some((k) => Number(bill?.data?.totals?.[k]) > 0);
 const billSplit = (bill, item, isInter, taxInclusive, isIntraUT) => {
   if (!bill?.data?.totals?.lutZeroRated) return splitLineTax(item, isInter, taxInclusive, isIntraUT);
   return { ...splitLineTax(item, isInter, false, isIntraUT), cgst: 0, sgst: 0, utgst: 0, igst: 0, cess: 0 };
@@ -917,7 +924,7 @@ export default function GSTReturns() {
   // ========== Validation Warnings ==========
   const warnings = [];
   noRateBills.forEach(bill => {
-    warnings.push({ type: 'error', msg: `Invoice ${bill.invoiceNumber} is in ${bill.currency || bill.data?.invoiceOptions?.currency} with no exchange rate, so it is left out of this return until you add the rate. Open it and enter the rate (Invoice Details → Currency).` });
+    warnings.push({ type: 'error', msg: `Invoice ${bill.invoiceNumber} is in ${bill.currency || bill.data?.invoiceOptions?.currency} with no exchange rate, so it is left out of this return until you add the rate. Open it (Invoice Details → Currency): if its amounts are really in rupees (older versions could keep the last client's currency), set the currency to INR; otherwise enter the exchange rate.` });
   });
   filteredBills.forEach(bill => {
     const { client, items } = bill.data;
@@ -1290,7 +1297,7 @@ export default function GSTReturns() {
     if (noPos.length > 0) blocked.push(`${noPos.length} invoice(s) have no place of supply (${noPos.slice(0, 3).map(b => b.invoiceNumber).join(', ')}). Open each and set the client's state or Place of Supply.`);
     const noRate = noRateBills;
     if (noRate.length > 0) {
-      blocked.push(`${noRate.length} invoice(s) in a foreign currency have no exchange rate (${noRate.slice(0, 3).map(b => b.invoiceNumber).join(', ')}). Open each and enter the rate.`);
+      blocked.push(`${noRate.length} invoice(s) in a foreign currency have no exchange rate (${noRate.slice(0, 3).map(b => b.invoiceNumber).join(', ')}). Open each: if the amounts are really in rupees, set the currency to INR; otherwise enter the exchange rate.`);
     }
     const badInums = bills.filter(b => !INUM_REGEX.test(b.invoiceNumber || ''));
     if (badInums.length > 0) {
@@ -1381,8 +1388,7 @@ export default function GSTReturns() {
       // scanning fallback for legacy bills (was false-positive on "no LUT
       // applicable" text). Also GST-M9: SEZ + RCM combination — GSTN rejects
       // SEWP/SEWOP with rchrg='Y'. Coerce inv_typ to 'R' if rchrg='Y'.
-      const isLUT = !!bill.data?.invoiceOptions?.isLUT
-        || /\bLUT\b|Letter of Undertaking/i.test(bill.data?.customTerms || '');
+      const isLUT = billIsLut(bill);
       const invType = isRcm
         ? 'R'
         : (isSEZ ? (isLUT ? 'SEWOP' : 'SEWP') : 'R');
@@ -1477,7 +1483,7 @@ export default function GSTReturns() {
       const isSEZ = !!client?.isSEZ;
       // v1.10.83 - same rules as B2B: the LUT tick first, "LUT" as a word, and
       // SEZ with reverse charge filed as R.
-      const isLUT = !!bill.data?.invoiceOptions?.isLUT || /\bLUT\b|Letter of Undertaking/i.test(bill.data?.customTerms || '');
+      const isLUT = billIsLut(bill);
       const invType = rchrg === 'Y' ? 'R' : (isSEZ ? (isLUT ? 'SEWOP' : 'SEWP') : 'R');
       cdnrMap[ctin].nt.push({ ntty: 'C', nt_num: bill.invoiceNumber, nt_dt: formatDateGST(bill.invoiceDate), val: round2(totals?.total || 0), pos, rchrg, inv_typ: invType,
         itms: Object.entries(rateMap).map(([rt, d], i) => ({ num: i + 1, itm_det: { rt: Number(rt), txval: round2(d.txval), iamt: round2(d.iamt), camt: round2(d.camt), samt: round2(d.samt), csamt: round2(d.csamt) } })) });

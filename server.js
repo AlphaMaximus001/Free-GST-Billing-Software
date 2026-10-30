@@ -395,7 +395,7 @@ app.get('/api/clients', (req, res) => {
 
 app.post('/api/clients', (req, res) => {
   const client = req.body;
-  if (!client.id) client.id = 'cli_' + Date.now();
+  if (!client.id) client.id = 'cli_' + Date.now() + crypto.randomBytes(3).toString('hex');
   const filePath = path.join(DATA_DIR, 'clients', safeFileName(client.id) + '.json');
   writeJSON(filePath, client);
   res.json({ success: true, id: client.id });
@@ -428,7 +428,7 @@ app.get('/api/templates', (req, res) => {
 
 app.post('/api/templates', (req, res) => {
   const tpl = req.body;
-  if (!tpl.id) tpl.id = 'tpl_' + Date.now();
+  if (!tpl.id) tpl.id = 'tpl_' + Date.now() + crypto.randomBytes(3).toString('hex');
   const filePath = path.join(DATA_DIR, 'templates', safeFileName(tpl.id) + '.json');
   writeJSON(filePath, tpl);
   res.json({ success: true, id: tpl.id });
@@ -451,7 +451,7 @@ app.get('/api/products', (req, res) => {
 
 app.post('/api/products', (req, res) => {
   const product = req.body;
-  if (!product.id) product.id = 'prod_' + Date.now();
+  if (!product.id) product.id = 'prod_' + Date.now() + crypto.randomBytes(3).toString('hex');
   // v1.10.83 (#121) - a service has no stock, whoever saves it (a purchase
   // bill adds quantities to every product on it).
   if (product.kind === 'service') delete product.stock;
@@ -562,7 +562,7 @@ app.get('/api/expenses', (req, res) => {
 
 app.post('/api/expenses', (req, res) => {
   const expense = req.body;
-  if (!expense.id) expense.id = 'exp_' + Date.now();
+  if (!expense.id) expense.id = 'exp_' + Date.now() + crypto.randomBytes(3).toString('hex');
   const filePath = path.join(DATA_DIR, 'expenses', safeFileName(expense.id) + '.json');
   writeJSON(filePath, expense);
   res.json({ success: true, id: expense.id });
@@ -585,7 +585,7 @@ app.get('/api/recurring', (req, res) => {
 
 app.post('/api/recurring', (req, res) => {
   const item = req.body;
-  if (!item.id) item.id = 'rec_' + Date.now();
+  if (!item.id) item.id = 'rec_' + Date.now() + crypto.randomBytes(3).toString('hex');
   const filePath = path.join(DATA_DIR, 'recurring', safeFileName(item.id) + '.json');
   writeJSON(filePath, item);
   res.json({ success: true, id: item.id });
@@ -608,7 +608,7 @@ app.get('/api/receipts', (req, res) => {
 
 app.post('/api/receipts', (req, res) => {
   const receipt = req.body;
-  if (!receipt.id) receipt.id = 'rcp_' + Date.now();
+  if (!receipt.id) receipt.id = 'rcp_' + Date.now() + crypto.randomBytes(3).toString('hex');
   const filePath = path.join(DATA_DIR, 'receipts', safeFileName(receipt.id) + '.json');
   writeJSON(filePath, receipt);
   res.json({ success: true, id: receipt.id });
@@ -636,7 +636,7 @@ app.post('/api/purchases', (req, res) => {
   if (!purchase || typeof purchase !== 'object' || Array.isArray(purchase)) return errRes(res, 400, 'bad-request');
   const problem = validatePurchasePayments(purchase);
   if (problem) return res.status(400).json({ error: problem, code: 'bad-request' });
-  if (!purchase.id) purchase.id = 'pur_' + Date.now();
+  if (!purchase.id) purchase.id = 'pur_' + Date.now() + crypto.randomBytes(3).toString('hex');
   const filePath = path.join(DATA_DIR, 'purchases', safeFileName(purchase.id) + '.json');
   writeJSON(filePath, purchase);
   res.json({ success: true, id: purchase.id });
@@ -661,7 +661,7 @@ app.post('/api/purchase-orders', (req, res) => {
   const order = req.body;
   if (!order || typeof order !== 'object' || Array.isArray(order)) return errRes(res, 400, 'bad-request');
   if (order.id !== undefined && (typeof order.id !== 'string' || !order.id.trim())) return errRes(res, 400, 'bad-request');
-  if (!order.id) order.id = 'po_' + Date.now();
+  if (!order.id) order.id = 'po_' + Date.now() + crypto.randomBytes(3).toString('hex');
   const dir = path.join(DATA_DIR, 'purchase-orders');
   const filePath = path.join(dir, safeFileName(order.id) + '.json');
   if (!isPathInside(filePath, dir)) return errRes(res, 400, 'invalid-path');
@@ -718,7 +718,7 @@ app.get('/api/profiles', (req, res) => {
 
 app.post('/api/profiles', (req, res) => {
   const prof = req.body;
-  if (!prof.id) prof.id = 'biz_' + Date.now();
+  if (!prof.id) prof.id = 'biz_' + Date.now() + crypto.randomBytes(3).toString('hex');
   const filePath = path.join(DATA_DIR, 'profiles', safeFileName(prof.id) + '.json');
   writeJSON(filePath, prof);
   res.json({ success: true, id: prof.id });

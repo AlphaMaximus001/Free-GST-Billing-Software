@@ -1142,8 +1142,10 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     } catch (e) {
       toast('Bulk PDF export failed — see console', 'error');
       console.error('bulkExportPDF', e);
+    } finally {
+      // Also after "Could not generate any PDFs", which returns early.
+      setBulkBusy(false);
     }
-    setBulkBusy(false);
   };
 
   // v1.9.1 — Quick bulk-print by filter. Reuses the existing bulkExportPDF
