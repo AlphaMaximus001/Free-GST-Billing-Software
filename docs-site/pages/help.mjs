@@ -689,7 +689,7 @@ export default [
 
 <section id="multi-user">
 <h2>Several people, or several computers</h2>
-<p>There are no user accounts or roles (an optional <a href="settings.html#lock">PIN</a> can lock the screen), and the app only opens on the computer it runs on. One computer holds the books; see <a href="backup.html#move-pc">moving to a new computer</a>.</p>
+<p>There are no user accounts or roles (an optional <a href="settings.html#lock">PIN</a> can lock the screen), and the app only opens on the computer it runs on. One computer holds the books; see <a href="backup.html#move-pc">moving to a new computer</a>. Hosting it online (Railway, Render, a server) is not supported yet; see <a href="security.html#host-online">why</a>.</p>
 </section>
 
 <section id="income-tax-limits">

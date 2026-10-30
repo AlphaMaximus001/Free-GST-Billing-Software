@@ -98,6 +98,19 @@ export default [
 <p>This is also why several people cannot use it from different computers at the same time. See <a href="limitations.html#multi-user">Several people, or several computers</a>.</p>
 </section>
 
+<section id="host-online">
+<h2>Can I put it online, on Railway, Render or a server?</h2>
+<p><strong>Not yet, and please don't try.</strong> People ask whether they can host the app on a free website service (Railway, Render, a VPS, with Supabase as the database) so they can open it from anywhere. Today that is not safe, and it would not work properly:</p>
+<ul>
+  <li><strong>There is no login on the server.</strong> The app was made for one computer, so its server does not ask who you are. The <a href="settings.html#lock">PIN</a> only locks the screen in your browser. Put online, anyone who found the web address could read, change or delete all your invoices, clients and bank details.</li>
+  <li><strong>It only listens on your own computer</strong> (<code>127.0.0.1</code>, see <a href="#network">above</a>), so a hosting service cannot reach it. Changing that in the code removes the protection described above.</li>
+  <li><strong>Supabase would not be used.</strong> The app does not use a database. It saves your books as files in its <code>data</code> folder, and on most free hosting plans those files are wiped every time the service restarts.</li>
+  <li><strong>The "free" plans are not free for long.</strong> Most now give a trial credit and then charge every month, plus extra for storage that keeps your files.</li>
+</ul>
+<p>Hosting it online would also send your books to someone else's server, which is the one thing this app promises not to do.</p>
+<p><b>What you can do instead:</b> keep the app on one computer and take a <a href="backup.html">backup</a> often. To move to a new computer, see <a href="backup.html#move-pc">moving to a new computer</a>. Using the app from a phone or tablet on the <b>same Wi-Fi</b>, with a PIN that the app's server checks, is planned for the update on Saturday 7 November 2026. Using it over the internet may come later, but only after the app has a proper login of its own; this page will say so when it does.</p>
+</section>
+
 <section id="check-yourself">
 <h2>Check it yourself</h2>
 <p>You don't have to trust what we write. Any of these takes a few minutes and needs no technical skill except the last two.</p>
