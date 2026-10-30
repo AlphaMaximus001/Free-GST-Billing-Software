@@ -153,7 +153,7 @@ ${which}
 <section id="uninstall">
 <h2>Removing the app</h2>
 <p><strong>Back up your data first</strong> if you may want it again. See <a href="backup.html#export-import">Export everything to one file</a>.</p>
-<p><b>The easy way:</b> in the app, open ${ui('Control Panel')} and use ${ui('Remove…')}. Tick what else to delete (your data, PDFs, backups) and click ${ui('Remove the app')}. See <a href="control-panel.html#remove">Remove the App</a>.</p>
+<p><b>The easy way:</b> in the app, open ${ui('Control Panel')} and use ${ui('Remove…')}. Tick what else to delete (your data, PDFs, backups) and click ${ui('Remove the app')}. See <a href="control-panel.html#remove">Remove the App</a>. Or, with the app closed, double-click <b>Free GST Billing - WINDOWS</b> in the app folder, click <b>More options</b>, then ${ui('Remove the app...')}: the same tick boxes, then ${ui('Remove the app')}.</p>
 <p><b>Or with one line:</b> press ${key('Windows', 'R')}, paste this line and press ${key('Enter')}:</p>
 <pre><code>${WIN_REMOVE}</code></pre>
 <p>It stops the app and removes it and its icons. Your invoices, clients and settings are kept unless you type <code>DELETE</code> when it asks (and even then a last copy goes to <code>Documents\\FreeGSTBill Backups</code>).</p>

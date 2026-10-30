@@ -27,7 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   abroad or in a foreign currency, so the client can quote it on the
   transfer. One invoice can use another code (*Purpose code (RBI)* on the
   invoice).
-- **Remove the app in one click.** *Control Panel → Remove…* uninstalls the
+- **Remove the app in one click** (#128, thanks @ravidas9191-png). *Control
+  Panel → Remove…*, or on Windows the launcher's *More options → Remove the
+  app...*, uninstalls the
   app with its Desktop, Start-menu and start-up icons (Mac: the app in
   Applications; Linux: the menu entry). Tick boxes choose what else goes:
   your invoices, clients and settings; saved PDFs; the backups folder.

@@ -787,7 +787,7 @@ export default [
 <h3>Remove the App</h3>
 <p><b>What it does.</b> Uninstalls Free GST Billing from this computer in one go: the app, its Desktop and Start-menu icons (Mac: the app in Applications; Linux: the menu entry) and the start-with-computer entry. You choose what else goes.</p>
 <ol>
-  <li>Click ${ui('Remove…')}. A list opens below the cards.</li>
+  <li>Click ${ui('Remove…')}. A list opens below the cards. (On Windows the launcher window has the same: <b>More options</b> → ${ui('Remove the app...')}.)</li>
   <li>Tick what to delete as well. Nothing is ticked at first, so by default <b>only the program goes and your books stay</b>:
     <ul>
       <li><b>My invoices, clients, products and settings</b>: the data folder, with the daily backups inside it.</li>
