@@ -61,7 +61,7 @@ npm run release:check    # everything below marked [auto]
 - [ ] If the updater itself was broken: the manual-download warning at the top.
 - [ ] Docs pages updated for every changed screen (`docs-site/pages/`), and **READ ME FIRST.txt, README and the docs troubleshooting page say the same** for any new error message.
 - [ ] Every button and menu name in the text **checked against the code** (grep the label).
-- [ ] No real customer data, GSTIN, bank details or phone numbers in screenshots or text; use the demo "Kaveri Stationers".
+- [ ] No real customer data, GSTIN, bank details or phone numbers in screenshots or text; use the demo business name **DiceCodes** (fake GSTIN 29ABCDE1234F1ZW, hello@dicecodes.example), never an invented shop name.
 
 ## 6. Publish
 

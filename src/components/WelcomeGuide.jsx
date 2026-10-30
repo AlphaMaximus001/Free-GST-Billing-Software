@@ -21,6 +21,8 @@ export default function WelcomeGuide({ onComplete }) {
     businessName: '', address: '', city: '', pin: '', state: '', country: 'India', gstin: '', pan: '',
     email: '', phone: '', bankName: '', accountNumber: '', ifsc: '', swift: '',
     logo: '', signature: '', upiId: '', googleClientId: '', googleDriveFolder: 'GST Billing Invoices',
+    // v1.10.83 - asked here, with the logo; on unless they untick it.
+    showInMenu: true,
   });
   // v1.10.67 (#66 item 2, @sangwanmail-eng) — this is an India-first GST app,
   // so India is the default. It used to be chosen from the browser locale, and
@@ -277,6 +279,12 @@ export default function WelcomeGuide({ onComplete }) {
                     </button>
                     {profile.logo && <img src={profile.logo} alt="Logo" style={{ height: '40px', marginTop: '0.5rem', objectFit: 'contain' }} />}
                     <span className="field-hint">PNG/JPG, max 500KB</span>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginTop: '0.6rem' }}>
+                      <input type="checkbox" checked={!!profile.showInMenu}
+                        onChange={(e) => setProfile(prev => ({ ...prev, showInMenu: e.target.checked }))}
+                        style={{ width: 16, height: 16, marginTop: 2, accentColor: 'var(--primary)' }} />
+                      <span>Show my business name and logo in the app&apos;s menu (top left)</span>
+                    </label>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Digital Signature</label>

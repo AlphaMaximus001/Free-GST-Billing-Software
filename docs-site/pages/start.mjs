@@ -98,7 +98,7 @@ export default [
 
 <section id="bank-upi">
 <h2>Step 3: bank and UPI</h2>
-<p>Where clients should pay you: bank name, account number, IFSC code and UPI ID. A UPI ID puts a scan-to-pay QR code on your invoices. You can also upload your logo and signature here, up to 500 KB each. ${ui('Skip, I’ll add later')} leaves it all for <a href="settings.html#payment-accounts">Settings</a>.</p>
+<p>Where clients should pay you: bank name, account number, IFSC code and UPI ID. A UPI ID puts a scan-to-pay QR code on your invoices. You can also upload your logo and signature here, up to 500 KB each, and choose <b>Show my business name and logo in the app's menu</b> (ticked to start; change it any time in <a href="settings.html#name-in-menu">Settings</a>). ${ui('Skip, I’ll add later')} leaves it all for <a href="settings.html#payment-accounts">Settings</a>.</p>
 <div class="note tip"><strong>Something wrong?</strong>
 <p><b>"Image must be under 500KB".</b> The logo or signature file is too big. Open it in Paint (or any photo app), make it smaller, save it as PNG or JPG, and choose it again.</p>
 <p><b>A typing mistake in the account number or IFSC.</b> Check them against your passbook or cheque book; they print on every invoice. You can correct them later in <a href="settings.html#payment-accounts">Settings → Payment accounts</a>.</p>

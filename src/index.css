@@ -470,9 +470,27 @@ body {
 .app-topbar {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 0.4rem;
   margin: -1.25rem 0 0.6rem;
 }
+.topbar-free {
+  margin-right: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  cursor: default;
+  white-space: nowrap;
+}
+[data-theme="dark"] .topbar-free { color: #4ade80; background: rgba(34, 197, 94, 0.14); }
+/* On a PC the promise is in the top bar; a phone has no top bar, so the menu keeps it. */
+@media (min-width: 769px) { .sidebar-free-phone { display: none; } }
 .topbar-btn {
   position: relative;
   width: 36px;
@@ -625,6 +643,13 @@ body {
 }
 /* v1.10.83 - "Free forever" under the app name. */
 .sidebar-free { color: #22c55e; font-weight: 700; }
+/* v1.10.83 - the business's own logo / name in the menu: a long name gets two
+   lines, then "..." (the full name is its tooltip); a logo fits a white tile. */
+.sidebar-brand-text { min-width: 0; flex: 1; }
+.sidebar-title.sidebar-title-own { font-size: 1rem; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; margin-bottom: 2px; }
+.sidebar-logo.sidebar-logo-own { background: #fff; padding: 3px; overflow: hidden; }
+.sidebar-logo.sidebar-logo-own img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.sidebar-logo-letter { color: #fff; font-weight: 800; font-size: 1.15rem; }
 html:not([data-theme="dark"]) .sidebar-free { color: #16a34a; }
 
 .sidebar-nav {

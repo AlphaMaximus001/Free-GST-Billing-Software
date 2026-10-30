@@ -1435,6 +1435,13 @@ export default function SettingsView({ onSaved }) {
               )}
               <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload('logo', e)} />
             </div>
+            {/* v1.10.83 - the business's own name and logo at the top of the menu. */}
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginTop: '0.6rem' }}>
+              <input type="checkbox" checked={!!profile.showInMenu}
+                onChange={(e) => setProfile(prev => ({ ...prev, showInMenu: e.target.checked }))}
+                style={{ width: 16, height: 16, marginTop: 2, accentColor: 'var(--primary)' }} />
+              <span>Show my business name and logo in the app&apos;s menu (top left)</span>
+            </label>
           </div>
           <div className="form-group">
             <label className="form-label">Signature</label>

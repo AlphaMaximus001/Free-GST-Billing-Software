@@ -526,6 +526,9 @@ function App() {
   // v1.10.83 - small buttons at the top right of every screen (asked for:
   // "dark mode button should be on top, not in the sidebar").
   const topIds = menu.filter(m => m.section === 'top').map(m => m.id);
+  // v1.10.83 - the business's own name and logo at the top of the menu, when
+  // it says so (Settings → Branding, or the first-run setup).
+  const ownBrand = !!profile?.showInMenu && !!String(profile?.businessName || '').trim();
   const topActions = topIds.map(id => ({
     guide: (
       <button key={id} type="button" className="topbar-btn" onClick={openDocs}
@@ -840,12 +843,16 @@ function App() {
       {navOpen && <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" />}
       <div className={`sidebar${navOpen ? ' sidebar-open' : ''}`} onClick={closeNavAfterPick}>
         <div className="sidebar-brand">
-          <div className="sidebar-logo">
-            <FileText size={22} />
+          <div className={`sidebar-logo${ownBrand && profile.logo ? ' sidebar-logo-own' : ''}`}>
+            {ownBrand && profile.logo ? <img src={profile.logo} alt="" />
+              : ownBrand ? <span className="sidebar-logo-letter">{profile.businessName.trim().charAt(0).toUpperCase()}</span>
+                : <FileText size={22} />}
           </div>
-          <div>
-            <h2 className="sidebar-title">GST Billing</h2>
-            <p className="sidebar-subtitle" title="Free forever. Works on this computer, even offline. No tracking, no ads."><span className="sidebar-free">Free forever</span><br />by DiceCodes</p>
+          {/* "by DiceCodes" always stays, under their name too. "Free forever" is
+              in the top bar; on a phone (no top bar) it stays here. */}
+          <div className="sidebar-brand-text">
+            <h2 className={`sidebar-title${ownBrand ? ' sidebar-title-own' : ''}`} title={ownBrand ? `${profile.businessName} - Free GST Billing` : undefined}>{ownBrand ? profile.businessName : 'GST Billing'}</h2>
+            <p className="sidebar-subtitle" title="Free forever. Works on this computer, even offline. No tracking, no ads."><span className="sidebar-free sidebar-free-phone">Free forever<br /></span>by DiceCodes</p>
           </div>
           {/* Auto-hide as a ☰ button (was a text checkbox): pressed = the menu
               shrinks to icons and opens when pointed at. */}
@@ -981,7 +988,11 @@ function App() {
       </div>
 
       <div className="main-content">
-        {topActions.length > 0 && <div className="app-topbar">{topActions}</div>}
+        <div className="app-topbar">
+          {/* v1.10.83 - the promise, on every screen (it was under the app name in the menu). */}
+          <span className="topbar-free" title="Free forever: no paid version, no locked features, no ads, no tracking. Works on this computer, even offline.">Free forever</span>
+          {topActions}
+        </div>
         {/* v1.10.83 - a screen that throws shows "ran into a problem" here
             instead of blanking the app; keyed by screen so the sidebar works
             and opening another screen starts clean. */}

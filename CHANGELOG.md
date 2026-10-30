@@ -19,8 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   automatic copy of each PDF to Google Drive. Check for Updates and other
   things you click still work. The tab, the *Is it safe?* guide page and the
   GitHub page also explain how to check it yourself in two minutes (switch the
-  internet off: everything works) and why the app is free. The sidebar now
-  says **Free forever** under the app's name: no paid version, no locked
+  internet off: everything works) and why the app is free. **Free forever**
+  is now at the top right of every screen: no paid version, no locked
   features, no ads, no tracking. While Offline mode is on, Support & About says the
   supporters figures are the last ones seen; turning it off reads the latest.
 - **Purpose code for payments from abroad.** Each payment account can hold
@@ -184,6 +184,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once the rest arrives. You can also record the TDS on its own.
 
 ### Changed
+- **Your business name and logo in the menu.** Tick *Show my business name
+  and logo in the app's menu* in Settings → Company → Branding (new installs
+  are asked in the first setup): the top of the menu shows your logo, or your
+  first letter, and your business name, for whichever business is open.
+  "by DiceCodes" stays under it.
 - **One icon that opens the app.** On Windows, the Free GST Billing icon (the
   blue B) on the Desktop and in the Start menu now starts the app if it is not
   running and opens it in its own window: one click, nothing else. Before, an
