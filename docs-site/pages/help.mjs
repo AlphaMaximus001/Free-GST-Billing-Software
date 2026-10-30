@@ -18,7 +18,7 @@ export default [
   <li><strong>The screens</strong>: Dashboard, New Invoice, Clients, Products, Expenses, Purchases, Recurring, Receipts, Cash book, Reports, GST Returns and Income Tax. Features you <a href="settings.html#features">turn off</a> disappear from here.</li>
   <li><strong>Update to v…</strong>, when a new version is out.</li>
   <li><a href="#support"><strong>Support &amp; About</strong></a>, <strong>Control Panel</strong> and <strong>Settings</strong>.</li>
-  <li>At the bottom, <b>App Ready</b> when all is well.</li>
+  <li>A dot on <b>Control Panel</b>: green when the app is running, red when it is not (hover over it to read which).</li>
 </ul>
 <p>At the end of the Dashboard, below the invoices, a small line shows the app's version, a link to DiceCodes and <a href="#support">Support</a>. It is never printed.</p>
 <p>The ☰ button beside the app name shrinks the sidebar to a slim strip of icons and gives the page more room; it is highlighted while the menu hides itself. Point at the strip to open it. Click ☰ again to keep the menu open.</p>
@@ -210,7 +210,7 @@ export default [
 
 <section id="cannot-connect">
 <h3>"Failed to fetch", "App Not Running" or "Needs a Quick Start"</h3>
-<p>You may see: <strong>"Failed to fetch"</strong> (Chrome, Edge), <strong>"NetworkError when attempting to fetch resource"</strong> (Firefox) or <strong>"Load failed"</strong> (Safari), often after words like <i>Restore failed:</i> or <i>Export failed:</i>; <b>App Not Running</b> at the bottom of the sidebar; a page saying <strong>"Free GST Billing Software Needs a Quick Start"</strong>; <strong>"Could not check the PIN. Is the app still running?"</strong>; or the browser's own <strong>"This site can't be reached"</strong> or a blank page.</p>
+<p>You may see: <strong>"Failed to fetch"</strong> (Chrome, Edge), <strong>"NetworkError when attempting to fetch resource"</strong> (Firefox) or <strong>"Load failed"</strong> (Safari), often after words like <i>Restore failed:</i> or <i>Export failed:</i>; a red dot on <b>Control Panel</b> in the menu; a page saying <strong>"Free GST Billing Software Needs a Quick Start"</strong>; <strong>"Could not check the PIN. Is the app still running?"</strong>; or the browser's own <strong>"This site can't be reached"</strong> or a blank page.</p>
 <p>The app's engine (the server on your computer) is not running: the computer was restarted, the app was stopped, or it closed. Nothing already saved is lost.</p>
 <ol>
   <li>Double-click <b>Free GST Billing</b> on your Desktop (Mac: <b>Free GST Billing - MAC</b>; Linux: the start command in <a href="install-linux.html#start">Step 3</a>).</li>

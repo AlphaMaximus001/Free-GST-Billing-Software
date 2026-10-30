@@ -169,6 +169,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once the rest arrives. You can also record the TDS on its own.
 
 ### Changed
+- **The app's status is a dot on *Control Panel*.** The *App Ready* box
+  under the menu is gone: a green dot on the Control Panel button means the
+  app is running, red means it is not. Control Panel holds what the
+  launcher window does (Update, Back up, Restore, Move, Stop, Remove).
 - **A services invoice shows only what services need.** In Services mode
   (where the Freelancer / consultant type starts every invoice), these are
   left out: the Unit column (while the unit is not printed), *Delivery

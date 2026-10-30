@@ -977,9 +977,11 @@ function App() {
                 <button key={id}
                   className={`nav-btn ${currentView === 'controlpanel' ? 'nav-btn-active' : ''}`}
                   onClick={() => setCurrentView('controlpanel')}
-                  title="Update, backup, restore, move to another PC"
+                  title={`${serverStatus === 'online' ? 'App Ready' : serverStatus === 'offline' ? 'App Not Running' : 'Connecting...'} - update, backup, restore, move to another PC`}
                 >
                   <HardDrive size={18} /> Control Panel
+                  {/* v1.10.83 - the app's status dot, formerly the "App Ready" box under the menu. */}
+                  <span className={`server-status-dot server-status-${serverStatus}`} aria-label={serverStatus === 'online' ? 'App Ready' : serverStatus === 'offline' ? 'App Not Running' : 'Connecting'} />
                 </button>
               ),
               settings: (
@@ -999,10 +1001,6 @@ function App() {
                 </button>
               ),
             })[id])}
-            <div className={`server-status server-status-${serverStatus}`}>
-              <span className="server-status-dot" />
-              {serverStatus === 'online' ? 'App Ready' : serverStatus === 'offline' ? 'App Not Running' : 'Connecting...'}
-            </div>
           </div>
         </nav>
       </div>
