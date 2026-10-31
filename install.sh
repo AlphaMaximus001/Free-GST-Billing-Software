@@ -2,7 +2,7 @@
 # Free GST Billing - one-line install, update and repair for macOS and Linux.
 #
 #   Open Terminal, paste this line, press Return:
-#   curl -fsSL https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/AlphaMaximus001/Free-GST-Billing-Software/main/install.sh | bash
 #
 # v1.10.83 - a file curl fetches carries no quarantine mark, so macOS
 # Gatekeeper shows no warning; and the release ZIP now carries its own
@@ -12,7 +12,7 @@
 # official build from nodejs.org is put inside the app folder (no sudo).
 #
 # To remove the app (it asks before deleting any data):
-#   curl -fsSL https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.sh | bash -s -- --uninstall
+#   curl -fsSL https://raw.githubusercontent.com/AlphaMaximus001/Free-GST-Billing-Software/main/install.sh | bash -s -- --uninstall
 #
 # Settings (environment variables, set for the shell that runs this):
 #   FREEGSTBILL_DIR   install into (or update) this folder
@@ -27,7 +27,7 @@
 
 set -eu
 
-ZIP_URL='https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip'
+ZIP_URL='https://github.com/AlphaMaximus001/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip'
 NODE_VERSION=v20.19.0
 NEED_FREE_MB=600
 TEST=${FREEGSTBILL_TEST:-}

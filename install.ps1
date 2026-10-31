@@ -1,7 +1,7 @@
 # Free GST Billing - one-line install, update and repair for Windows.
 #
 #   Press Windows + R, paste this line, press Enter:
-#   powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1 | iex"
+#   powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/AlphaMaximus001/Free-GST-Billing-Software/main/install.ps1 | iex"
 #
 # v1.10.83 - a file PowerShell fetches carries no "downloaded from the
 # internet" mark, so Windows SmartScreen shows no warning; and the release
@@ -11,7 +11,7 @@
 # registry, no service: everything stays under the user's own profile.
 #
 # To remove the app (it asks before deleting any data):
-#   powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; & ([scriptblock]::Create((irm https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main/install.ps1))) -Uninstall"
+#   powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; & ([scriptblock]::Create((irm https://raw.githubusercontent.com/AlphaMaximus001/Free-GST-Billing-Software/main/install.ps1))) -Uninstall"
 #
 # `iex` cannot pass parameters, so settings come from environment variables:
 #   FREEGSTBILL_DIR   install into (or update) this folder
@@ -33,7 +33,7 @@ $ProgressPreference = 'SilentlyContinue'
 # PowerShell 5.1 may still default to TLS 1.0, which GitHub refuses.
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$ZipUrl = 'https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip'
+$ZipUrl = 'https://github.com/AlphaMaximus001/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip'
 $Test = $env:FREEGSTBILL_TEST
 $NeedFreeMB = 600   # the ZIP, its unpacked copy, Node.js, and room to spare
 $script:KnownProblem = $false
