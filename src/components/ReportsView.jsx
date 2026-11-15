@@ -6,6 +6,7 @@ import { toast } from './Toast';
 import HelpButton from './HelpButton';
 import PartyOutstandingReport from './PartyOutstandingReport';
 import StockReport from './StockReport';
+import ProductProfitReport from './ProductProfitReport';
 import TableExport from './TableExport';
 import { billCurrency } from '../utils/partyOutstanding';
 import { billsInInr } from '../utils/fx';
@@ -34,6 +35,7 @@ const TAB_HELP = {
   clients: ['Client Analytics', 'reports#clients'],
   products: ['Product Performance', 'reports#products'],
   stock: ['Stock', 'reports#stock'],
+  margin: ['Profit by product', 'reports#products'],
   costcentres: ['By cost centre', 'reports#cost-centres'],
   tds: ['TDS & TCS', 'reports#tds-tcs'],
 };
@@ -257,6 +259,10 @@ export default function ReportsView() {
           onClick={() => setActiveTab('products')}>
           <Package size={16} /> Product Performance
         </button>
+        <button className={`btn ${activeTab === 'margin' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('margin')}>
+          <TrendingUp size={16} /> Profit by Product
+        </button>
         <button className={`btn ${activeTab === 'stock' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setActiveTab('stock')}>
           <Boxes size={16} /> Stock
@@ -462,6 +468,11 @@ export default function ReportsView() {
       )}
 
       {activeTab === 'stock' && <StockReport businessName={businessName} />}
+
+      {activeTab === 'margin' && (
+        <ProductProfitReport bills={bills} profile={ownerProfile} from={periodRange.from} to={periodRange.to}
+          periodLabel={periodLabel} businessName={businessName} />
+      )}
 
       {activeTab === 'tds' && <TdsTcsReport bills={bills} businessName={businessName} onBillsChanged={loadData} />}
 

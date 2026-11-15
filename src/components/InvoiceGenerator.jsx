@@ -27,6 +27,7 @@ import { EInvoiceEditorModal } from './EInvoiceModal';
 import { toast } from './Toast';
 import ClientCustomFields from './ClientCustomFields';
 import { findClientMatch, mergeClientRecord, pickCustomerPrefs } from '../utils/clientSync';
+import { withCostSnapshots } from '../utils/costing';
 
 // Rich text editor component that works with contentEditable properly
 function RichEditor({ value, onChange, placeholder, toolbar = false }) {
@@ -1968,6 +1969,19 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       try { serverCopy = (await getAllBills()).find((b) => b.id === (renameFrom || finalInvoiceNumber)) || null; } catch { /* treated as not saved yet */ }
     }
     const stockFrom = serverCopy ? appliedStock(serverCopy) : stockStart.current;
+    // Each product line keeps the average cost it had when first saved
+    // (utils/costing.js), so profit on this sale does not change when later
+    // purchases move the average. Saved lines keep theirs; new ones get today's.
+    // A duplicate or conversion is a new sale: it starts with today's cost.
+    const savedLines = new Map((serverCopy?.data?.items || (isIssued ? editingBill?.data?.items : null) || []).map((it) => [it.id, it]));
+    const costedItems = withCostSnapshots(items.map((it) => {
+      const rest = { ...it };
+      delete rest.costAtSale;
+      delete rest.costProductId;
+      const old = savedLines.get(it.id);
+      if (old && old.costProductId === it.productId && old.costAtSale !== undefined) return { ...rest, costAtSale: old.costAtSale, costProductId: old.costProductId };
+      return serverCopy || isIssued ? it : rest;
+    }), products);
     // v1.10.76 - editing a cancelled invoice keeps it cancelled. It used to come
     // back as Unpaid: into totals and GST returns again, and now stock too.
     const keepCancelled = isIssued && (serverCopy?.status || editingBill.status) === 'cancelled';
@@ -2005,7 +2019,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       ...((serverCopy?.einvoice || einvoice) ? { einvoice: serverCopy?.einvoice || einvoice } : {}),
       // v1.10.83 - the "TDS certificate received" tick from Reports › TDS & TCS.
       ...(ownBill && (serverCopy?.tdsCertificate || editingBill.tdsCertificate) ? { tdsCertificate: true } : {}),
-      data: { profile, client, details: { ...details, invoiceNumber: finalInvoiceNumber }, items, totals, invoiceType, customTerms, customNotes, internalNote, extraSections, invoiceOptions: invoiceOptionsWithSnapshot, taxInclusive,
+      data: { profile, client, details: { ...details, invoiceNumber: finalInvoiceNumber }, items: costedItems, totals, invoiceType, customTerms, customNotes, internalNote, extraSections, invoiceOptions: invoiceOptionsWithSnapshot, taxInclusive,
         // A converted quotation/proforma/challan's stock moved to its invoice:
         // its own record stays empty, or a save would take the stock twice.
         stockApplied: isIssued && (serverCopy?.convertedTo || editingBill.convertedTo) ? {} : stockEffect(items, invoiceType, seedStatus) }

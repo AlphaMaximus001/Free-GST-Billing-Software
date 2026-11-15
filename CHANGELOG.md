@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.85] - 2026-11-15
+
+### How to update
+
+**Current version:** 1.10.84  →  **New version:** 1.10.85
+
+#### If the in-app Update button works for you
+1. Open the app and click **Update to v1.10.85** in the menu, or
+   **Settings → Updates → Update Now**.
+2. Wait about a minute, then reload the page.
+
+#### If that does not work (or you are unsure)
+On Windows, run this in PowerShell (not as administrator):
+
+`Set-ExecutionPolicy -Scope Process Bypass -Force; [Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/AlphaMaximus001/Free-GST-Billing-Software/main/install.ps1 | iex`
+
+Or download `Free-GST-Billing.zip` from the
+[Releases page](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/releases/latest)
+and extract it over your existing Free GST Billing folder.
+
+Your invoices, clients, products and settings are never touched by an update;
+a backup is made first.
+
+### Added
+- **Stock is valued at its average cost, so old and new purchase prices both
+  count.** Each purchase bill brings its quantity in at its own rate, and the
+  product's average cost becomes the weighted average of what is in stock.
+  Buy 6 guitars at 6,000, sell 2, buy 6 more at 7,500: the 10 in stock are
+  worth 69,000 (6,900 each), not 75,000. Sales and challans take stock out at
+  the average; credit notes bring it back at the average; production brings
+  goods in at what their materials cost. *Reports → Stock* shows the average
+  cost, the last purchase rate and the value on any month end.
+- **Profit by product.** *Reports → Profit by Product* shows, for the period
+  picked, each product's quantity sold, sales (before GST), cost of goods
+  sold, gross profit and margin, with a total. Credit notes take their goods
+  back off.
+- **Cost kept on each sale.** Every invoice line for a product saves the
+  average cost when the invoice is saved, so profit already made does not
+  change when later purchases move the average. Invoices from before this
+  version are costed at the average on their date.
+- **Product screen: average cost, profit per unit and price history.**
+  Editing a product shows its average cost, stock and stock value, and the
+  profit per unit at its selling price (in red when it sells below cost).
+  *Price history* lists every purchase bill's rate and supplier, and each
+  change of selling price, MRP or purchase price. New boxes: **MRP** and
+  **Cost of opening stock** (what stock you had before your first purchase
+  bill here cost you; blank uses the first purchase rate). The product list
+  has an *Avg cost* column. *Purchase Price* is now called *Last Purchase
+  Price*: each purchase bill still updates it.
+
+---
+
 ## [1.10.84] - 2026-10-31
 
 ### How to update

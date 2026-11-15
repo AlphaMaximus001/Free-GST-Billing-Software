@@ -76,3 +76,11 @@ export const stockValueOf = (product, quantity) => {
   const price = cost > 0 ? cost : (Number(product?.sellingPrice) || Number(product?.rate) || 0);
   return { price, value: Math.round(price * (Number(quantity) || 0) * 100) / 100, atCost: cost > 0 };
 };
+
+// Value of a quantity at its moving average cost (see utils/costing.js), else
+// as stockValueOf: purchase price, or selling price when no cost is known.
+export const stockValueAt = (product, quantity, costing) => {
+  const avg = Number(costing?.avgCost) || 0;
+  if (avg <= 0) return stockValueOf(product, quantity);
+  return { price: avg, value: Math.round(avg * (Number(quantity) || 0) * 100) / 100, atCost: true };
+};

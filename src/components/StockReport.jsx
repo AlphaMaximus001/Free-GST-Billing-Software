@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 import { Package } from 'lucide-react';
 import { getAllBills, getAllProducts, getAllPurchases, getAllProductions } from '../store';
 import { localToday } from '../utils';
-import { closingStock, stockValueOf } from '../utils/products';
+import { closingStock, stockValueAt } from '../utils/products';
+import { costLedger } from '../utils/costing';
 import { toast } from './Toast';
 import TableExport from './TableExport';
 import HelpButton from './HelpButton';
@@ -41,15 +42,18 @@ export default function StockReport({ businessName }) {
 
   const asOf = monthEnd(month);
   const qty = closingStock(data.products, data.bills, data.purchases, asOf, data.productions);
+  // Valued at the moving average cost on that day (utils/costing.js), so
+  // stock bought earlier keeps the price it was bought at.
+  const ledger = costLedger({ ...data, asOf }).products;
   const rows = data.products
     .filter((p) => qty.has(p.id)) // services have no stock (#121)
-    .map((p) => ({ p, q: qty.get(p.id) ?? 0, ...stockValueOf(p, qty.get(p.id)) }))
+    .map((p) => ({ p, q: qty.get(p.id) ?? 0, last: ledger.get(p.id)?.lastPurchaseRate ?? null, ...stockValueAt(p, qty.get(p.id), ledger.get(p.id)) }))
     .sort((a, b) => String(a.p.name || '').localeCompare(String(b.p.name || '')));
   const total = rows.reduce((s, r) => s + (r.q > 0 ? r.value : 0), 0);
   const asOfLabel = new Date(`${asOf}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   const exportRows = [
-    ...rows.map((r) => [r.p.name, r.p.hsn || '', r.p.unit || 'Nos', r.q, r.price, r.q > 0 ? r.value : 0]),
-    ['Total', '', '', '', '', Math.round(total * 100) / 100],
+    ...rows.map((r) => [r.p.name, r.p.hsn || '', r.p.unit || 'Nos', r.q, r.price, r.last ?? '', r.q > 0 ? r.value : 0]),
+    ['Total', '', '', '', '', '', Math.round(total * 100) / 100],
   ];
   const num = { textAlign: 'right', whiteSpace: 'nowrap' };
   // A select, not <input type="month">: Firefox shows that as a plain text box.
@@ -67,8 +71,8 @@ export default function StockReport({ businessName }) {
             {lastMonths.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
           </select>
           <TableExport title={`Closing stock ${asOfLabel}`} filename={`Closing-stock-${asOf}`}
-            subtitle={`${businessName ? `${businessName}, ` : ''}closing stock as on ${asOfLabel}, valued at purchase price`}
-            headers={['Product', 'HSN/SAC', 'Unit', 'Closing qty', 'Rate', 'Value']} rows={rows.length ? exportRows : []} />
+            subtitle={`${businessName ? `${businessName}, ` : ''}closing stock as on ${asOfLabel}, valued at average cost`}
+            headers={['Product', 'HSN/SAC', 'Unit', 'Closing qty', 'Average cost', 'Last purchase rate', 'Value']} rows={rows.length ? exportRows : []} />
         </div>
       </div>
       {rows.length === 0 ? (
@@ -78,9 +82,9 @@ export default function StockReport({ businessName }) {
         </div>
       ) : (
         <div className="table-scroll">
-          <table className="data-table" style={{ minWidth: 640 }}>
+          <table className="data-table" style={{ minWidth: 720 }}>
             <thead>
-              <tr><th>Product</th><th>HSN/SAC</th><th>Unit</th><th style={num}>Closing qty</th><th style={num}>Rate</th><th style={num}>Value</th></tr>
+              <tr><th>Product</th><th>HSN/SAC</th><th>Unit</th><th style={num}>Closing qty</th><th style={num}>Average cost</th><th style={num}>Last purchase rate</th><th style={num}>Value</th></tr>
             </thead>
             <tbody>
               {rows.map((r) => (
@@ -89,12 +93,13 @@ export default function StockReport({ businessName }) {
                   <td>{r.p.hsn || '-'}</td>
                   <td>{r.p.unit || 'Nos'}</td>
                   <td style={{ ...num, color: r.q < 0 ? 'var(--danger)' : undefined }}>{r.q}</td>
-                  <td style={num} title={r.atCost ? 'Purchase price' : 'No purchase price, so selling price'}>{amt(r.price)}{r.atCost ? '' : ' *'}</td>
+                  <td style={num} title={r.atCost ? 'Average cost of the stock on hand' : 'No cost known, so selling price'}>{amt(r.price)}{r.atCost ? '' : ' *'}</td>
+                  <td style={num}>{r.last !== null ? amt(r.last) : '-'}</td>
                   <td style={num}>{r.q > 0 ? amt(r.value) : '-'}</td>
                 </tr>
               ))}
               <tr style={{ fontWeight: 700, background: 'var(--bg-secondary)' }}>
-                <td colSpan={5}>Total stock value</td>
+                <td colSpan={6}>Total stock value</td>
                 <td style={num}>{amt(total)}</td>
               </tr>
             </tbody>
@@ -103,7 +108,7 @@ export default function StockReport({ businessName }) {
       )}
       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0 1.25rem 1rem', margin: 0 }}>
         Worked back from today&apos;s stock using the dates of your invoices, purchase bills{data.productions.length ? ' and production entries' : ''}. Stock you typed in by hand on the Products screen has no date, so it counts as if it changed today.
-        Value is at purchase price; * means no purchase price is saved, so the selling price is used. Negative stock is shown in red and not counted in the total.
+        Value is at the moving average cost: each purchase bill adds its quantity at its own rate, so stock bought earlier keeps what it cost. Stock from before your first purchase bill here is at the product&apos;s cost of opening stock (or its first purchase rate). * means no cost is known, so the selling price is used. Negative stock is shown in red and not counted in the total.
       </p>
     </div>
   );
