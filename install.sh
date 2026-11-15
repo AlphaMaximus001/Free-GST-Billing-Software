@@ -297,7 +297,7 @@ install_app() {
     || fail "The download could not be unpacked ($(tail -n 1 "$WORK/unpack.err")). It may be damaged, or the disk is full." 'Run the install line again.'
   NEW_SYS=$(find "$WORK/unpacked" -maxdepth 2 -type d -name _system | head -n 1)
   if [ -z "$NEW_SYS" ] || [ ! -f "$NEW_SYS/server.js" ] || [ ! -f "$NEW_SYS/node_modules/express/package.json" ]; then
-    fail 'The download is not a complete Free GST Billing package.' 'Run the install line again. If it happens again: https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues'
+    fail 'The download is not a complete Free GST Billing package.' 'Run the install line again. If it happens again: https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues'
   fi
   BACKUP=''
   [ -z "$IS_UPDATE" ] || backup_data
