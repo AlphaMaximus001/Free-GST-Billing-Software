@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { ShoppingCart, Plus, Edit3, Trash2, Search, X, Save, Download, Wand2, Eye, ClipboardList, IndianRupee } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllPurchases, savePurchase, deletePurchase, getAllProducts, saveProduct, getProfile, getEnabledModules, getAllPurchaseOrders, savePurchaseOrder, getNextPoNumber } from '../store';
+import { refreshAvgCosts } from '../utils/refreshCosts';
 import { formatCurrency, getFYOptions, belongsToProfile, isUnassignedToBusiness, isInterstateSupply, localToday, roundQty, splitPurchaseTax, isModuleEnabled, businessKeyOf, getAllUnits, TDS_SECTIONS } from '../utils';
 import { purchaseTdsAmount } from '../utils/tdsTcs';
 import { purchaseTotals as calcPurchaseTotal, billFormFromPo } from '../utils/purchaseOrders';
@@ -773,6 +774,8 @@ export default function PurchaseBills() {
           }
         }
         await Promise.all(upserts);
+        // The new rate changes the average cost of the stock on hand.
+        await refreshAvgCosts();
         toast(editingId ? 'Purchase updated' : 'Purchase added — items synced to Products', 'success');
       } catch (e) {
         console.warn('Products auto-sync from purchase failed (non-fatal):', e);
@@ -850,6 +853,7 @@ export default function PurchaseBills() {
         // stock when it was saved, so deleting it takes them back out.
         let stockOk = true;
         try { await revertPurchaseStock(bill); } catch (e) { stockOk = false; console.warn('Stock revert failed', e); }
+        await refreshAvgCosts();
         toast(stockOk ? 'Purchase deleted' : 'Purchase deleted, but its stock could not be taken out of Products', stockOk ? 'success' : 'warning');
         loadPurchases();
       } catch {

@@ -11,7 +11,7 @@ const key = (...k) => k.map((x) => `<kbd>${x}</kbd>`).join(' + ');
 // v1.10.83 - the one-line install. A file fetched by PowerShell or curl gets
 // no "downloaded from the internet" mark, so Windows and macOS show no
 // warning; the same line installs, updates and repairs.
-const RAW = 'https://raw.githubusercontent.com/IamRamgarhia/Free-GST-Billing-Software/main';
+const RAW = 'https://raw.githubusercontent.com/AlphaMaximus001/Free-GST-Billing-Software/main';
 const WIN_LINE = `powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm ${RAW}/install.ps1 | iex"`;
 const WIN_REMOVE = `powershell -ExecutionPolicy Bypass -c "[Net.ServicePointManager]::SecurityProtocol='Tls12'; &amp; ([scriptblock]::Create((irm ${RAW}/install.ps1))) -Uninstall"`;
 const UNIX_LINE = `curl -fsSL ${RAW}/install.sh | bash`;

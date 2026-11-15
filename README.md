@@ -10,7 +10,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#quick-start--installation)
 [![Latest release](https://img.shields.io/github/v/release/AlphaMaximus001/Free-GST-Billing-Software?label=Latest&color=orange)](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/releases/latest)
 [![Desktop icon](https://img.shields.io/badge/Desktop-one--click%20icon-purple.svg)](#the-free-gst-billing-icon)
-[![GitHub Stars](https://img.shields.io/github/stars/IamRamgarhia/Free-GST-Billing-Software?style=social)](https://github.com/IamRamgarhia/Free-GST-Billing-Software)
+[![GitHub Stars](https://img.shields.io/github/stars/AlphaMaximus001/Free-GST-Billing-Software?style=social)](https://github.com/AlphaMaximus001/Free-GST-Billing-Software)
 [![Countries](https://img.shields.io/badge/Countries-22-blue.svg)](#key-features)
 [![GST](https://img.shields.io/badge/GST-Compliant-success.svg)](#clipboard-gst-compliance--filing)
 
@@ -26,7 +26,7 @@ Your data never leaves your computer. No cloud and no limits. Open source, so yo
 
 <sub>Always the newest version · about 16 MB · Windows, macOS and Linux in one ZIP · <a href="https://github.com/AlphaMaximus001/Free-GST-Billing-Software/releases/latest">release notes</a></sub>
 
-[⬇ Download ZIP](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip) &nbsp;|&nbsp; [📦 Releases](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/releases) &nbsp;|&nbsp; [📖 Documentation](https://dicecodes.com/free-gst-software-documentation/) &nbsp;|&nbsp; [⚡ 3-Step Install](#quick-start--installation) &nbsp;|&nbsp; [🧾 First Invoice in 5 Minutes](#your-first-invoice-in-5-minutes) &nbsp;|&nbsp; [📸 Screenshots](#screenshots) &nbsp;|&nbsp; [🐛 Report Bug](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues)
+[⬇ Download ZIP](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip) &nbsp;|&nbsp; [📦 Releases](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/releases) &nbsp;|&nbsp; [📖 Documentation](https://dicecodes.com/free-gst-software-documentation/) &nbsp;|&nbsp; [⚡ 3-Step Install](#quick-start--installation) &nbsp;|&nbsp; [🧾 First Invoice in 5 Minutes](#your-first-invoice-in-5-minutes) &nbsp;|&nbsp; [📸 Screenshots](#screenshots) &nbsp;|&nbsp; [🐛 Report Bug](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues)
 
 </div>
 
@@ -670,14 +670,14 @@ The app includes a **step-by-step interactive filing guide** with screenshots an
 - [ ] More industry-specific *invoice templates* (separate from the 13 Terms presets we already ship)
 - [ ] Branch-wise reporting
 
-> **Want a feature?** [Ask for it here](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=feature_request.yml) and let us know.
+> **Want a feature?** [Ask for it here](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues/new?template=feature_request.yml) and let us know.
 
 ### :calendar: A new update every Saturday
 
 Every **Saturday** we release one update with that week's fixes and new features. The app tells you when it is ready (**Update** in the sidebar) and keeps your data. Anything urgent, such as the app not opening, is fixed straight away.
 
-- 🐛 **[Report a problem](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=bug_report.yml)**: the version, your computer and the steps help us fix it the same week.
-- 💡 **[Ask for a feature](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=feature_request.yml)**: we read every request each week, and the ones most people ask for come first. Add a 👍 to an [open request](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues) to vote for it.
+- 🐛 **[Report a problem](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues/new?template=bug_report.yml)**: the version, your computer and the steps help us fix it the same week.
+- 💡 **[Ask for a feature](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues/new?template=feature_request.yml)**: we read every request each week, and the ones most people ask for come first. Add a 👍 to an [open request](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues) to vote for it.
 
 You get a reply on the issue when it ships. How the week runs: [docs/WEEKLY_RELEASES.md](./docs/WEEKLY_RELEASES.md).
 
@@ -736,7 +736,7 @@ If the app saves you time, you can help keep it going:
 
 - ⭐ **Star this repo**, so other businesses find it
 - 💬 **Tell another business** about it
-- 🐛 **[Report a bug](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=bug_report.yml) or [ask for a feature](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=feature_request.yml)**: fixes and features ship every Saturday
+- 🐛 **[Report a bug](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues/new?template=bug_report.yml) or [ask for a feature](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues/new?template=feature_request.yml)**: fixes and features ship every Saturday
 - 💛 **UPI, any amount:** `princeramgarhiaa-1@okaxis` (also as a QR code in the app, under **Support & About**)
 
 **Work with DiceCodes:** custom software and web apps, customising this app for your business, setup and data migration, support plans, AI integration and automation, and mobile apps. [contact@dicecodes.com](mailto:contact@dicecodes.com)
@@ -788,7 +788,7 @@ We welcome contributions from the community. Here's how you can help:
 5. **Open** a Pull Request
 
 You can also contribute by:
-- Reporting bugs via [GitHub Issues](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues)
+- Reporting bugs via [GitHub Issues](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues)
 - Suggesting features
 - Improving documentation
 - Sharing the project with other businesses
@@ -864,7 +864,7 @@ Find the message you see. **None of these touch your invoices**: they stay in th
 | Forgot the app PIN | In the app folder (next to the launcher), create an empty text file named `RESET-PIN` and reload the app. The PIN is removed; invoices aren't touched. |
 | Linux / Mac / NAS: **"Node.js … is too old"** or **"not installed"** | The message lists the command for your system (`apt`, `dnf`, `pacman`, `apk`, `brew` or nvm). Install Node.js 20, then open the launcher again. |
 
-**Still stuck?** [Report a problem](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=bug_report.yml) with the message you see and a screenshot (hide your GSTIN and bank details). If the app doesn't start, add what `node -v` and `npm -v` show in Command Prompt. More answers: [troubleshooting guide](https://dicecodes.com/free-gst-software-documentation/troubleshooting.html).
+**Still stuck?** [Report a problem](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues/new?template=bug_report.yml) with the message you see and a screenshot (hide your GSTIN and bank details). If the app doesn't start, add what `node -v` and `npm -v` show in Command Prompt. More answers: [troubleshooting guide](https://dicecodes.com/free-gst-software-documentation/troubleshooting.html).
 
 ---
 
@@ -911,7 +911,7 @@ CSV import is supported today for clients and products. Direct Tally XML import 
 ## Contact & Support
 
 - **Email:** [Contact@dicecodes.com](mailto:Contact@dicecodes.com)
-- **Report a problem:** [bug report form](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=bug_report.yml) · **Ask for a feature:** [feature form](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues/new?template=feature_request.yml) (fixes and features ship every Saturday)
+- **Report a problem:** [bug report form](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues/new?template=bug_report.yml) · **Ask for a feature:** [feature form](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues/new?template=feature_request.yml) (fixes and features ship every Saturday)
 - **Releases:** [GitHub Releases](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/releases)
 - **Discussions:** *(coming soon)*
 
@@ -927,7 +927,7 @@ This project is licensed under the [MIT License](LICENSE) — free to use, modif
 
 ### Ready to stop paying for billing software?
 
-[**⬇ Download Now**](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip) &nbsp;·&nbsp; [⭐ **Star on GitHub**](https://github.com/IamRamgarhia/Free-GST-Billing-Software) &nbsp;·&nbsp; [📖 **Read the User Guide**](docs/USER_GUIDE.md) &nbsp;·&nbsp; [🐛 **Report an Issue**](https://github.com/IamRamgarhia/Free-GST-Billing-Software/issues) &nbsp;·&nbsp; [📧 **Email DiceCodes**](mailto:Contact@dicecodes.com)
+[**⬇ Download Now**](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/releases/latest/download/Free-GST-Billing.zip) &nbsp;·&nbsp; [⭐ **Star on GitHub**](https://github.com/AlphaMaximus001/Free-GST-Billing-Software) &nbsp;·&nbsp; [📖 **Read the User Guide**](docs/USER_GUIDE.md) &nbsp;·&nbsp; [🐛 **Report an Issue**](https://github.com/AlphaMaximus001/Free-GST-Billing-Software/issues) &nbsp;·&nbsp; [📧 **Email DiceCodes**](mailto:Contact@dicecodes.com)
 
 ---
 

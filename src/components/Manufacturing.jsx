@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, X, Save, Eye, Factory } from 'lucide-react';
 import { getAllProductions, saveProduction, deleteProduction, getProfile } from '../store';
+import { refreshAvgCosts } from '../utils/refreshCosts';
 import { formatCurrency, formatDateGST, localToday, belongsToProfile, isServiceProduct } from '../utils';
 import { unitCost, materialsNeeded, buildProduction, shortages } from '../utils/manufacturing';
 import { toast } from './Toast';
@@ -95,6 +96,7 @@ export function MakeModal({ products, currency, onClose, onSaved }) {
     setSaving(true);
     try {
       await saveProduction(entry);
+      await refreshAvgCosts();
       toast(`Production saved: ${qtyText(entry.qty, entry.unit)} of ${entry.productName}`, 'success');
       onSaved();
     } catch (err) {
@@ -207,6 +209,7 @@ export function ProductionList({ products, currency, reloadKey, onChanged }) {
     }))) return;
     try {
       await deleteProduction(entry.id);
+      await refreshAvgCosts();
       toast('Production entry deleted, stock put back', 'success');
       setViewing(null);
       onChanged();

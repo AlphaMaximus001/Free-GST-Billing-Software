@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Package, Search, Plus, Edit3, Trash2, X, Save, Upload, Table2, Factory } from 'lucide-react';
-import { getAllProducts, saveProduct, deleteProduct, getProfile, getStockAlertSettings, getEnabledModules } from '../store';
-import { getAllUnits, getCountryConfig, formatCurrency, isModuleEnabled, isServiceProduct, trackedStock, filterUnitsByMode, getDefaultUnitForMode } from '../utils';
+import { getAllProducts, saveProduct, deleteProduct, getProfile, getStockAlertSettings, getEnabledModules, getAllBills, getAllPurchases, getAllProductions } from '../store';
+import { getAllUnits, getCountryConfig, formatCurrency, isModuleEnabled, isServiceProduct, trackedStock, filterUnitsByMode, getDefaultUnitForMode, localToday } from '../utils';
+import { costLedger, withPriceHistory } from '../utils/costing';
+import { refreshAvgCosts } from '../utils/refreshCosts';
 import { productsCsvToList, PRODUCTS_SAMPLE } from '../utils/listCsv';
 import CsvListImport from './CsvListImport';
 import { bomError, unitCost } from '../utils/manufacturing';
@@ -20,7 +22,7 @@ import TableExport from './TableExport';
 // dead state removed for clarity.
 const emptyForm = {
   // kind: v1.10.83 (#121) - 'goods' or 'service' (a service has no stock).
-  kind: 'goods', name: '', hsn: '', purchasePrice: '', sellingPrice: '', taxPercent: '', unit: 'Pcs', stock: '', description: '',
+  kind: 'goods', name: '', hsn: '', purchasePrice: '', sellingPrice: '', mrp: '', openingCost: '', taxPercent: '', unit: 'Pcs', stock: '', description: '',
   madeHere: false, bom: [],
 };
 
@@ -32,6 +34,8 @@ export default function InventoryView() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ ...emptyForm });
+  // Average cost and price history of the product being edited (utils/costing.js).
+  const [costInfo, setCostInfo] = useState(null);
   const [units, setUnits] = useState(getAllUnits());
   const [profileCountry, setProfileCountry] = useState('India');
   const profileCurrency = getCountryConfig(profileCountry).currency;
@@ -87,6 +91,8 @@ export default function InventoryView() {
       hsn: product.hsn || '',
       purchasePrice: product.purchasePrice ?? '',
       sellingPrice: product.sellingPrice ?? product.rate ?? '',
+      mrp: product.mrp ?? '',
+      openingCost: product.openingCost ?? '',
       taxPercent: product.taxPercent || '',
       unit: product.unit || 'Nos',
       stock: product.stock ?? '', // v1.10.74 - was `|| ''`, which blanked a stock of 0
@@ -96,11 +102,21 @@ export default function InventoryView() {
     });
     setEditingId(product.id);
     setShowForm(true);
+    setCostInfo(null);
+    if (!isServiceProduct(product)) {
+      Promise.all([getAllBills(), getAllPurchases(), getAllProductions().catch(() => [])])
+        .then(([bills, purchases, productions]) => {
+          const s = costLedger({ products, bills, purchases, productions }).products.get(product.id);
+          setCostInfo(s ? { ...s, priceHistory: product.priceHistory || [] } : null);
+        })
+        .catch(() => {});
+    }
   };
 
   const closeForm = () => {
     setShowForm(false);
     setEditingId(null);
+    setCostInfo(null);
     setForm({ ...emptyForm });
   };
 
@@ -127,7 +143,9 @@ export default function InventoryView() {
       const sellingPrice = form.sellingPrice ? parseFloat(form.sellingPrice) : 0;
       const purchasePrice = form.purchasePrice ? parseFloat(form.purchasePrice) : 0;
       const service = form.kind === 'service';
-      const product = {
+      const before = editingId ? (products.find(p => p.id === editingId) || null) : null;
+      const openingCost = form.openingCost === '' ? undefined : parseFloat(form.openingCost);
+      const product = withPriceHistory(before, {
         // Fields this form does not show (cess % from purchase bills, etc.)
         // are kept: the record used to be rebuilt from the form alone.
         ...(editingId ? (products.find(p => p.id === editingId) || {}) : {}),
@@ -136,6 +154,8 @@ export default function InventoryView() {
         hsn: form.hsn.trim(),
         purchasePrice,
         sellingPrice,
+        mrp: form.mrp === '' ? undefined : parseFloat(form.mrp),
+        openingCost: service ? undefined : openingCost,
         rate: sellingPrice, // mirror for legacy readers
         taxPercent: form.taxPercent ? parseFloat(form.taxPercent) : 0,
         unit: form.unit,
@@ -147,8 +167,10 @@ export default function InventoryView() {
         // Only written while the feature is on; otherwise the fields a product
         // already has are kept as they are (spread above).
         ...(mfgOn ? (form.madeHere && !service ? { madeHere: true, bom } : { madeHere: false }) : {}),
-      };
+      }, localToday());
       await saveProduct(product);
+      // A new opening cost changes the average of the stock on hand.
+      if (!service && (Number(before?.openingCost) || 0) !== (Number(openingCost) || 0)) await refreshAvgCosts();
       toast(editingId ? 'Product updated' : 'Product added', 'success');
       closeForm();
       loadProducts();
@@ -266,11 +288,11 @@ export default function InventoryView() {
                   the purchase-bill rate. Legacy `rate` field kept invisible
                   for backward compat — writes through to sellingPrice. */}
               <div className="form-group">
-                <label className="form-label">Purchase Price</label>
+                <label className="form-label">Last Purchase Price</label>
                 <input type="number" className="form-input" value={form.purchasePrice}
                   onChange={e => updateField('purchasePrice', e.target.value)}
                   placeholder="0.00" min="0" step="any"
-                  title="What you pay the supplier. Auto-fills on new Purchase Bills." />
+                  title="What you last paid the supplier. Each purchase bill updates it and it fills in on new Purchase Bills. Stock is valued at the average cost, not this." />
               </div>
               <div className="form-group">
                 <label className="form-label">Selling Price</label>
@@ -279,6 +301,20 @@ export default function InventoryView() {
                   placeholder="0.00" min="0" step="any"
                   title="What you charge the customer. Auto-fills on new Invoices." />
               </div>
+              <div className="form-group">
+                <label className="form-label">MRP (optional)</label>
+                <input type="number" className="form-input" value={form.mrp}
+                  onChange={e => updateField('mrp', e.target.value)} placeholder="0.00" min="0" step="any"
+                  title="Maximum retail price. Changes are kept in the price history." />
+              </div>
+              {form.kind !== 'service' && (
+                <div className="form-group">
+                  <label className="form-label">Cost of opening stock</label>
+                  <input type="number" className="form-input" value={form.openingCost}
+                    onChange={e => updateField('openingCost', e.target.value)} placeholder="Blank = first purchase price" min="0" step="any"
+                    title="What one unit of the stock you had before your first purchase bill here cost you. Used to work out the average cost." />
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">GST %</label>
                 <input type="number" className="form-input" value={form.taxPercent}
@@ -301,6 +337,48 @@ export default function InventoryView() {
                     onChange={e => updateField('stock', e.target.value)} placeholder="Blank = not counted" min="0" />
                 </div>
               )}
+              {editingId && form.kind !== 'service' && costInfo && (() => {
+                const sell = Number(form.sellingPrice) || 0;
+                const perUnit = sell - costInfo.avgCost;
+                const fmt = (n) => formatCurrency(n, profileCurrency);
+                return (
+                  <div className="form-group" style={{ gridColumn: 'span 2', padding: '0.65rem 0.8rem', background: 'var(--bg-secondary)', borderRadius: 8, fontSize: '0.82rem' }}>
+                    <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+                      <span><span className="text-muted">Average cost</span> <strong>{fmt(costInfo.avgCost)}</strong></span>
+                      <span><span className="text-muted">In stock</span> <strong>{costInfo.qty}</strong></span>
+                      <span><span className="text-muted">Stock value</span> <strong>{fmt(costInfo.value)}</strong></span>
+                      {sell > 0 && costInfo.avgCost > 0 && (
+                        <span><span className="text-muted">Profit per unit at {fmt(sell)}</span> <strong style={{ color: perUnit < 0 ? 'var(--danger)' : undefined }}>{fmt(perUnit)} ({Math.round((perUnit / sell) * 1000) / 10}%)</strong></span>
+                      )}
+                    </div>
+                    {(costInfo.purchases.length > 0 || costInfo.priceHistory.length > 0) && (
+                      <details style={{ marginTop: '0.45rem' }}>
+                        <summary style={{ cursor: 'pointer' }}>Price history</summary>
+                        {costInfo.purchases.length > 0 && (
+                          <div className="table-scroll"><table className="data-table" style={{ marginTop: '0.4rem', fontSize: '0.78rem' }}>
+                            <thead><tr><th>Purchased</th><th>Supplier</th><th>Bill no.</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Rate</th></tr></thead>
+                            <tbody>
+                              {costInfo.purchases.slice().reverse().slice(0, 20).map((h, i) => (
+                                <tr key={i}><td>{h.date}</td><td>{h.supplier || '-'}</td><td>{h.billNo || '-'}</td><td style={{ textAlign: 'right' }}>{h.qty}</td><td style={{ textAlign: 'right' }}>{fmt(h.rate)}</td></tr>
+                              ))}
+                            </tbody>
+                          </table></div>
+                        )}
+                        {costInfo.priceHistory.length > 0 && (
+                          <div className="table-scroll"><table className="data-table" style={{ marginTop: '0.4rem', fontSize: '0.78rem' }}>
+                            <thead><tr><th>Price changed</th><th style={{ textAlign: 'right' }}>Selling</th><th style={{ textAlign: 'right' }}>MRP</th><th style={{ textAlign: 'right' }}>Purchase</th></tr></thead>
+                            <tbody>
+                              {costInfo.priceHistory.slice().reverse().slice(0, 20).map((h, i) => (
+                                <tr key={i}><td>{h.date}</td><td style={{ textAlign: 'right' }}>{fmt(h.sellingPrice)}</td><td style={{ textAlign: 'right' }}>{h.mrp ? fmt(h.mrp) : '-'}</td><td style={{ textAlign: 'right' }}>{fmt(h.purchasePrice)}</td></tr>
+                              ))}
+                            </tbody>
+                          </table></div>
+                        )}
+                      </details>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Description (optional)</label>
                 <input type="text" className="form-input" value={form.description}
@@ -327,8 +405,8 @@ export default function InventoryView() {
           <h3>Products & Services <HelpButton title="The product list" doc="products#product-list" size={16} /></h3>
           {!bulkEdit && (
             <TableExport title="Products" filename="Products"
-              headers={['Name', 'Type', 'HSN/SAC', 'Purchase price', 'Selling price', 'GST %', 'Unit', 'Stock']}
-              rows={filtered.map((p) => [p.name, isServiceProduct(p) ? 'Service' : 'Goods', p.hsn || '', Number(p.purchasePrice) || 0, Number(p.sellingPrice ?? p.rate) || 0, Number(p.taxPercent) || 0, p.unit || 'Nos', trackedStock(p) ?? ''])} />
+              headers={['Name', 'Type', 'HSN/SAC', 'Purchase price', 'Average cost', 'Selling price', 'GST %', 'Unit', 'Stock']}
+              rows={filtered.map((p) => [p.name, isServiceProduct(p) ? 'Service' : 'Goods', p.hsn || '', Number(p.purchasePrice) || 0, Number(p.avgCost) || 0, Number(p.sellingPrice ?? p.rate) || 0, Number(p.taxPercent) || 0, p.unit || 'Nos', trackedStock(p) ?? ''])} />
           )}
         </div>
         {bulkEdit && filtered.length > 0 ? (
@@ -349,6 +427,7 @@ export default function InventoryView() {
                   <th>Name</th>
                   <th>HSN/SAC</th>
                   <th>Rate</th>
+                  <th title="Moving average cost of the stock on hand">Avg cost</th>
                   <th>GST %</th>
                   <th>Unit</th>
                   <th>Stock</th>
@@ -368,6 +447,7 @@ export default function InventoryView() {
                     </td>
                     <td className="text-muted">{product.hsn || '-'}</td>
                     <td className="font-bold">{product.rate ? formatCurrency(product.rate, profileCurrency) : '-'}</td>
+                    <td className="text-muted">{!isServiceProduct(product) && Number(product.avgCost) > 0 ? formatCurrency(product.avgCost, profileCurrency) : '-'}</td>
                     <td>{product.taxPercent ? `${product.taxPercent}%` : '-'}</td>
                     <td className="text-muted">{product.unit || 'Nos'}</td>
                     <td>
